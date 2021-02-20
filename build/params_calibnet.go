@@ -37,10 +37,6 @@ const UpgradeOrangeHeight = 250666
 // 2021-01-28T21:00:00Z
 const UpgradeActorsV3Height = 282586
 
-var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0: DrandMainnet,
-}
-
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 30))
 	policy.SetSupportedProofTypes(

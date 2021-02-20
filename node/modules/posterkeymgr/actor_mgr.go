@@ -21,10 +21,10 @@ var nodefault = xerrors.Errorf("not set default key")
 var _ = (IActorMgr)(&ActorMgr{})
 
 type IActorMgr interface {
-	AddKey(addr config.PosterAddr) error
+	AddKey(addr config.MinerInfo) error
 	RemoveKey(rmAddr address.Address) error
 	ExistKey(checkAddr address.Address) bool
-	ListKey() ([]config.PosterAddr, error)
+	ListKey() ([]config.MinerInfo, error)
 	SetDefault(address.Address) error
 	Default() (address.Address, error)
 	Count() int
@@ -49,12 +49,12 @@ func NewActorMgr(ds dtypes.MetadataDS, cfg *config.MinerConfig) (*ActorMgr, erro
 	if err != nil {
 		return nil, err
 	}
-	cfg.PosterAddrs = addrs
+	cfg.MinerInfos = addrs
 	return &ActorMgr{da: ds, cfg: cfg}, nil
 }
 
-func mergerDbAndConfig(ds dtypes.MetadataDS, cfg *config.MinerConfig) ([]config.PosterAddr, error) {
-	var addrs []config.PosterAddr
+func mergerDbAndConfig(ds dtypes.MetadataDS, cfg *config.MinerConfig) ([]config.MinerInfo, error) {
+	var addrs []config.MinerInfo
 	addrBytes, err := ds.Get(datastore.NewKey(actorKey))
 	if err != nil && err != datastore.ErrNotFound {
 		return nil, err
@@ -67,8 +67,8 @@ func mergerDbAndConfig(ds dtypes.MetadataDS, cfg *config.MinerConfig) ([]config.
 		}
 	}
 
-	mergedAddrs := map[address.Address]config.PosterAddr{}
-	for _, addrPoster := range append(addrs, cfg.PosterAddrs...) {
+	mergedAddrs := map[address.Address]config.MinerInfo{}
+	for _, addrPoster := range append(addrs, cfg.MinerInfos...) {
 		if _, ok := mergedAddrs[addrPoster.Addr]; !ok {
 			mergedAddrs[addrPoster.Addr] = addrPoster
 		} else {
@@ -76,14 +76,14 @@ func mergerDbAndConfig(ds dtypes.MetadataDS, cfg *config.MinerConfig) ([]config.
 			mergedAddrs[addrPoster.Addr] = addrPoster
 		}
 	}
-	posterAddrs := []config.PosterAddr{}
+	posterAddrs := []config.MinerInfo{}
 	for _, val := range mergedAddrs {
 		posterAddrs = append(posterAddrs, val)
 	}
 	return posterAddrs, nil
 }
 
-func (actorMgr *ActorMgr) AddKey(posterAddr config.PosterAddr) error {
+func (actorMgr *ActorMgr) AddKey(posterAddr config.MinerInfo) error {
 	actorMgr.lk.Lock()
 	defer actorMgr.lk.Unlock()
 
@@ -92,7 +92,7 @@ func (actorMgr *ActorMgr) AddKey(posterAddr config.PosterAddr) error {
 		return nil
 	}
 
-	newAddress := append(actorMgr.cfg.PosterAddrs, posterAddr)
+	newAddress := append(actorMgr.cfg.MinerInfos, posterAddr)
 	addrBytes, err := json.Marshal(newAddress)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (actorMgr *ActorMgr) AddKey(posterAddr config.PosterAddr) error {
 	if err != nil {
 		return err
 	}
-	actorMgr.cfg.PosterAddrs = newAddress
+	actorMgr.cfg.MinerInfos = newAddress
 	return nil
 }
 
@@ -112,8 +112,8 @@ func (actorMgr *ActorMgr) RemoveKey(rmAddr address.Address) error {
 	if !actorMgr.existKey(rmAddr) {
 		return nil
 	}
-	var newPosterAddr []config.PosterAddr
-	for _, posterAddr := range actorMgr.cfg.PosterAddrs {
+	var newPosterAddr []config.MinerInfo
+	for _, posterAddr := range actorMgr.cfg.MinerInfos {
 		if posterAddr.Addr.String() != rmAddr.String() {
 			newPosterAddr = append(newPosterAddr, posterAddr)
 		}
@@ -126,7 +126,7 @@ func (actorMgr *ActorMgr) RemoveKey(rmAddr address.Address) error {
 	if err != nil {
 		return err
 	}
-	actorMgr.cfg.PosterAddrs = newPosterAddr
+	actorMgr.cfg.MinerInfos = newPosterAddr
 
 	//rm default if rmAddr == defaultAddr
 	defaultAddr, err := actorMgr.Default()
@@ -154,7 +154,7 @@ func (actorMgr *ActorMgr) ExistKey(checkAddr address.Address) bool {
 
 func (actorMgr *ActorMgr) existKey(checkAddr address.Address) bool {
 
-	for _, posterAddr := range actorMgr.cfg.PosterAddrs {
+	for _, posterAddr := range actorMgr.cfg.MinerInfos {
 		if posterAddr.Addr.String() == checkAddr.String() {
 			return true
 		}
@@ -162,18 +162,18 @@ func (actorMgr *ActorMgr) existKey(checkAddr address.Address) bool {
 	return false
 }
 
-func (actorMgr *ActorMgr) ListKey() ([]config.PosterAddr, error) {
+func (actorMgr *ActorMgr) ListKey() ([]config.MinerInfo, error) {
 	actorMgr.lk.Lock()
 	defer actorMgr.lk.Unlock()
 
-	return actorMgr.cfg.PosterAddrs, nil
+	return actorMgr.cfg.MinerInfos, nil
 }
 
 func (actorMgr *ActorMgr) Count() int {
 	actorMgr.lk.Lock()
 	defer actorMgr.lk.Unlock()
 
-	return len(actorMgr.cfg.PosterAddrs)
+	return len(actorMgr.cfg.MinerInfos)
 }
 
 func (actorMgr *ActorMgr) SetDefault(addr address.Address) error {
@@ -183,10 +183,10 @@ func (actorMgr *ActorMgr) SetDefault(addr address.Address) error {
 func (actorMgr *ActorMgr) Default() (address.Address, error) {
 	bytes, err := actorMgr.da.Get(datastore.NewKey(defaultKey))
 	if err != nil {
-		if len(actorMgr.cfg.PosterAddrs) == 0 {
+		if len(actorMgr.cfg.MinerInfos) == 0 {
 			return address.Undef, nodefault
 		}
-		return actorMgr.cfg.PosterAddrs[0].Addr, nil
+		return actorMgr.cfg.MinerInfos[0].Addr, nil
 	}
 	return address.NewFromBytes(bytes)
 }

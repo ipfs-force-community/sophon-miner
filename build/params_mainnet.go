@@ -45,11 +45,6 @@ const UpgradeClausHeight = 343200
 // TODO
 const UpgradeActorsV3Height = 999999999
 
-var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandIncentinet,
-	UpgradeSmokeHeight: DrandMainnet,
-}
-
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 

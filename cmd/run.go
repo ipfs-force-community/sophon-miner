@@ -49,7 +49,6 @@ var runCmd = &cli.Command{
 			Usage: "maximum API request size accepted by the JSON RPC server",
 		},
 		node.CLIFLAGBlockRecord,
-		node.CLIFlagMinerAddress,
 	},
 	Action: func(cctx *cli.Context) error {
 		// default enlarge max os threads to 20000
@@ -132,15 +131,15 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting API endpoint: %w", err)
 		}
 
-		// Bootstrap with full node
-		remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
-		if err != nil {
-			return xerrors.Errorf("getting full node libp2p address: %w", err)
-		}
-
-		if err := minerAPI.NetConnect(ctx, remoteAddrs); err != nil {
-			return xerrors.Errorf("connecting to full node (libp2p): %w", err)
-		}
+		//// Bootstrap with full node
+		//remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
+		//if err != nil {
+		//	return xerrors.Errorf("getting full node libp2p address: %w", err)
+		//}
+		//
+		//if err := minerAPI.NetConnect(ctx, remoteAddrs); err != nil {
+		//	return xerrors.Errorf("connecting to full node (libp2p): %w", err)
+		//}
 
 		log.Infof("Remote version %s", v)
 

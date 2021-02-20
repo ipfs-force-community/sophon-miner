@@ -77,7 +77,7 @@ var addAddrCmd = &cli.Command{
 			return err
 		}
 
-		posterAddr := config.PosterAddr{
+		posterAddr := config.MinerInfo{
 			Addr:      addr,
 			ListenAPI: cctx.String("listen-api"),
 		}

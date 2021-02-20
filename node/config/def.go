@@ -2,10 +2,7 @@ package config
 
 import (
 	"encoding"
-	"strings"
 	"time"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 )
@@ -13,8 +10,6 @@ import (
 // Common is common config between full node and miner
 type Common struct {
 	API    API
-	Libp2p Libp2p
-	Pubsub Pubsub
 }
 
 // API contains configs for API endpoint
@@ -24,28 +19,10 @@ type API struct {
 	Timeout             Duration
 }
 
-// Libp2p contains configs for libp2p
-type Libp2p struct {
-	ListenAddresses     []string
-	AnnounceAddresses   []string
-	NoAnnounceAddresses []string
-	BootstrapPeers      []string
-	ProtectedPeers      []string
-
-	ConnMgrLow   uint
-	ConnMgrHigh  uint
-	ConnMgrGrace Duration
-}
-
-type Pubsub struct {
-	Bootstrapper bool
-	DirectPeers  []string
-	RemoteTracer string
-}
-
-type PosterAddr struct {
+type MinerInfo struct {
 	Addr      address.Address
 	ListenAPI string
+	Token     string
 }
 
 // FullNode is a full node config
@@ -55,23 +32,9 @@ type FullNode struct {
 
 type MinerConfig struct {
 	Common
-	PosterAddrs []PosterAddr
-	BlockRecord string
-}
 
-func ParserPosterAddr(str string) (PosterAddr, error) {
-	addrPath := strings.Split(str, "@")
-	if len(addrPath) != 2 {
-		return PosterAddr{}, xerrors.Errorf("not support PosterAddr format eg f01001|/ip4/127.0.0.1/tcp/1234/http")
-	}
-	addr, err := address.NewFromString(addrPath[0])
-	if err != nil {
-		return PosterAddr{}, xerrors.Errorf("fail to parser poster addr in config", err)
-	}
-	return PosterAddr{
-		Addr:      addr,
-		ListenAPI: addrPath[1],
-	}, nil
+	MinerInfos  []MinerInfo
+	BlockRecord string
 }
 
 func defCommon() Common {
@@ -79,23 +42,6 @@ func defCommon() Common {
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/1234/http",
 			Timeout:       Duration(30 * time.Second),
-		},
-		Libp2p: Libp2p{
-			ListenAddresses: []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip6/::/tcp/0",
-			},
-			AnnounceAddresses:   []string{},
-			NoAnnounceAddresses: []string{},
-
-			ConnMgrLow:   150,
-			ConnMgrHigh:  180,
-			ConnMgrGrace: Duration(20 * time.Second),
-		},
-		Pubsub: Pubsub{
-			Bootstrapper: false,
-			DirectPeers:  nil,
-			RemoteTracer: "/dns4/pubsub-tracer.filecoin.io/tcp/4001/p2p/QmTd6UvR47vUidRNZ1ZKXHrAFhqTJAD27rKL9XYghEKgKX",
 		},
 	}
 
@@ -111,7 +57,7 @@ func DefaultFullNode() *FullNode {
 func DefaultMinerConfig() *MinerConfig {
 	minerCfg := &MinerConfig{
 		Common:      defCommon(),
-		PosterAddrs: []PosterAddr{},
+		MinerInfos:  []MinerInfo{},
 		BlockRecord: "localdb",
 	}
 

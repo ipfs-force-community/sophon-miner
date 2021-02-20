@@ -11,8 +11,8 @@ import (
 type MinerAPI interface {
 	Common
 
-	AddAddress(addr config.PosterAddr) error
+	AddAddress(addr config.MinerInfo) error
 	RemoveAddress(addr address.Address) error
-	ListAddress() ([]config.PosterAddr, error)
+	ListAddress() ([]config.MinerInfo, error)
 	SetDefault(ctx context.Context, addr address.Address) error
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func TestDefaultMinerRoundtrip(t *testing.T) {
-	c := DefaultStorageMiner()
+	c := DefaultMinerConfig()
 
 	var s string
 	{
@@ -24,7 +24,7 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 		s = buf.String()
 	}
 
-	c2, err := FromReader(strings.NewReader(s), DefaultStorageMiner())
+	c2, err := FromReader(strings.NewReader(s), DefaultMinerConfig())
 	require.NoError(t, err)
 
 	fmt.Println(s)

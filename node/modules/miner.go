@@ -81,7 +81,7 @@ func NewMultiMiner(
 
 	if !actorMgr.ExistKey(minerAddr) {
 		log.Infof("add miner: %w", minerAddr)
-		err := actorMgr.AddKey(config.PosterAddr{Addr: minerAddr, ListenAPI: ""})
+		err := actorMgr.AddKey(config.MinerInfo{Addr: minerAddr, ListenAPI: ""})
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +128,7 @@ func (m *MultiMiner) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *MultiMiner) AddAddress(posterAddr config.PosterAddr) error {
+func (m *MultiMiner) AddAddress(posterAddr config.MinerInfo) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	if _, ok := m.minerList[posterAddr.Addr]; ok {
@@ -164,7 +164,7 @@ func (m *MultiMiner) RemoveAddress(addr address.Address) error {
 	}
 }
 
-func (m *MultiMiner) ListAddress() ([]config.PosterAddr, error) {
+func (m *MultiMiner) ListAddress() ([]config.MinerInfo, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	return m.actorMgr.ListKey()

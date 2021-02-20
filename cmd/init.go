@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -138,18 +137,18 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
 	}
 	defer lr.Close() //nolint:errcheck
 
-	log.Info("Initializing libp2p identity")
-
-	p2pSk, err := makeHostKey(lr)
-	if err != nil {
-		return xerrors.Errorf("make host key: %w", err)
-	}
-
-	peerID, err := peer.IDFromPrivateKey(p2pSk)
-	if err != nil {
-		return xerrors.Errorf("peer ID from private key: %w", err)
-	}
-	log.Infow("init new peer: %s", peerID)
+	//log.Info("Initializing libp2p identity")
+	//
+	//p2pSk, err := makeHostKey(lr)
+	//if err != nil {
+	//	return xerrors.Errorf("make host key: %w", err)
+	//}
+	//
+	//peerID, err := peer.IDFromPrivateKey(p2pSk)
+	//if err != nil {
+	//	return xerrors.Errorf("peer ID from private key: %w", err)
+	//}
+	//log.Infow("init new peer: %s", peerID)
 
 	mds, err := lr.Datastore(context.TODO(), "/metadata")
 	if err != nil {

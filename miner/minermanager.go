@@ -17,19 +17,19 @@ type IMiner interface {
 }
 
 type IMinerMgr interface {
-	AddAddress(config.PosterAddr) error
-	ListAddress() ([]config.PosterAddr, error)
+	AddAddress(config.MinerInfo) error
+	ListAddress() ([]config.MinerInfo, error)
 	RemoveAddress(address.Address) error
 }
 
 type MockMinerMgr struct {
 }
 
-func (m MockMinerMgr) AddAddress(a config.PosterAddr) error {
+func (m MockMinerMgr) AddAddress(a config.MinerInfo) error {
 	return nil
 }
 
-func (m MockMinerMgr) ListAddress() ([]config.PosterAddr, error) {
+func (m MockMinerMgr) ListAddress() ([]config.MinerInfo, error) {
 	return nil, nil
 }
 

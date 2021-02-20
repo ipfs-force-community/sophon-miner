@@ -18,7 +18,7 @@ type MinerAPI struct {
 	Miner    miner.BlockMinerApi `optional:"true"`
 }
 
-func (m *MinerAPI) AddAddress(posterAddr config.PosterAddr) error {
+func (m *MinerAPI) AddAddress(posterAddr config.MinerInfo) error {
 	return m.Miner.AddAddress(posterAddr)
 }
 
@@ -26,7 +26,7 @@ func (m *MinerAPI) RemoveAddress(addr address.Address) error {
 	return m.Miner.RemoveAddress(addr)
 }
 
-func (m *MinerAPI) ListAddress() ([]config.PosterAddr, error) {
+func (m *MinerAPI) ListAddress() ([]config.MinerInfo, error) {
 	return m.ActorMgr.ListKey()
 }
 

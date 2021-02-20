@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus-miner/storage/prover/local"
 )
 
-type WinningPostConstructor func(minerConfig config.PosterAddr) (chain.WinningPoStProver, error)
+type WinningPostConstructor func(minerConfig config.MinerInfo) (chain.WinningPoStProver, error)
 
 func WinningPostProverCCTor(
 	mctx helpers.MetricsCtx,
@@ -26,7 +26,7 @@ func WinningPostProverCCTor(
 	cfg *config.MinerConfig,
 	urls ffiwrapper.URLs,
 ) WinningPostConstructor {
-	return func(posterAddr config.PosterAddr) (chain.WinningPoStProver, error) {
+	return func(posterAddr config.MinerInfo) (chain.WinningPoStProver, error) {
 		minerId, err := address.IDFromAddress(posterAddr.Addr)
 		if err != nil {
 			return nil, nil
