@@ -3,8 +3,6 @@ package config
 import (
 	"encoding"
 	"time"
-
-	"github.com/filecoin-project/go-address"
 )
 
 // Common is common config between full node and miner
@@ -19,12 +17,6 @@ type API struct {
 	Timeout             Duration
 }
 
-type MinerInfo struct {
-	Addr      address.Address
-	ListenAPI string
-	Token     string
-}
-
 // FullNode is a full node config
 type FullNode struct {
 	Common
@@ -33,7 +25,6 @@ type FullNode struct {
 type MinerConfig struct {
 	Common
 
-	MinerInfos  []MinerInfo
 	BlockRecord string
 }
 
@@ -44,7 +35,6 @@ func defCommon() Common {
 			Timeout:       Duration(30 * time.Second),
 		},
 	}
-
 }
 
 // DefaultFullNode returns the default config
@@ -57,7 +47,6 @@ func DefaultFullNode() *FullNode {
 func DefaultMinerConfig() *MinerConfig {
 	minerCfg := &MinerConfig{
 		Common:      defCommon(),
-		MinerInfos:  []MinerInfo{},
 		BlockRecord: "localdb",
 	}
 

@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/actors/builtin/miner"
 	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
 
@@ -646,27 +645,32 @@ type MinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		AddAddress         func(config.MinerInfo) error                        `perm:"write"`
-		RemoveAddress      func(address.Address) error                          `perm:"write"`
-		ListAddress        func() ([]config.MinerInfo, error)                  `perm:"read"`
-		SetDefault         func(context.Context, address.Address) error         `perm:"write"`
+		AddAddress    func(dtypes.MinerInfo) error       `perm:"write"`
+		RemoveAddress func(address.Address) error        `perm:"write"`
+		ListAddress   func() ([]dtypes.MinerInfo, error) `perm:"read"`
+		SetDefault    func(address.Address) error        `perm:"write"`
+		Default       func() (address.Address, error)    `perm:"read"`
 	}
 }
 
-func (s *MinerStruct) AddAddress(posterAddr config.MinerInfo) error {
-	return s.Internal.AddAddress(posterAddr)
+func (s *MinerStruct) AddAddress(miner dtypes.MinerInfo) error {
+	return s.Internal.AddAddress(miner)
 }
 
 func (s *MinerStruct) RemoveAddress(addr address.Address) error {
 	return s.Internal.RemoveAddress(addr)
 }
 
-func (s *MinerStruct) ListAddress() ([]config.MinerInfo, error) {
+func (s *MinerStruct) ListAddress() ([]dtypes.MinerInfo, error) {
 	return s.Internal.ListAddress()
 }
 
-func (s *MinerStruct) SetDefault(ctx context.Context, addr address.Address) error {
-	return s.Internal.SetDefault(ctx, addr)
+func (s *MinerStruct) SetDefault(addr address.Address) error {
+	return s.Internal.SetDefault(addr)
+}
+
+func (s *MinerStruct) Default() (address.Address, error) {
+	return s.Internal.Default()
 }
 
 var _ api.MinerAPI = &MinerStruct{}

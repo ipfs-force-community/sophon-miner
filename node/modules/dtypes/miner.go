@@ -7,3 +7,9 @@ import (
 
 type MinerAddress address.Address
 type MinerID abi.ActorID
+
+type MinerInfo struct {
+	Addr      address.Address
+	ListenAPI string
+	Token     string
+}

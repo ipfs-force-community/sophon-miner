@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-
 	metricsi "github.com/ipfs/go-metrics-interface"
 
 	logging "github.com/ipfs/go-log"
@@ -26,11 +25,9 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/block_recorder"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/helpers"
-	"github.com/filecoin-project/venus-miner/node/modules/posterkeymgr"
-	"github.com/filecoin-project/venus-miner/node/modules/prover_ctor"
+	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
 	"github.com/filecoin-project/venus-miner/node/repo"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/venus-miner/sector-storage/stores"
 	"github.com/filecoin-project/venus-miner/system"
 )
 
@@ -116,9 +113,6 @@ func Online() Option {
 		// miner
 		ApplyIf(isType(repo.Miner),
 			Override(new(dtypes.NetworkName), modules.MinerNetworkName),
-			Override(new(*stores.Index), stores.NewIndex),
-			Override(new(stores.SectorIndex), From(new(*stores.Index))),
-			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		),
 	)
 }
@@ -203,7 +197,7 @@ func ConfigPostOptions(cctx *cli.Context, c interface{}) Option {
 		Override(new(dtypes.NetworkName), modules.MinerNetworkName),
 		Override(new(dtypes.MinerAddress), modules.MinerAddress),
 
-		Override(new(posterkeymgr.IActorMgr), posterkeymgr.NewActorMgr),
+		Override(new(minermanage.MinerManageAPI), minermanage.NewMinerManger),
 		Override(new(api.Common), From(new(common.CommonAPI))),
 		Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 	)
@@ -228,8 +222,7 @@ func PostWinningOptions(postCfg *config.MinerConfig) (Option, error) {
 
 	return Options(
 		blockRecordOp,
-		Override(new(prover_ctor.WinningPostConstructor), prover_ctor.WinningPostProverCCTor),
-		Override(new(miner.BlockMinerApi), modules.SetupPostBlockProducer),
+		Override(new(miner.MiningAPI), modules.NewWiningPoster),
 	), nil
 }
 
