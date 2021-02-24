@@ -16,6 +16,8 @@ type MiningAPI interface {
 type IMinerMining interface {
 	Start(context.Context) error
 	Stop(context.Context) error
+	ManualStart(context.Context, address.Address) error
+	ManualStop(context.Context, address.Address) error
 }
 
 type IMinerManager interface {

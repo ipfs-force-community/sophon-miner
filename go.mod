@@ -17,17 +17,17 @@ require (
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
-	github.com/filecoin-project/go-bitfield v0.2.3
+	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v1.2.7
-	github.com/filecoin-project/go-fil-markets v1.1.7
-	github.com/filecoin-project/go-jsonrpc v0.1.2
+	github.com/filecoin-project/go-fil-markets v1.1.9
+	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
-	github.com/filecoin-project/go-state-types v0.0.0-20210119062722-4adba5aaea71
+	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
-	github.com/filecoin-project/specs-actors/v3 v3.0.1-0.20210128235937-57195d8909b1
+	github.com/filecoin-project/specs-actors/v3 v3.0.3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -37,7 +37,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-bitswap v0.3.2 // indirect
-	github.com/ipfs/go-block-format v0.0.2
+	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.4 // indirect
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
@@ -72,7 +72,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2
+	github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
 	go.opencensus.io v0.22.5
 	go.uber.org/dig v1.10.0 // indirect

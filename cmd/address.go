@@ -20,6 +20,8 @@ var addressCmd = &cli.Command{
 		listCmd,
 		setdefaultCmd,
 		defaultCmd,
+		startMiningCmd,
+		stopMiningCmd,
 	},
 }
 
@@ -167,6 +169,62 @@ var defaultCmd = &cli.Command{
 		}
 
 		fmt.Println(addr.String())
+		return nil
+	},
+}
+
+var startMiningCmd = &cli.Command{
+	Name:      "start",
+	Usage:     "start mining for specified miner",
+	Flags:     []cli.Flag{},
+	ArgsUsage: "[address]",
+	Action: func(cctx *cli.Context) error {
+		postApi, closer, err := lcli.GetMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		addrStr := cctx.Args().First()
+		addr, err := address.NewFromString(addrStr)
+		if err != nil {
+			return err
+		}
+
+		err = postApi.Start(ctx, addr)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+var stopMiningCmd = &cli.Command{
+	Name:      "stop",
+	Usage:     "stop mining for specified miner",
+	Flags:     []cli.Flag{},
+	ArgsUsage: "[address]",
+	Action: func(cctx *cli.Context) error {
+		postApi, closer, err := lcli.GetMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		addrStr := cctx.Args().First()
+		addr, err := address.NewFromString(addrStr)
+		if err != nil {
+			return err
+		}
+
+		err = postApi.Stop(ctx, addr)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	},
 }

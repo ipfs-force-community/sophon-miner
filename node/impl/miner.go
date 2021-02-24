@@ -1,6 +1,8 @@
 package impl
 
 import (
+	"context"
+
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/venus-miner/miner"
@@ -26,7 +28,7 @@ func (m *MinerAPI) RemoveAddress(addr address.Address) error {
 }
 
 func (m *MinerAPI) ListAddress() ([]dtypes.MinerInfo, error) {
-	return m.MinerManager.List()
+	return m.MiningAPI.ListAddress()
 }
 
 func (m *MinerAPI) SetDefault(addr address.Address) error {
@@ -35,4 +37,12 @@ func (m *MinerAPI) SetDefault(addr address.Address) error {
 
 func (m *MinerAPI) Default() (address.Address, error) {
 	return m.MinerManager.Default()
+}
+
+func (m *MinerAPI) Start(ctx context.Context, addr address.Address) error {
+	return m.MiningAPI.ManualStart(ctx, addr)
+}
+
+func (m *MinerAPI) Stop(ctx context.Context, addr address.Address) error {
+	return m.MiningAPI.ManualStop(ctx, addr)
 }

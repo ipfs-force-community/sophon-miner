@@ -112,7 +112,7 @@ func Online() Option {
 
 		// miner
 		ApplyIf(isType(repo.Miner),
-			Override(new(dtypes.NetworkName), modules.MinerNetworkName),
+
 		),
 	)
 }
@@ -193,9 +193,6 @@ func ConfigPostOptions(cctx *cli.Context, c interface{}) Option {
 	}
 	shareOps := Options(
 		Override(new(*config.MinerConfig), scfg),
-
-		Override(new(dtypes.NetworkName), modules.MinerNetworkName),
-		Override(new(dtypes.MinerAddress), modules.MinerAddress),
 
 		Override(new(minermanage.MinerManageAPI), minermanage.NewMinerManger),
 		Override(new(api.Common), From(new(common.CommonAPI))),

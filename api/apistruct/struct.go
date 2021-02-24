@@ -645,11 +645,13 @@ type MinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		AddAddress    func(dtypes.MinerInfo) error       `perm:"write"`
-		RemoveAddress func(address.Address) error        `perm:"write"`
-		ListAddress   func() ([]dtypes.MinerInfo, error) `perm:"read"`
-		SetDefault    func(address.Address) error        `perm:"write"`
-		Default       func() (address.Address, error)    `perm:"read"`
+		AddAddress    func(dtypes.MinerInfo) error                 `perm:"write"`
+		RemoveAddress func(address.Address) error                  `perm:"write"`
+		ListAddress   func() ([]dtypes.MinerInfo, error)           `perm:"read"`
+		SetDefault    func(address.Address) error                  `perm:"write"`
+		Default       func() (address.Address, error)              `perm:"read"`
+		Start         func(context.Context, address.Address) error `perm:"write"`
+		Stop          func(context.Context, address.Address) error `perm:"write"`
 	}
 }
 
@@ -671,6 +673,14 @@ func (s *MinerStruct) SetDefault(addr address.Address) error {
 
 func (s *MinerStruct) Default() (address.Address, error) {
 	return s.Internal.Default()
+}
+
+func (s *MinerStruct) Start(ctx context.Context, addr address.Address) error {
+	return s.Internal.Start(ctx, addr)
+}
+
+func (s *MinerStruct) Stop(ctx context.Context, addr address.Address) error {
+	return s.Internal.Stop(ctx, addr)
 }
 
 var _ api.MinerAPI = &MinerStruct{}

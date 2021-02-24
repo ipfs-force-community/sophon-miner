@@ -2,12 +2,16 @@ package modules
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
@@ -60,7 +64,7 @@ func (wpp *MiningWpp) GenerateCandidates(ctx context.Context, randomness abi.PoS
 	return cds, nil
 }
 
-func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) {
+func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo, rand abi.PoStRandomness) ([]proof2.PoStProof, error) {
 	if build.InsecurePoStValidation {
 		return []builtin.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
@@ -69,8 +73,46 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.SectorInfo
 
 	start := build.Clock.Now()
 
-	// todo 调用sealer rpc api
+	// todo call sealer rpc api
+
 
 	log.Infof("GenerateWinningPoSt took %s", time.Since(start))
 	return nil, nil
+}
+
+type sealerAPI interface {
+	ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error)
+}
+
+// sealerStruct
+type sealerStruct struct {
+	Internal struct {
+		ComputeProof func(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) `perm:"read"`
+	}
+}
+
+func (s *sealerStruct) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo, rand abi.PoStRandomness) ([]proof2.PoStProof, error) {
+	return s.Internal.ComputeProof(ctx, ssi, rand)
+}
+
+func newSealerRPC(addr string, requestHeader http.Header) (sealerAPI, jsonrpc.ClientCloser, error) {
+	var res sealerStruct
+	closer, err := jsonrpc.NewMergeClient(context.Background(), addr, "Filecoin",
+		[]interface{}{
+			&res.Internal,
+		},
+		requestHeader,
+	)
+
+	return &res, closer, err
+}
+
+func getSealerAPI(ctx context.Context, minerInfo dtypes.MinerInfo) (sealerAPI, jsonrpc.ClientCloser, error) {
+	addr, err := minerInfo.DialArgs()
+	if err != nil {
+		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
+	}
+
+
+	return newSealerRPC(addr, minerInfo.AuthHeader())
 }
