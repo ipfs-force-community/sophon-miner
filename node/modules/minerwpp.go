@@ -74,10 +74,19 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo,
 	start := build.Clock.Now()
 
 	// todo call sealer rpc api
+	sealerAPI, closer, err := getSealerAPI(ctx, wpp.minerInfo)
+	if err != nil {
+		return nil, err
+	}
+	defer closer()
 
+	proofBuf, err := sealerAPI.ComputeProof(ctx, ssi, rand)
+	if err != nil {
+		return nil, err
+	}
 
 	log.Infof("GenerateWinningPoSt took %s", time.Since(start))
-	return nil, nil
+	return proofBuf, nil
 }
 
 type sealerAPI interface {
