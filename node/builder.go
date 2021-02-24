@@ -4,22 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"time"
-
 	metricsi "github.com/ipfs/go-metrics-interface"
 
-	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
-	ci "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p-core/routing"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	record "github.com/libp2p/go-libp2p-record"
-	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
@@ -38,12 +25,9 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/block_recorder"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/helpers"
-	"github.com/filecoin-project/venus-miner/node/modules/lp2p"
-	"github.com/filecoin-project/venus-miner/node/modules/posterkeymgr"
-	"github.com/filecoin-project/venus-miner/node/modules/prover_ctor"
+	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
 	"github.com/filecoin-project/venus-miner/node/repo"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/venus-miner/sector-storage/stores"
 	"github.com/filecoin-project/venus-miner/system"
 )
 
@@ -53,22 +37,6 @@ var log = logging.Logger("builder")
 // special is a type used to give keys to modules which
 //  can't really be identified by the returned type
 type special struct{ id int }
-
-//nolint:golint
-var (
-	DefaultTransportsKey = special{0}  // Libp2p option
-	DiscoveryHandlerKey  = special{2}  // Private type
-	AddrsFactoryKey      = special{3}  // Libp2p option
-	SmuxTransportKey     = special{4}  // Libp2p option
-	RelayKey             = special{5}  // Libp2p option
-	SecurityKey          = special{6}  // Libp2p option
-	BaseRoutingKey       = special{7}  // fx groups + multiret
-	NatPortMapKey        = special{8}  // Libp2p option
-	ConnectionManagerKey = special{9}  // Libp2p option
-	AutoNATSvcKey        = special{10} // Libp2p option
-	BandwidthReporterKey = special{11} // Libp2p option
-	ConnGaterKey         = special{12} // libp2p option
-)
 
 type invoke int
 
@@ -81,10 +49,6 @@ const (
 
 	// System processes.
 	InitMemoryWatchdog
-
-	// libp2p
-	PstoreAddSelfKeysKey
-	StartListeningKey
 
 	// daemon
 	ExtractApiKey
@@ -125,53 +89,10 @@ func defaults() []Option {
 			return metricsi.CtxScope(context.Background(), "venus-miner")
 		}),
 
-		Override(new(record.Validator), modules.RecordValidator),
-		Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
 
 		// Filecoin modules
-
 	}
-}
-
-func libp2p() Option {
-	return Options(
-		Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
-
-		Override(DefaultTransportsKey, lp2p.DefaultTransports),
-
-		Override(new(lp2p.RawHost), lp2p.Host),
-		Override(new(host.Host), lp2p.RoutedHost),
-		Override(new(lp2p.BaseIpfsRouting), lp2p.DHTRouting(dht.ModeAuto)),
-
-		Override(DiscoveryHandlerKey, lp2p.DiscoveryHandler),
-		Override(AddrsFactoryKey, lp2p.AddrsFactory(nil, nil)),
-		Override(SmuxTransportKey, lp2p.SmuxTransport(true)),
-		Override(RelayKey, lp2p.NoRelay()),
-		Override(SecurityKey, lp2p.Security(true, false)),
-
-		Override(BaseRoutingKey, lp2p.BaseRouting),
-		Override(new(routing.Routing), lp2p.Routing),
-
-		Override(NatPortMapKey, lp2p.NatPortMap),
-		Override(BandwidthReporterKey, lp2p.BandwidthCounter),
-
-		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
-		Override(AutoNATSvcKey, lp2p.AutoNATService),
-
-		Override(new(*dtypes.ScoreKeeper), lp2p.ScoreKeeper),
-		Override(new(*pubsub.PubSub), lp2p.GossipSub),
-		Override(new(*config.Pubsub), func(bs dtypes.Bootstrapper) *config.Pubsub {
-			return &config.Pubsub{
-				Bootstrapper: bool(bs),
-			}
-		}),
-
-		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
-
-		Override(new(*conngater.BasicConnectionGater), lp2p.ConnGater),
-		Override(ConnGaterKey, lp2p.ConnGaterOption),
-	)
 }
 
 func isType(t repo.RepoType) func(s *Settings) bool {
@@ -189,14 +110,9 @@ func Online() Option {
 			Error(errors.New("the Online option must be set before Config option")),
 		),
 
-		libp2p(),
-
 		// miner
 		ApplyIf(isType(repo.Miner),
-			Override(new(dtypes.NetworkName), modules.MinerNetworkName),
-			Override(new(*stores.Index), stores.NewIndex),
-			Override(new(stores.SectorIndex), From(new(*stores.Index))),
-			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+
 		),
 	)
 }
@@ -218,19 +134,6 @@ func ConfigCommon( cfg *config.Common) Option {
 			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
 			return urls, nil
 		}),
-		ApplyIf(func(s *Settings) bool { return s.Online },
-			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
-			Override(ConnectionManagerKey, lp2p.ConnectionManager(
-				cfg.Libp2p.ConnMgrLow,
-				cfg.Libp2p.ConnMgrHigh,
-				time.Duration(cfg.Libp2p.ConnMgrGrace),
-				cfg.Libp2p.ProtectedPeers)),
-			Override(new(*pubsub.PubSub), lp2p.GossipSub),
-			Override(new(*config.Pubsub), &cfg.Pubsub),
-		),
-		Override(AddrsFactoryKey, lp2p.AddrsFactory(
-			cfg.Libp2p.AnnounceAddresses,
-			cfg.Libp2p.NoAnnounceAddresses)),
 	)
 }
 
@@ -250,10 +153,6 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 
-			Override(new(ci.PrivKey), lp2p.PrivKey),
-			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
-			Override(new(peer.ID), peer.IDFromPublicKey),
-
 			Override(new(types.KeyStore), modules.KeyStore),
 
 			Override(new(*dtypes.APIAlg), modules.APISecret),
@@ -264,13 +163,6 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 }
 
 var (
-	CLIFlagMinerAddress = &cli.StringFlag{
-		Name:     "addr",
-		Usage:    "设置挖矿的地址",
-		Value:    "",
-		Required: false,
-	}
-
 	CLIFLAGBlockRecord = &cli.StringFlag{
 		Name:    "block_record",
 		Usage:   "记录已经产生的区块用于防止重复出块的问题 取值（localdb, cache）mysql待完成",
@@ -280,20 +172,6 @@ var (
 )
 
 func ConfigPostConfig(cctx *cli.Context, cfg *config.MinerConfig) (*config.MinerConfig, error) {
-	if cctx.IsSet(CLIFlagMinerAddress.Name) {
-		addrs := cctx.StringSlice(CLIFlagMinerAddress.Name)
-		for _, addrStr := range addrs {
-			posterAddr, err := config.ParserPosterAddr(addrStr)
-			if err != nil {
-				return nil, xerrors.Errorf("invalid miner address in addr flag")
-			}
-			if posterAddr.Addr.Protocol() != address.ID {
-				return nil, xerrors.Errorf("not the expect address type")
-			}
-			cfg.PosterAddrs = append(cfg.PosterAddrs, posterAddr)
-		}
-	}
-
 	if cctx.IsSet(CLIFLAGBlockRecord.Name) {
 		cfg.BlockRecord = cctx.String(CLIFLAGBlockRecord.Name)
 	}
@@ -316,10 +194,7 @@ func ConfigPostOptions(cctx *cli.Context, c interface{}) Option {
 	shareOps := Options(
 		Override(new(*config.MinerConfig), scfg),
 
-		Override(new(dtypes.NetworkName), modules.MinerNetworkName),
-		Override(new(dtypes.MinerAddress), modules.MinerAddress),
-
-		Override(new(posterkeymgr.IActorMgr), posterkeymgr.NewActorMgr),
+		Override(new(minermanage.MinerManageAPI), minermanage.NewMinerManger),
 		Override(new(api.Common), From(new(common.CommonAPI))),
 		Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 	)
@@ -344,8 +219,7 @@ func PostWinningOptions(postCfg *config.MinerConfig) (Option, error) {
 
 	return Options(
 		blockRecordOp,
-		Override(new(prover_ctor.WinningPostConstructor), prover_ctor.WinningPostProverCCTor),
-		Override(new(miner.BlockMinerApi), modules.SetupPostBlockProducer),
+		Override(new(miner.MiningAPI), modules.NewWiningPoster),
 	), nil
 }
 

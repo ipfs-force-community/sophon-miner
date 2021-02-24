@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -20,12 +20,12 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus-miner/chain/actors/policy"
-
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
+	"github.com/filecoin-project/venus-miner/chain/actors/policy"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	lcli "github.com/filecoin-project/venus-miner/cli"
+	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
 )
 
@@ -38,13 +38,19 @@ var initCmd = &cli.Command{
 			Usage: "specify the address of an already created miner actor",
 		},
 		&cli.StringFlag{
+			Name:     "listen-api",
+			Usage:    "rpc api",
+			Value:    "",
+		},
+		&cli.StringFlag{
+			Name:     "token",
+			Usage:    "rpc token",
+			Value:    "",
+		},
+		&cli.StringFlag{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
 			Value: units.BytesSize(float64(policy.GetDefaultSectorSize())),
-		},
-		&cli.BoolFlag{
-			Name:  "nosync",
-			Usage: "don't check full-node sync status",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -71,13 +77,6 @@ var initCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-
-		log.Info("Checking full node sync status")
-		if !cctx.Bool("nosync") {
-			if err := SyncWait(ctx, api, false); err != nil {
-				return xerrors.Errorf("sync wait: %w", err)
-			}
-		}
 
 		log.Info("Checking if repo exists")
 
@@ -138,18 +137,18 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
 	}
 	defer lr.Close() //nolint:errcheck
 
-	log.Info("Initializing libp2p identity")
-
-	p2pSk, err := makeHostKey(lr)
-	if err != nil {
-		return xerrors.Errorf("make host key: %w", err)
-	}
-
-	peerID, err := peer.IDFromPrivateKey(p2pSk)
-	if err != nil {
-		return xerrors.Errorf("peer ID from private key: %w", err)
-	}
-	log.Infow("init new peer: %s", peerID)
+	//log.Info("Initializing libp2p identity")
+	//
+	//p2pSk, err := makeHostKey(lr)
+	//if err != nil {
+	//	return xerrors.Errorf("make host key: %w", err)
+	//}
+	//
+	//peerID, err := peer.IDFromPrivateKey(p2pSk)
+	//if err != nil {
+	//	return xerrors.Errorf("peer ID from private key: %w", err)
+	//}
+	//log.Infow("init new peer: %s", peerID)
 
 	mds, err := lr.Datastore(context.TODO(), "/metadata")
 	if err != nil {
@@ -164,10 +163,33 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
 		}
 
 		if actor.Protocol() == address.ID {
-			log.Infof("init new miner: %s", actor)
-			if err := mds.Put(datastore.NewKey("miner-address"), actor.Bytes()); err != nil {
+			if cctx.String("listen-api") == "" || cctx.String("token") == "" {
+				return xerrors.New("the actor's api & token cannot be empty")
+			}
+
+			posterAddr := dtypes.MinerInfo{
+				Addr:      actor,
+				ListenAPI: cctx.String("listen-api"),
+				Token:     cctx.String("token"),
+			}
+
+			log.Infof("init new miner: %v", posterAddr)
+
+			miners := make([]dtypes.MinerInfo, 0)
+			miners = append(miners, posterAddr)
+			addrBytes, err := json.Marshal(miners)
+			if err != nil {
 				return err
 			}
+			if err := mds.Put(datastore.NewKey("miner-actors"), addrBytes); err != nil {
+				return err
+			}
+
+			if err := mds.Put(datastore.NewKey("default-actor"), actor.Bytes()); err != nil {
+				return err
+			}
+		}else {
+			return xerrors.New("the actor's Protocol is not ID")
 		}
 	}
 

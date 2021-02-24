@@ -3,13 +3,6 @@ package apistruct
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -17,11 +10,13 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	stnetwork "github.com/filecoin-project/go-state-types/network"
+	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/actors/builtin/miner"
 	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
 
@@ -32,22 +27,6 @@ type CommonStruct struct {
 	Internal struct {
 		AuthVerify func(ctx context.Context, token string) ([]auth.Permission, error) `perm:"read"`
 		AuthNew    func(ctx context.Context, perms []auth.Permission) ([]byte, error) `perm:"admin"`
-
-		NetConnectedness            func(context.Context, peer.ID) (network.Connectedness, error)    `perm:"read"`
-		NetPeers                    func(context.Context) ([]peer.AddrInfo, error)                   `perm:"read"`
-		NetConnect                  func(context.Context, peer.AddrInfo) error                       `perm:"write"`
-		NetAddrsListen              func(context.Context) (peer.AddrInfo, error)                     `perm:"read"`
-		NetDisconnect               func(context.Context, peer.ID) error                             `perm:"write"`
-		NetFindPeer                 func(context.Context, peer.ID) (peer.AddrInfo, error)            `perm:"read"`
-		NetPubsubScores             func(context.Context) ([]api.PubsubScore, error)                 `perm:"read"`
-		NetAutoNatStatus            func(context.Context) (api.NatInfo, error)                       `perm:"read"`
-		NetBandwidthStats           func(ctx context.Context) (metrics.Stats, error)                 `perm:"read"`
-		NetBandwidthStatsByPeer     func(ctx context.Context) (map[string]metrics.Stats, error)      `perm:"read"`
-		NetBandwidthStatsByProtocol func(ctx context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
-		NetAgentVersion             func(ctx context.Context, p peer.ID) (string, error)             `perm:"read"`
-		NetBlockAdd                 func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
-		NetBlockRemove              func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
-		NetBlockList                func(ctx context.Context) (api.NetBlockList, error)              `perm:"read"`
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
@@ -202,71 +181,6 @@ func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]auth.Per
 
 func (c *CommonStruct) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
 	return c.Internal.AuthNew(ctx, perms)
-}
-
-func (c *CommonStruct) NetPubsubScores(ctx context.Context) ([]api.PubsubScore, error) {
-	return c.Internal.NetPubsubScores(ctx)
-}
-
-func (c *CommonStruct) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
-	return c.Internal.NetConnectedness(ctx, pid)
-}
-
-func (c *CommonStruct) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {
-	return c.Internal.NetPeers(ctx)
-}
-
-func (c *CommonStruct) NetConnect(ctx context.Context, p peer.AddrInfo) error {
-	return c.Internal.NetConnect(ctx, p)
-}
-
-func (c *CommonStruct) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error) {
-	return c.Internal.NetAddrsListen(ctx)
-}
-
-func (c *CommonStruct) NetDisconnect(ctx context.Context, p peer.ID) error {
-	return c.Internal.NetDisconnect(ctx, p)
-}
-
-func (c *CommonStruct) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
-	return c.Internal.NetFindPeer(ctx, p)
-}
-
-func (c *CommonStruct) NetAutoNatStatus(ctx context.Context) (api.NatInfo, error) {
-	return c.Internal.NetAutoNatStatus(ctx)
-}
-
-func (c *CommonStruct) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
-	return c.Internal.NetBandwidthStats(ctx)
-}
-
-func (c *CommonStruct) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {
-	return c.Internal.NetBandwidthStatsByPeer(ctx)
-}
-
-func (c *CommonStruct) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
-	return c.Internal.NetBandwidthStatsByProtocol(ctx)
-}
-
-func (c *CommonStruct) NetBlockAdd(ctx context.Context, acl api.NetBlockList) error {
-	return c.Internal.NetBlockAdd(ctx, acl)
-}
-
-func (c *CommonStruct) NetBlockRemove(ctx context.Context, acl api.NetBlockList) error {
-	return c.Internal.NetBlockRemove(ctx, acl)
-}
-
-func (c *CommonStruct) NetBlockList(ctx context.Context) (api.NetBlockList, error) {
-	return c.Internal.NetBlockList(ctx)
-}
-
-func (c *CommonStruct) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
-	return c.Internal.NetAgentVersion(ctx, p)
-}
-
-// ID implements API.ID
-func (c *CommonStruct) ID(ctx context.Context) (peer.ID, error) {
-	return c.Internal.ID(ctx)
 }
 
 // Version implements API.Version
@@ -731,27 +645,42 @@ type MinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		AddAddress         func(config.PosterAddr) error                        `perm:"write"`
-		RemoveAddress      func(address.Address) error                          `perm:"write"`
-		ListAddress        func() ([]config.PosterAddr, error)                  `perm:"read"`
-		SetDefault         func(context.Context, address.Address) error         `perm:"write"`
+		AddAddress    func(dtypes.MinerInfo) error                 `perm:"write"`
+		RemoveAddress func(address.Address) error                  `perm:"write"`
+		ListAddress   func() ([]dtypes.MinerInfo, error)           `perm:"read"`
+		SetDefault    func(address.Address) error                  `perm:"write"`
+		Default       func() (address.Address, error)              `perm:"read"`
+		Start         func(context.Context, address.Address) error `perm:"write"`
+		Stop          func(context.Context, address.Address) error `perm:"write"`
 	}
 }
 
-func (s *MinerStruct) AddAddress(posterAddr config.PosterAddr) error {
-	return s.Internal.AddAddress(posterAddr)
+func (s *MinerStruct) AddAddress(miner dtypes.MinerInfo) error {
+	return s.Internal.AddAddress(miner)
 }
 
 func (s *MinerStruct) RemoveAddress(addr address.Address) error {
 	return s.Internal.RemoveAddress(addr)
 }
 
-func (s *MinerStruct) ListAddress() ([]config.PosterAddr, error) {
+func (s *MinerStruct) ListAddress() ([]dtypes.MinerInfo, error) {
 	return s.Internal.ListAddress()
 }
 
-func (s *MinerStruct) SetDefault(ctx context.Context, addr address.Address) error {
-	return s.Internal.SetDefault(ctx, addr)
+func (s *MinerStruct) SetDefault(addr address.Address) error {
+	return s.Internal.SetDefault(addr)
+}
+
+func (s *MinerStruct) Default() (address.Address, error) {
+	return s.Internal.Default()
+}
+
+func (s *MinerStruct) Start(ctx context.Context, addr address.Address) error {
+	return s.Internal.Start(ctx, addr)
+}
+
+func (s *MinerStruct) Stop(ctx context.Context, addr address.Address) error {
+	return s.Internal.Stop(ctx, addr)
 }
 
 var _ api.MinerAPI = &MinerStruct{}

@@ -26,9 +26,6 @@ const UpgradeClausHeight = 30
 
 const UpgradeActorsV3Height = 35
 
-var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0: DrandMainnet,
-}
 
 func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
