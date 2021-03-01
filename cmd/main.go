@@ -72,7 +72,7 @@ func main() {
 				Name:    FlagMinerRepo,
 				Aliases: []string{FlagMinerRepoDeprecation},
 				EnvVars: []string{"VENUS_MINER_PATH"},
-				Value:   "~/.venusmining", // TODO: Consider XDG_DATA_HOME
+				Value:   "~/.venusminer", // TODO: Consider XDG_DATA_HOME
 				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(VENUS_MINER_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 			},
 		},

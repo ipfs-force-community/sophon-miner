@@ -28,13 +28,10 @@ require (
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
 	github.com/filecoin-project/specs-actors/v3 v3.0.3
-	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/gopacket v1.1.18 // indirect
 	github.com/google/uuid v1.1.2
-	github.com/gorilla/mux v1.7.4
-	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-bitswap v0.3.2 // indirect
 	github.com/ipfs/go-block-format v0.0.3
@@ -44,6 +41,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.1-0.20200708190120-187fc06f714e
 	github.com/ipfs/go-ds-leveldb v0.4.2
 	github.com/ipfs/go-ds-measure v0.1.0
+	github.com/ipfs/go-fs-lock v0.0.6
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.5
@@ -83,5 +81,9 @@ require (
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 )
+
+replace github.com/filecoin-project/venus-miner => ./
+
+replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi

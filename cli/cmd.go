@@ -69,17 +69,6 @@ func flagForRepo(t repo.RepoType) string {
 	}
 }
 
-func envForRepo(t repo.RepoType) string {
-	switch t {
-	case repo.FullNode:
-		return "FULLNODE_API_INFO"
-	case repo.Miner:
-		return "MINER_API_INFO"
-	default:
-		panic(fmt.Sprintf("Unknown repo type: %v", t))
-	}
-}
-
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (cliutil.APIInfo, error) {
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)

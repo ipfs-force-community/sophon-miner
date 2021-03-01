@@ -134,7 +134,7 @@ jobs:
       - install-deps
       - prepare
       - run:
-          command: make deps venus-miner
+          command: make deps miner
           no_output_timeout: 30m
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
@@ -142,7 +142,6 @@ jobs:
       - run:
           name: go test
           environment:
-            LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
             SKIP_CONFORMANCE: "1"
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
