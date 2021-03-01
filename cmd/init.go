@@ -38,14 +38,14 @@ var initCmd = &cli.Command{
 			Usage: "specify the address of an already created miner actor",
 		},
 		&cli.StringFlag{
-			Name:     "listen-api",
-			Usage:    "rpc api",
-			Value:    "",
+			Name:  "listen-api",
+			Usage: "rpc api",
+			Value: "",
 		},
 		&cli.StringFlag{
-			Name:     "token",
-			Usage:    "rpc token",
-			Value:    "",
+			Name:  "token",
+			Usage: "rpc token",
+			Value: "",
 		},
 		&cli.StringFlag{
 			Name:  "sector-size",
@@ -61,7 +61,6 @@ var initCmd = &cli.Command{
 			return err
 		}
 		ssize := abi.SectorSize(sectorSizeInt)
-
 
 		log.Info("Checking proof parameters")
 
@@ -188,7 +187,7 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
 			if err := mds.Put(datastore.NewKey("default-actor"), actor.Bytes()); err != nil {
 				return err
 			}
-		}else {
+		} else {
 			return xerrors.New("the actor's Protocol is not ID")
 		}
 	}
@@ -196,7 +195,7 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
 	return nil
 }
 
-func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
+func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) { //nolint
 	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err

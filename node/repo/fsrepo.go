@@ -30,12 +30,12 @@ import (
 )
 
 const (
-	fsAPI           = "api"
-	fsAPIToken      = "token"
-	fsConfig        = "config.toml"
-	fsDatastore     = "datastore"
-	fsLock          = "repo.lock"
-	fsKeystore      = "keystore"
+	fsAPI       = "api"
+	fsAPIToken  = "token"
+	fsConfig    = "config.toml"
+	fsDatastore = "datastore"
+	fsLock      = "repo.lock"
+	fsKeystore  = "keystore"
 )
 
 type RepoType int
@@ -86,12 +86,11 @@ func (fsr *FsRepo) SetConfigPath(cfgPath string) {
 	fsr.configPath = cfgPath
 }
 
-func (fsr *FsRepo) Exists() (bool, error) {
-	_, err := os.Stat(filepath.Join(fsr.path, fsDatastore))
+func (fsr *FsRepo) Exists() (bool, error) { //nolint
+	var err error
+	_, err = os.Stat(filepath.Join(fsr.path, fsDatastore))
 	notexist := os.IsNotExist(err)
 	if notexist {
-		err = nil
-
 		_, err = os.Stat(filepath.Join(fsr.path, fsKeystore))
 		notexist = os.IsNotExist(err)
 		if notexist {
@@ -258,8 +257,7 @@ type fsLockedRepo struct {
 	bsErr  error
 	bsOnce sync.Once
 
-	storageLk sync.Mutex
-	configLk  sync.Mutex
+	configLk sync.Mutex
 }
 
 func (fsr *fsLockedRepo) Path() string {
