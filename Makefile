@@ -3,7 +3,7 @@ SHELL=/usr/bin/env bash
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
 ifeq ($(shell expr $(GOVERSION) \< 15), 1)
 $(warning Your Golang version is go 1.$(GOVERSION))
-$(error Update Golang to version $(shell grep '^go' go.mod))
+$(error Update Golang to version to at least 1.15.5)
 endif
 
 # git modules that need to be loaded

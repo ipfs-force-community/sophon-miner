@@ -15,7 +15,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/filecoin-project/venus-miner/lib/blockstore"
 	"github.com/ipfs/go-datastore"
-	//fslock "github.com/ipfs/go-fs-lock"
+	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-base32"
@@ -24,8 +24,6 @@ import (
 
 	lblockstore "github.com/filecoin-project/venus-miner/lib/blockstore"
 	badgerbs "github.com/filecoin-project/venus-miner/lib/blockstore/badger"
-	"github.com/filecoin-project/venus-miner/sector-storage/fsutil"
-	"github.com/filecoin-project/venus-miner/sector-storage/stores"
 
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/config"
@@ -35,7 +33,6 @@ const (
 	fsAPI           = "api"
 	fsAPIToken      = "token"
 	fsConfig        = "config.toml"
-	fsStorageConfig = "storage.json"
 	fsDatastore     = "datastore"
 	fsLock          = "repo.lock"
 	fsKeystore      = "keystore"
@@ -215,23 +212,23 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 
 // Lock acquires exclusive lock on this repo
 func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
-	//locked, err := fslock.Locked(fsr.path, fsLock)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("could not check lock status: %w", err)
-	//}
-	//if locked {
-	//	return nil, ErrRepoAlreadyLocked
-	//}
-	//
-	//closer, err := fslock.Lock(fsr.path, fsLock)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("could not lock the repo: %w", err)
-	//}
+	locked, err := fslock.Locked(fsr.path, fsLock)
+	if err != nil {
+		return nil, xerrors.Errorf("could not check lock status: %w", err)
+	}
+	if locked {
+		return nil, ErrRepoAlreadyLocked
+	}
+
+	closer, err := fslock.Lock(fsr.path, fsLock)
+	if err != nil {
+		return nil, xerrors.Errorf("could not lock the repo: %w", err)
+	}
 	return &fsLockedRepo{
 		path:       fsr.path,
 		configPath: fsr.configPath,
 		repoType:   repoType,
-		//closer:     closer,
+		closer:     closer,
 	}, nil
 }
 
@@ -385,47 +382,6 @@ func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
 	}
 
 	return nil
-}
-
-func (fsr *fsLockedRepo) GetStorage() (stores.StorageConfig, error) {
-	fsr.storageLk.Lock()
-	defer fsr.storageLk.Unlock()
-
-	return fsr.getStorage(nil)
-}
-
-func (fsr *fsLockedRepo) getStorage(def *stores.StorageConfig) (stores.StorageConfig, error) {
-	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), def)
-	if err != nil {
-		return stores.StorageConfig{}, err
-	}
-	return *c, nil
-}
-
-func (fsr *fsLockedRepo) SetStorage(c func(*stores.StorageConfig)) error {
-	fsr.storageLk.Lock()
-	defer fsr.storageLk.Unlock()
-
-	sc, err := fsr.getStorage(&stores.StorageConfig{})
-	if err != nil {
-		return xerrors.Errorf("get storage: %w", err)
-	}
-
-	c(&sc)
-
-	return config.WriteStorageFile(fsr.join(fsStorageConfig), sc)
-}
-
-func (fsr *fsLockedRepo) Stat(path string) (fsutil.FsStat, error) {
-	return fsutil.Statfs(path)
-}
-
-func (fsr *fsLockedRepo) DiskUsage(path string) (int64, error) {
-	si, err := fsutil.FileSize(path)
-	if err != nil {
-		return 0, err
-	}
-	return si.OnDisk, nil
 }
 
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

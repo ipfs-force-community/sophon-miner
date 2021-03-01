@@ -9,8 +9,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/sector-storage/fsutil"
-	"github.com/filecoin-project/venus-miner/sector-storage/stores"
 )
 
 // BlockstoreDomain represents the domain of a blockstore.
@@ -65,11 +63,6 @@ type LockedRepo interface {
 	// Returns config in this repo
 	Config() (interface{}, error)
 	SetConfig(func(interface{})) error
-
-	GetStorage() (stores.StorageConfig, error)
-	SetStorage(func(*stores.StorageConfig)) error
-	Stat(path string) (fsutil.FsStat, error)
-	DiskUsage(path string) (int64, error)
 
 	// SetAPIEndpoint sets the endpoint of the current API
 	// so it can be read by API clients

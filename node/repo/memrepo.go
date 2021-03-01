@@ -14,8 +14,6 @@ import (
 
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/lib/blockstore"
-	"github.com/filecoin-project/venus-miner/sector-storage/fsutil"
-	"github.com/filecoin-project/venus-miner/sector-storage/stores"
 )
 
 type MemRepo struct {
@@ -49,44 +47,6 @@ type lockedMemRepo struct {
 
 	tempDir string
 	token   *byte
-	sc      *stores.StorageConfig
-}
-
-func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {
-	if err := lmem.checkToken(); err != nil {
-		return stores.StorageConfig{}, err
-	}
-
-	if lmem.sc == nil {
-		lmem.sc = &stores.StorageConfig{StoragePaths: []stores.LocalPath{
-			{Path: lmem.Path()},
-		}}
-	}
-
-	return *lmem.sc, nil
-}
-
-func (lmem *lockedMemRepo) SetStorage(c func(*stores.StorageConfig)) error {
-	if err := lmem.checkToken(); err != nil {
-		return err
-	}
-
-	_, _ = lmem.GetStorage()
-
-	c(lmem.sc)
-	return nil
-}
-
-func (lmem *lockedMemRepo) Stat(path string) (fsutil.FsStat, error) {
-	return fsutil.Statfs(path)
-}
-
-func (lmem *lockedMemRepo) DiskUsage(path string) (int64, error) {
-	si, err := fsutil.FileSize(path)
-	if err != nil {
-		return 0, err
-	}
-	return si.OnDisk, nil
 }
 
 func (lmem *lockedMemRepo) Path() string {
