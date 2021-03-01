@@ -86,7 +86,7 @@ func (fsr *FsRepo) SetConfigPath(cfgPath string) {
 	fsr.configPath = cfgPath
 }
 
-func (fsr *FsRepo) Exists() (bool, error) {
+func (fsr *FsRepo) Exists() (bool, error) { //nolint
 	var err error
 	_, err = os.Stat(filepath.Join(fsr.path, fsDatastore))
 	notexist := os.IsNotExist(err)
