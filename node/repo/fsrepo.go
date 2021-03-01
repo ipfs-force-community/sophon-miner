@@ -91,8 +91,6 @@ func (fsr *FsRepo) Exists() (bool, error) { //nolint
 	_, err = os.Stat(filepath.Join(fsr.path, fsDatastore))
 	notexist := os.IsNotExist(err)
 	if notexist {
-		err = nil
-
 		_, err = os.Stat(filepath.Join(fsr.path, fsKeystore))
 		notexist = os.IsNotExist(err)
 		if notexist {
