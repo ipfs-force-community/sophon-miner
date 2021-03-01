@@ -14,7 +14,7 @@ import (
 var log = logging.Logger("cliutil")
 
 var (
-	infoWithToken = regexp.MustCompile("^[a-zA-Z0-9\\-_]+?\\.[a-zA-Z0-9\\-_]+?\\.([a-zA-Z0-9\\-_]+)?:.+$")
+	infoWithToken = regexp.MustCompile(`^[a-zA-Z0-9\\-_]+?\\.[a-zA-Z0-9\\-_]+?\\.([a-zA-Z0-9\\-_]+)?:.+$`)
 )
 
 type APIInfo struct {

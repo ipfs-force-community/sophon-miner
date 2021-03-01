@@ -36,7 +36,7 @@ var log = logging.Logger("builder")
 
 // special is a type used to give keys to modules which
 //  can't really be identified by the returned type
-type special struct{ id int }
+type special struct{ id int } //nolint
 
 type invoke int
 
