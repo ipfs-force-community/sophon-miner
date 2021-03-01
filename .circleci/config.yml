@@ -1,0 +1,510 @@
+version: 2.1
+orbs:
+  go: gotest/tools@0.0.13
+  aws-cli: circleci/aws-cli@1.3.2
+
+executors:
+  golang:
+    docker:
+      - image: circleci/golang:1.15.5
+    resource_class: 2xlarge
+  ubuntu:
+    docker:
+      - image: ubuntu:19.10
+
+commands:
+  install-deps:
+    steps:
+      - go/install-ssh
+      - go/install: {package: git}
+  prepare:
+    parameters:
+      linux:
+        default: true
+        description: is a linux build environment?
+        type: boolean
+      darwin:
+        default: false
+        description: is a darwin build environment?
+        type: boolean
+    steps:
+      - checkout
+      - git_fetch_all_tags
+      - checkout
+      - when:
+          condition: << parameters.linux >>
+          steps:
+            - run: sudo apt-get update
+            - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+      - run: git submodule sync
+      - run: git submodule update --init
+  install_ipfs:
+    steps:
+      - run: |
+          apt update
+          apt install -y wget
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512
+          if [ "$(sha512sum go-ipfs_v0.4.22_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512)" ]
+          then
+            echo "ipfs failed checksum check"
+            exit 1
+          fi
+          tar -xf go-ipfs_v0.4.22_linux-amd64.tar.gz
+          mv go-ipfs/ipfs /usr/local/bin/ipfs
+          chmod +x /usr/local/bin/ipfs
+  git_fetch_all_tags:
+    steps:
+      - run:
+          name: fetch all tags
+          command: |
+            git fetch --all
+
+jobs:
+  mod-tidy-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-tidy-check
+
+  build-all:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: sudo apt-get update
+      - run: sudo apt-get install npm
+      - run:
+          command: make miner
+      - store_artifacts:
+          path: venus-miner
+      - run: mkdir linux && mv venus-miner linux/
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux
+
+  build-debug:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make debug
+
+  test: &test
+    description: |
+      Run tests with gotestsum.
+    parameters: &test-params
+      executor:
+        type: executor
+        default: golang
+      go-test-flags:
+        type: string
+        default: "-timeout 30m"
+        description: Flags passed to go test.
+      packages:
+        type: string
+        default: "./..."
+        description: Import paths of packages to be tested.
+      winpost-test:
+        type: string
+        default: "0"
+      test-suite-name:
+        type: string
+        default: unit
+        description: Test suite name to report to CircleCI.
+      gotestsum-format:
+        type: string
+        default: pkgname-and-test-fails
+        description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
+      coverage:
+        type: string
+        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/venus-miner/...
+        description: Coverage flag. Set to the empty string to disable.
+      codecov-upload:
+        type: boolean
+        default: false
+        description: |
+          Upload coverage report to https://codecov.io/. Requires the codecov API token to be
+          set as an environment variable for private projects.
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps venus-miner
+          no_output_timeout: 30m
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+          version: 0.5.2
+      - run:
+          name: go test
+          environment:
+            LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
+            SKIP_CONFORMANCE: "1"
+          command: |
+            mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format << parameters.gotestsum-format >> \
+              --junitfile /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.test-suite-name >>.json \
+              -- \
+              << parameters.coverage >> \
+              << parameters.go-test-flags >> \
+              << parameters.packages >>
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/<< parameters.test-suite-name >>.json
+      - when:
+          condition: << parameters.codecov-upload >>
+          steps:
+            - go/install: {package: bash}
+            - go/install: {package: curl}
+            - run:
+                shell: /bin/bash -eo pipefail
+                command: |
+                  bash <(curl -s https://codecov.io/bash)
+
+  test-chain:
+    <<: *test
+  test-node:
+    <<: *test
+  test-cli:
+    <<: *test
+  test-short:
+    <<: *test
+  test-terminate:
+    <<: *test
+  build-ntwk-calibration:
+    description: |
+      Compile venus-miner binaries for the calibration network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make calibnet
+
+
+  build-macos:
+    description: build darwin venus-miner binary
+    macos:
+      xcode: "10.0.0"
+    working_directory: ~/go/src/github.com/filecoin-project/venus-miner
+    steps:
+      - prepare:
+          linux: false
+          darwin: true
+      - run:
+          name: Install go
+          command: |
+            curl -O https://dl.google.com/go/go1.15.5.darwin-amd64.pkg && \
+            sudo installer -pkg go1.15.5.darwin-amd64.pkg -target /
+      - run:
+          name: Install pkg-config
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
+      - run: go version
+      - run:
+          name: Install Rust
+          command: |
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+      - run:
+          name: Install jq
+          command: |
+            curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
+            chmod +x /usr/local/bin/jq
+      - restore_cache:
+          name: restore cargo cache
+          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/venus-miner/go.sum" }}
+      - install-deps
+      - run:
+          command: make build
+          no_output_timeout: 30m
+      - store_artifacts:
+          path: venus-miner
+      - run: mkdir darwin && mv venus-miner darwin/
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - darwin
+      - save_cache:
+          name: save cargo cache
+          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/venus-miner/go.sum" }}
+          paths:
+            - "~/.rustup"
+            - "~/.cargo"
+
+  gofmt:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: "! go fmt ./... 2>&1 | read"
+
+  cbor-gen-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make deps
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: go install github.com/hannahhoward/cbor-gen-for
+      - run: go generate ./...
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
+
+  lint: &lint
+    description: |
+      Run golangci-lint.
+    parameters:
+      executor:
+        type: executor
+        default: golang
+      golangci-lint-version:
+        type: string
+        default: 1.27.0
+      concurrency:
+        type: string
+        default: '2'
+        description: |
+          Concurrency used to run linters. Defaults to 2 because NumCPU is not
+          aware of container CPU limits.
+      args:
+        type: string
+        default: ''
+        description: |
+          Arguments to pass to golangci-lint
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps
+          no_output_timeout: 30m
+      - go/install-golangci-lint:
+          gobin: $HOME/.local/bin
+          version: << parameters.golangci-lint-version >>
+      - run:
+          name: Lint
+          command: |
+            $HOME/.local/bin/golangci-lint run -v --timeout 2m \
+              --concurrency << parameters.concurrency >> << parameters.args >>
+  lint-all:
+    <<: *lint
+
+  publish:
+    description: publish binary artifacts
+    executor: ubuntu
+    steps:
+      - run:
+          name: Install git jq curl
+          command: apt update && apt install -y git jq curl
+      - checkout
+      - git_fetch_all_tags
+      - checkout
+      - install_ipfs
+      - attach_workspace:
+          at: "."
+      - run:
+          name: Create bundles
+          command: ./scripts/build-bundle.sh
+      - run:
+          name: Publish release
+          command: ./scripts/publish-release.sh
+
+  build-and-push-image:
+    description: build and push docker images to public AWS ECR registry
+    executor: aws-cli/default
+    parameters:
+      profile-name:
+        type: string
+        default: "default"
+        description: AWS profile name to be configured.
+
+      aws-access-key-id:
+        type: env_var_name
+        default: AWS_ACCESS_KEY_ID
+        description: >
+          AWS access key id for IAM role. Set this to the name of
+          the environment variable you will set to hold this
+          value, i.e. AWS_ACCESS_KEY.
+
+      aws-secret-access-key:
+        type: env_var_name
+        default: AWS_SECRET_ACCESS_KEY
+        description: >
+          AWS secret key for IAM role. Set this to the name of
+          the environment variable you will set to hold this
+          value, i.e. AWS_SECRET_ACCESS_KEY.
+
+      region:
+        type: env_var_name
+        default: AWS_REGION
+        description: >
+          Name of env var storing your AWS region information,
+          defaults to AWS_REGION
+
+      account-url:
+        type: env_var_name
+        default: AWS_ECR_ACCOUNT_URL
+        description: >
+          Env var storing Amazon ECR account URL that maps to an AWS account,
+          e.g. {awsAccountNum}.dkr.ecr.us-west-2.amazonaws.com
+          defaults to AWS_ECR_ACCOUNT_URL
+
+      dockerfile:
+        type: string
+        default: Dockerfile
+        description: Name of dockerfile to use. Defaults to Dockerfile.
+
+      path:
+        type: string
+        default: .
+        description: Path to the directory containing your Dockerfile and build context. Defaults to . (working directory).
+
+      extra-build-args:
+        type: string
+        default: ""
+        description: >
+          Extra flags to pass to docker build. For examples, see
+          https://docs.docker.com/engine/reference/commandline/build
+
+      repo:
+        type: string
+        description: Name of an Amazon ECR repository
+
+      tag:
+        type: string
+        default: "latest"
+        description: A comma-separated string containing docker image tags to build and push (default = latest)
+
+    steps:
+      - run:
+          name: Confirm that environment variables are set
+          command: |
+            if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+              echo "No AWS_ACCESS_KEY_ID is set. Skipping build-and-push job ..."
+              circleci-agent step halt
+            fi
+
+      - aws-cli/setup:
+          profile-name: <<parameters.profile-name>>
+          aws-access-key-id: <<parameters.aws-access-key-id>>
+          aws-secret-access-key: <<parameters.aws-secret-access-key>>
+          aws-region: <<parameters.region>>
+
+      - run:
+          name: Log into Amazon ECR
+          command: |
+            aws ecr-public get-login-password --region $<<parameters.region>> --profile <<parameters.profile-name>> | docker login --username AWS --password-stdin $<<parameters.account-url>>
+
+      - checkout
+
+      - setup_remote_docker:
+          version: 19.03.13
+          docker_layer_caching: false
+
+      - run:
+          name: Build docker image
+          command: |
+            registry_id=$(echo $<<parameters.account-url>> | sed "s;\..*;;g")
+
+            docker_tag_args=""
+            IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
+            for tag in "${DOCKER_TAGS[@]}"; do
+              docker_tag_args="$docker_tag_args -t $<<parameters.account-url>>/<<parameters.repo>>:$tag"
+            done
+
+            docker build \
+              <<#parameters.extra-build-args>><<parameters.extra-build-args>><</parameters.extra-build-args>> \
+              -f <<parameters.path>>/<<parameters.dockerfile>> \
+              $docker_tag_args \
+              <<parameters.path>>
+
+      - run:
+          name: Push image to Amazon ECR
+          command: |
+            IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
+            for tag in "${DOCKER_TAGS[@]}"; do
+              docker push $<<parameters.account-url>>/<<parameters.repo>>:${tag}
+            done
+
+workflows:
+  version: 2.1
+  ci:
+    jobs:
+      - lint-all:
+          concurrency: "16"   # expend all docker 2xlarge CPUs.
+      - mod-tidy-check
+      - gofmt
+      - cbor-gen-check
+      - test:
+          codecov-upload: true
+          test-suite-name: full
+      - test-chain:
+          codecov-upload: true
+          test-suite-name: chain
+          packages: "./chain/..."
+      - test-node:
+          codecov-upload: true
+          test-suite-name: node
+          packages: "./node/..."
+      - test-cli:
+          codecov-upload: true
+          test-suite-name: cli
+          packages: "./cli/... ./cmd/... ./api/..."
+      - test-terminate:
+          codecov-upload: true
+          go-test-flags: "-run=TestTerminate"
+          winpost-test: "1"
+          test-suite-name: terminate
+      - test-short:
+          go-test-flags: "--timeout 10m --short"
+          test-suite-name: short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-ntwk-calibration
+      - build-debug
+      - build-all:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-macos:
+          requires:
+            - test-short
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - publish:
+          requires:
+            - build-all
+            - build-macos
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-and-push-image:
+          dockerfile: Dockerfile.venusminer
+          path: .
+          repo: venusminer-dev
+          tag: '${CIRCLE_SHA1:0:8}'
