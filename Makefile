@@ -69,9 +69,11 @@ miner: $(BUILD_DEPS)
 	go run github.com/GeertJohan/go.rice/rice append --exec venus-miner -i ./build
 
 .PHONY: miner
-BINS+=venus-miner
+BINS+=miner
 
 # MISC
+
+buildall: $(BINS)
 
 clean:
 	rm -rf $(CLEAN) $(BINS)
