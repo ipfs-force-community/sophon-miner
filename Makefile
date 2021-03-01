@@ -75,6 +75,7 @@ BINS+=venus-miner
 
 clean:
 	rm -rf $(CLEAN) $(BINS)
+	-$(MAKE) -C $(FFI_PATH) clean
 .PHONY: clean
 
 dist-clean:
