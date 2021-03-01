@@ -71,6 +71,8 @@ var addCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		fmt.Println("add miner: ", posterAddr)
 		return nil
 	},
 }
@@ -95,6 +97,8 @@ var removeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		fmt.Println("remove miner: ", minerAddr)
 		return nil
 	},
 }
@@ -148,6 +152,7 @@ var setdefaultCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("default miner: ", addr)
 		return nil
 	},
 }
@@ -168,7 +173,7 @@ var defaultCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(addr.String())
+		fmt.Println("default miner: ", addr)
 		return nil
 	},
 }
@@ -197,6 +202,7 @@ var startMiningCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("start mining for: ", addr)
 		return nil
 	},
 }
@@ -225,6 +231,7 @@ var stopMiningCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("stop mining for: ", addr)
 		return nil
 	},
 }
