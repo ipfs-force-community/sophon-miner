@@ -89,6 +89,8 @@ type FullNodeStruct struct {
 
 		MpoolSelect func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error) `perm:"read"`
 
+		MpoolSelects func(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error) `perm:"read"`
+
 		MpoolPending func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolClear   func(context.Context, bool) error                                      `perm:"write"`
 
@@ -236,6 +238,10 @@ func (c *FullNodeStruct) MpoolSetConfig(ctx context.Context, cfg *types.MpoolCon
 
 func (c *FullNodeStruct) MpoolSelect(ctx context.Context, tsk types.TipSetKey, tq float64) ([]*types.SignedMessage, error) {
 	return c.Internal.MpoolSelect(ctx, tsk, tq)
+}
+
+func (c *FullNodeStruct) MpoolSelects(ctx context.Context, tsk types.TipSetKey, tqs []float64) ([][]*types.SignedMessage, error) {
+	return c.Internal.MpoolSelects(ctx, tsk, tqs)
 }
 
 func (c *FullNodeStruct) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {

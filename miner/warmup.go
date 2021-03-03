@@ -3,6 +3,8 @@ package miner
 import (
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-miner/chain"
 	"math"
 	"time"
 
@@ -17,7 +19,22 @@ import (
 )
 
 func (m *Miner) winPoStWarmup(ctx context.Context) error {
-	deadlines, err := m.api.StateMinerDeadlines(ctx, m.address, types.EmptyTSK)
+	for addr, wpp := range m.minerWPPMap {
+		tAddr := addr
+		epp := wpp.epp
+		go func() {
+			err := m.winPostWarmupForMiner(ctx, tAddr, epp)
+			if err != nil {
+				m.minerWPPMap[tAddr].isMining = false // 未通过的不能进行挖矿
+			}
+		}()
+	}
+
+	return nil
+}
+
+func (m *Miner) winPostWarmupForMiner(ctx context.Context, addr address.Address, epp chain.WinningPoStProver) error {
+	deadlines, err := m.api.StateMinerDeadlines(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getting deadlines: %w", err)
 	}
@@ -26,7 +43,7 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 
 out:
 	for dlIdx := range deadlines {
-		partitions, err := m.api.StateMinerPartitions(ctx, m.address, uint64(dlIdx), types.EmptyTSK)
+		partitions, err := m.api.StateMinerPartitions(ctx, addr, uint64(dlIdx), types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting partitions for deadline %d: %w", dlIdx, err)
 		}
@@ -56,12 +73,12 @@ out:
 	var r abi.PoStRandomness = make([]byte, abi.RandomnessLength)
 	_, _ = rand.Read(r)
 
-	si, err := m.api.StateSectorGetInfo(ctx, m.address, sector, types.EmptyTSK)
+	si, err := m.api.StateSectorGetInfo(ctx, addr, sector, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getting sector info: %w", err)
 	}
 
-	_, err = m.epp.ComputeProof(ctx, []proof2.SectorInfo{
+	_, err = epp.ComputeProof(ctx, []proof2.SectorInfo{
 		{
 			SealProof:    si.SealProof,
 			SectorNumber: sector,

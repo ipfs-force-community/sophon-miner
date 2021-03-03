@@ -22,6 +22,10 @@ import (
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/journal"
+	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
+	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
+	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
+
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -45,16 +49,15 @@ func randTimeOffset(width time.Duration) time.Duration {
 	return val - (width / 2)
 }
 
-func NewMiner(api api.FullNode, epp chain.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter, /*blockRecord block_recorder.IBlockRecord,*/ j journal.Journal) *Miner {
+func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager minermanage.MinerManageAPI,
+	sf *slashfilter.SlashFilter /*blockRecord block_recorder.IBlockRecord,*/, j journal.Journal) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
 		panic(err)
 	}
 
 	return &Miner{
-		api:     api,
-		epp:     epp,
-		address: addr,
+		api: api,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
 			// Wait around for half the block time in case other parents come in
 			deadline := baseTime + build.PropagationDelaySecs
@@ -76,16 +79,23 @@ func NewMiner(api api.FullNode, epp chain.WinningPoStProver, addr address.Addres
 			evtTypeBlockMined: j.RegisterEventType("miner", "block_mined"),
 		},
 		journal: j,
+
+		minerManager: minerManager,
+		minerWPPMap:  make(map[address.Address]*minerWPP),
+
+		verifier: verifier,
 	}
+}
+
+type minerWPP struct {
+	epp      chain.WinningPoStProver
+	isMining bool
 }
 
 type Miner struct {
 	api api.FullNode
 
-	epp chain.WinningPoStProver
-
 	lk       sync.Mutex
-	address  address.Address
 	stop     chan struct{}
 	stopping chan struct{}
 
@@ -96,17 +106,16 @@ type Miner struct {
 	sf                *slashfilter.SlashFilter
 	minedBlockHeights *lru.ARCCache
 
-	evtTypes    [1]journal.EventType
-	journal     journal.Journal
+	evtTypes [1]journal.EventType
+	journal  journal.Journal
+
+	lkWPP        sync.Mutex
+	minerWPPMap  map[address.Address]*minerWPP
+	minerManager minermanage.MinerManageAPI
+
+	verifier ffiwrapper.Verifier
 
 	//blockRecord block_recorder.IBlockRecord
-}
-
-func (m *Miner) Address() address.Address {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-
-	return m.address
 }
 
 func (m *Miner) Start(ctx context.Context) error {
@@ -115,6 +124,22 @@ func (m *Miner) Start(ctx context.Context) error {
 	if m.stop != nil {
 		return fmt.Errorf("miner already started")
 	}
+
+	log.Info("start to do winning poster")
+
+	// init miners
+	miners, err := m.minerManager.List()
+	if err != nil {
+		return err
+	}
+	for _, minerInfo := range miners {
+		epp, err := NewWinningPoStProver(m.api, minerInfo, m.verifier)
+		if err != nil {
+			return err
+		}
+		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, isMining: true}
+	}
+
 	m.stop = make(chan struct{})
 	go m.mine(context.TODO())
 	return nil
@@ -227,35 +252,97 @@ minerLoop:
 			continue
 		}
 
-		b, err := m.mineOne(ctx, base)
-		if err != nil {
-			log.Errorf("mining block failed: %+v", err)
-			if !m.niceSleep(time.Second) {
-				continue minerLoop
+		// ToDo each miner mineOne in each round, need to judge the timeout !!!
+		var (
+			wg       sync.WaitGroup
+			winPoSts []*winPoStRes
+		)
+		m.lkWPP.Lock()
+		for addr, mining := range m.minerWPPMap {
+			if mining.isMining {
+				tAddr := addr
+				epp := mining.epp
+				wg.Add(1)
+
+				go func() {
+					defer wg.Done()
+					res, err := m.mineOne(ctx, base, tAddr, epp)
+					if err != nil { // ToDo retry or continue minerLoop?
+						log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
+						return
+					}
+
+					if res != nil && res.winner != nil {
+						winPoSts = append(winPoSts, res)
+					}
+				}()
 			}
-			onDone(false, 0, err)
-			continue
 		}
+		m.lkWPP.Unlock()
+		wg.Wait()
+
+		log.Infow("mining compute end", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
 		lastBase = *base
 
-		var h abi.ChainEpoch
-		if b != nil {
-			h = b.Header.Height
-		}
-		onDone(b != nil, h, nil)
+		if len(winPoSts) > 0 { // the size of winPoSts indicates the number of blocks
+			// get pending messages early,
+			ticketQualitys := make([]float64, len(winPoSts))
+			for idx, res := range winPoSts {
+				ticketQualitys[idx] = res.ticket.Quality()
+			}
+			log.Infow("select message", "tickets", len(ticketQualitys))
+			msgs, err := m.api.MpoolSelects(context.TODO(), base.TipSet.Key(), ticketQualitys)
+			if err != nil {
+				log.Errorf("failed to select messages for block: %w", err)
+				return
+			}
+			tPending := build.Clock.Now()
 
-		if b != nil {
-			m.journal.RecordEvent(m.evtTypes[evtTypeBlockMined], func() interface{} {
-				return map[string]interface{}{
-					"parents":   base.TipSet.Cids(),
-					"nulls":     base.NullRounds,
-					"epoch":     b.Header.Height,
-					"timestamp": b.Header.Timestamp,
-					"cid":       b.Header.Cid(),
+			// create blocks
+			var blks []*types.BlockMsg
+			for idx, res := range winPoSts {
+				tRes := res
+				// TODO: winning post proof
+				b, err := m.createBlock(base, tRes.addr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
+				if err != nil {
+					log.Errorf("failed to create block: %w", err)
+					return
 				}
-			})
+				blks = append(blks, b)
 
-			btime := time.Unix(int64(b.Header.Timestamp), 0)
+				tCreateBlock := build.Clock.Now()
+				dur := tCreateBlock.Sub(tRes.timetable.tStart)
+				parentMiners := make([]address.Address, len(base.TipSet.Blocks()))
+				for i, header := range base.TipSet.Blocks() {
+					parentMiners[i] = header.Miner
+				}
+				log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "miner", b.Header.Miner, "parents", parentMiners, "took", dur)
+
+				if dur > time.Second*time.Duration(build.BlockDelaySecs) {
+					log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
+						"tMinerBaseInfo ", tRes.timetable.tMBI.Sub(tRes.timetable.tStart),
+						"tDrand ", tRes.timetable.tDrand.Sub(tRes.timetable.tMBI),
+						"tPowercheck ", tRes.timetable.tPowercheck.Sub(tRes.timetable.tDrand),
+						"tTicket ", tRes.timetable.tTicket.Sub(tRes.timetable.tPowercheck),
+						"tSeed ", tRes.timetable.tSeed.Sub(tRes.timetable.tTicket),
+						"tProof ", tRes.timetable.tProof.Sub(tRes.timetable.tSeed),
+						"tPending ", tPending.Sub(tRes.timetable.tProof),
+						"tCreateBlock ", tCreateBlock.Sub(tPending))
+				}
+
+				m.journal.RecordEvent(m.evtTypes[evtTypeBlockMined], func() interface{} {
+					return map[string]interface{}{
+						"parents":   base.TipSet.Cids(),
+						"nulls":     base.NullRounds,
+						"epoch":     b.Header.Height,
+						"timestamp": b.Header.Timestamp,
+						"cid":       b.Header.Cid(),
+						"miner":     b.Header.Miner,
+					}
+				})
+			}
+
+			btime := time.Unix(int64(blks[0].Header.Timestamp), 0)
 			now := build.Clock.Now()
 			switch {
 			case btime == now:
@@ -270,33 +357,38 @@ minerLoop:
 					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}
 
-			if err := m.sf.MinedBlock(b.Header, base.TipSet.Height()+base.NullRounds); err != nil {
-				log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-				continue
-			}
+			// broadcast all blocks
+			for _, b := range blks {
+				go func(bm *types.BlockMsg) {
+					if err := m.sf.MinedBlock(bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+						log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+						return
+					}
 
-			blkKey := fmt.Sprintf("%s-%d", m.address, b.Header.Height)
-			if _, ok := m.minedBlockHeights.Get(blkKey); ok {
-				log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
-				continue
-			}
+					blkKey := fmt.Sprintf("%s-%d", bm.Header.Miner, bm.Header.Height)
+					if _, ok := m.minedBlockHeights.Get(blkKey); ok {
+						log.Warnw("Created a block at the same height as another block we've created", "height", bm.Header.Height, "miner", bm.Header.Miner, "parents", bm.Header.Parents)
+						return
+					}
 
-			m.minedBlockHeights.Add(blkKey, true)
+					m.minedBlockHeights.Add(blkKey, true)
 
-			// TODO: should do better 'anti slash' protection here
-			//has := m.blockRecord.Has(m.address, uint64(b.Header.Height))
-			//if has {
-			//	log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
-			//	continue
-			//}
-			//
-			//err = m.blockRecord.MarkAsProduced(m.address, uint64(b.Header.Height))
-			//if err != nil {
-			//	log.Errorf("failed to write db: %s", err)
-			//}
+					// TODO: should do better 'anti slash' protection here
+					//has := m.blockRecord.Has(m.address, uint64(b.Header.Height))
+					//if has {
+					//	log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
+					//	continue
+					//}
+					//
+					//err = m.blockRecord.MarkAsProduced(m.address, uint64(b.Header.Height))
+					//if err != nil {
+					//	log.Errorf("failed to write db: %s", err)
+					//}
 
-			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
-				log.Errorf("failed to submit newly mined block: %s", err)
+					if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
+						log.Errorf("failed to submit newly mined block: %s", err)
+					}
+				}(b)
 			}
 		} else {
 			base.NullRounds++
@@ -358,6 +450,20 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 	return m.lastWork, nil
 }
 
+type miningTimetable struct {
+	tStart, tMBI, tDrand, tPowercheck, tTicket, tSeed, tProof time.Time
+}
+
+type winPoStRes struct {
+	addr      address.Address
+	ticket    *types.Ticket
+	winner    *types.ElectionProof
+	bvals     []types.BeaconEntry
+	postProof []proof2.PoStProof
+	dur       time.Duration
+	timetable miningTimetable
+}
+
 // mineOne attempts to mine a single block, and does so synchronously, if and
 // only if we are eligible to mine.
 //
@@ -368,13 +474,13 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 // This method does the following:
 //
 //  1.
-func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
-	log.Info("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()))
+func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Address, epp chain.WinningPoStProver) (*winPoStRes, error) {
+	log.Info("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
 	start := build.Clock.Now()
 
 	round := base.TipSet.Height() + base.NullRounds + 1
 
-	mbi, err := m.api.MinerGetBaseInfo(ctx, m.address, round, base.TipSet.Key())
+	mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
 	}
@@ -403,25 +509,25 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, &rbase, base, mbi)
+	ticket, err := m.computeTicket(ctx, &rbase, base, mbi, addr)
 	if err != nil {
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
-	winner, err := chain.IsRoundWinner(ctx, base.TipSet, round, m.address, rbase, mbi, m.api)
+	winner, err := chain.IsRoundWinner(ctx, base.TipSet, round, addr, rbase, mbi, m.api)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
 
 	if winner == nil {
-		log.Info("not to be winner")
+		log.Infow("not to be winner", "miner", addr)
 		return nil, nil
 	}
 
 	tTicket := build.Clock.Now()
 
 	buf := new(bytes.Buffer)
-	if err := m.address.MarshalCBOR(buf); err != nil {
+	if err := addr.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
 	}
 
@@ -434,52 +540,26 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 
 	tSeed := build.Clock.Now()
 
-	postProof, err := m.epp.ComputeProof(ctx, mbi.Sectors, prand)
+	postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute winning post proof: %w", err)
 	}
 
 	tProof := build.Clock.Now()
 
-	// get pending messages early,
-	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to select messages for block: %w", err)
+	dur := build.Clock.Now().Sub(start)
+	tt := miningTimetable{
+		tStart: start, tMBI: tMBI, tDrand: tDrand, tPowercheck: tPowercheck, tTicket: tTicket, tSeed: tSeed, tProof: tProof,
 	}
+	res := &winPoStRes{addr: addr, ticket: ticket, winner: winner, bvals: bvals, postProof: postProof, dur: dur, timetable: tt}
+	log.Infow("mined new block ( -> Proof)", "took", dur, "miner", addr)
 
-	tPending := build.Clock.Now()
-
-	// TODO: winning post proof
-	b, err := m.createBlock(base, m.address, ticket, winner, bvals, postProof, msgs)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to create block: %w", err)
-	}
-
-	tCreateBlock := build.Clock.Now()
-	dur := tCreateBlock.Sub(start)
-	parentMiners := make([]address.Address, len(base.TipSet.Blocks()))
-	for i, header := range base.TipSet.Blocks() {
-		parentMiners[i] = header.Miner
-	}
-	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "miner", b.Header.Miner, "parents", parentMiners, "took", dur)
-	if dur > time.Second*time.Duration(build.BlockDelaySecs) {
-		log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
-			"tMinerBaseInfo ", tMBI.Sub(start),
-			"tDrand ", tDrand.Sub(tMBI),
-			"tPowercheck ", tPowercheck.Sub(tDrand),
-			"tTicket ", tTicket.Sub(tPowercheck),
-			"tSeed ", tSeed.Sub(tTicket),
-			"tProof ", tProof.Sub(tSeed),
-			"tPending ", tPending.Sub(tProof),
-			"tCreateBlock ", tCreateBlock.Sub(tPending))
-	}
-
-	return b, nil
+	return res, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo, addr address.Address) (*types.Ticket, error) {
 	buf := new(bytes.Buffer)
-	if err := m.address.MarshalCBOR(buf); err != nil {
+	if err := addr.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
@@ -521,4 +601,64 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 		Timestamp:        uts,
 		WinningPoStProof: wpostProof,
 	})
+}
+
+func (m *Miner) ManualStart(ctx context.Context, addr address.Address) error {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+
+	if mining, ok := m.minerWPPMap[addr]; ok {
+		mining.isMining = true
+		return nil
+	}
+
+	return xerrors.Errorf("%s not exist", addr)
+}
+
+func (m *Miner) ManualStop(ctx context.Context, addr address.Address) error {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+
+	if mining, ok := m.minerWPPMap[addr]; ok {
+		mining.isMining = false
+		return nil
+	}
+
+	return xerrors.Errorf("%s not exist", addr)
+}
+
+func (m *Miner) AddAddress(minerInfo dtypes.MinerInfo) error {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+	if _, ok := m.minerWPPMap[minerInfo.Addr]; ok {
+		return xerrors.Errorf("exit mining %s", minerInfo.Addr)
+	} else {
+		epp, err := NewWinningPoStProver(m.api, minerInfo, m.verifier)
+		if err != nil {
+			return err
+		}
+
+		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, isMining: true}
+	}
+
+	return m.minerManager.Add(minerInfo)
+}
+
+func (m *Miner) RemoveAddress(addr address.Address) error {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+	if _, ok := m.minerWPPMap[addr]; ok {
+		delete(m.minerWPPMap, addr)
+
+		return m.minerManager.Remove(addr)
+	}
+
+	return xerrors.Errorf("%s not exist", addr)
+}
+
+func (m *Miner) ListAddress() ([]dtypes.MinerInfo, error) {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+
+	return m.minerManager.List()
 }
