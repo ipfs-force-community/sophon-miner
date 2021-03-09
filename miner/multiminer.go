@@ -84,6 +84,8 @@ func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager miner
 		minerWPPMap:  make(map[address.Address]*minerWPP),
 
 		verifier: verifier,
+
+		mineTimeout: build.BlockDelaySecs - build.PropagationDelaySecs,
 	}
 }
 
@@ -114,6 +116,8 @@ type Miner struct {
 	minerManager minermanage.MinerManageAPI
 
 	verifier ffiwrapper.Verifier
+
+	mineTimeout uint64 // the timeout of mining once
 
 	//blockRecord block_recorder.IBlockRecord
 }
@@ -252,34 +256,44 @@ minerLoop:
 			continue
 		}
 
-		// ToDo each miner mineOne in each round, need to judge the timeout !!!
+		// ToDo each miner mine once in each round, need to judge the timeout !!!
 		var (
-			wg       sync.WaitGroup
 			winPoSts []*winPoStRes
 		)
 		m.lkWPP.Lock()
 		for addr, mining := range m.minerWPPMap {
 			if mining.isMining {
-				tAddr := addr
 				epp := mining.epp
-				wg.Add(1)
+				tAddr := addr
 
 				go func() {
-					defer wg.Done()
-					res, err := m.mineOne(ctx, base, tAddr, epp)
+					// set timeout for miner once
+					tCtx, tCtxCancel := context.WithTimeout(ctx, time.Second*time.Duration(m.mineTimeout))
+					defer tCtxCancel()
+
+					resChan, err := m.mineOne(tCtx, base, tAddr, epp)
 					if err != nil { // ToDo retry or continue minerLoop?
 						log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
 						return
 					}
 
-					if res != nil && res.winner != nil {
-						winPoSts = append(winPoSts, res)
+					// waiting for mining results
+					for {
+						select {
+						case <-tCtx.Done():
+							log.Errorf("mining block timeout for %s", tAddr.String())
+							return
+						case res := <-resChan:
+							if res != nil && res.winner != nil {
+								winPoSts = append(winPoSts, res) //nolint:staticcheck
+							}
+						}
 					}
 				}()
+
 			}
 		}
 		m.lkWPP.Unlock()
-		wg.Wait()
 
 		log.Infow("mining compute end", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
 		lastBase = *base
@@ -474,87 +488,98 @@ type winPoStRes struct {
 // This method does the following:
 //
 //  1.
-func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Address, epp chain.WinningPoStProver) (*winPoStRes, error) {
-	log.Info("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
-	start := build.Clock.Now()
+func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Address, epp chain.WinningPoStProver) (<-chan *winPoStRes, error) {
+	log.Infow("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
 
-	round := base.TipSet.Height() + base.NullRounds + 1
+	out := make(chan *winPoStRes)
 
-	mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
-	}
-	if mbi == nil {
-		log.Info("get nil MinerGetBaseInfo")
-		return nil, nil
-	}
-	if !mbi.EligibleForMining {
-		// slashed or just have no power yet
-		return nil, nil
-	}
+	go func() {
+		start := build.Clock.Now()
 
-	tMBI := build.Clock.Now()
+		round := base.TipSet.Height() + base.NullRounds + 1
 
-	beaconPrev := mbi.PrevBeaconEntry
+		mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
+		if err != nil {
+			log.Errorf("failed to get mining base info: %w, miner: %s", err, addr)
+			return
+		}
+		if mbi == nil {
+			log.Infow("get nil MinerGetBaseInfo", "miner", addr)
+			return
+		}
+		if !mbi.EligibleForMining {
+			// slashed or just have no power yet
+			return
+		}
 
-	tDrand := build.Clock.Now()
-	bvals := mbi.BeaconEntries
+		tMBI := build.Clock.Now()
 
-	tPowercheck := build.Clock.Now()
+		beaconPrev := mbi.PrevBeaconEntry
 
-	log.Infof("Time delta between now and our mining base: %ds (nulls: %d)", uint64(build.Clock.Now().Unix())-base.TipSet.MinTimestamp(), base.NullRounds)
+		tDrand := build.Clock.Now()
+		bvals := mbi.BeaconEntries
 
-	rbase := beaconPrev
-	if len(bvals) > 0 {
-		rbase = bvals[len(bvals)-1]
-	}
+		tPowercheck := build.Clock.Now()
 
-	ticket, err := m.computeTicket(ctx, &rbase, base, mbi, addr)
-	if err != nil {
-		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
-	}
+		log.Infof("Time delta between now and our mining base: %ds (nulls: %d), miner: %s", uint64(build.Clock.Now().Unix())-base.TipSet.MinTimestamp(), base.NullRounds, addr)
 
-	winner, err := chain.IsRoundWinner(ctx, base.TipSet, round, addr, rbase, mbi, m.api)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
-	}
+		rbase := beaconPrev
+		if len(bvals) > 0 {
+			rbase = bvals[len(bvals)-1]
+		}
 
-	if winner == nil {
-		log.Infow("not to be winner", "miner", addr)
-		return nil, nil
-	}
+		ticket, err := m.computeTicket(ctx, &rbase, base, mbi, addr)
+		if err != nil {
+			log.Errorf("scratching ticket for %s failed: %w", addr, err)
+			return
+		}
 
-	tTicket := build.Clock.Now()
+		winner, err := chain.IsRoundWinner(ctx, base.TipSet, round, addr, rbase, mbi, m.api)
+		if err != nil {
+			log.Errorf("failed to check for %s if we win next round: %w", addr, err)
+			return
+		}
 
-	buf := new(bytes.Buffer)
-	if err := addr.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
-	}
+		if winner == nil {
+			log.Infow("not to be winner", "miner", addr)
+			return
+		}
 
-	r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
-	}
+		tTicket := build.Clock.Now()
 
-	prand := abi.PoStRandomness(r)
+		buf := new(bytes.Buffer)
+		if err := addr.MarshalCBOR(buf); err != nil {
+			log.Errorf("failed to marshal miner address: %w", err)
+			return
+		}
 
-	tSeed := build.Clock.Now()
+		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+		if err != nil {
+			log.Errorf("failed to get randomness for winning post: %w, miner: %s", err, addr)
+			return
+		}
 
-	postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to compute winning post proof: %w", err)
-	}
+		prand := abi.PoStRandomness(r)
 
-	tProof := build.Clock.Now()
+		tSeed := build.Clock.Now()
 
-	dur := build.Clock.Now().Sub(start)
-	tt := miningTimetable{
-		tStart: start, tMBI: tMBI, tDrand: tDrand, tPowercheck: tPowercheck, tTicket: tTicket, tSeed: tSeed, tProof: tProof,
-	}
-	res := &winPoStRes{addr: addr, ticket: ticket, winner: winner, bvals: bvals, postProof: postProof, dur: dur, timetable: tt}
-	log.Infow("mined new block ( -> Proof)", "took", dur, "miner", addr)
+		postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand)
+		if err != nil {
+			log.Errorf("failed to compute winning post proof: %w, miner: %s", err, addr)
+			return
+		}
 
-	return res, nil
+		tProof := build.Clock.Now()
+
+		dur := build.Clock.Now().Sub(start)
+		tt := miningTimetable{
+			tStart: start, tMBI: tMBI, tDrand: tDrand, tPowercheck: tPowercheck, tTicket: tTicket, tSeed: tSeed, tProof: tProof,
+		}
+		out <- &winPoStRes{addr: addr, ticket: ticket, winner: winner, bvals: bvals, postProof: postProof, dur: dur, timetable: tt}
+		log.Infow("mined new block ( -> Proof)", "took", dur, "miner", addr)
+	}()
+
+	return out, nil
 }
 
 func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo, addr address.Address) (*types.Ticket, error) {

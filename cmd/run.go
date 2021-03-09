@@ -74,7 +74,14 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting full node api: %w", err)
 		}
 		defer ncloser()
+
 		ctx := lcli.DaemonContext(cctx)
+
+		log.Info("Checking proof parameters")
+
+		if err := fetchingProofParameters(ctx); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {

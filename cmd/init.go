@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -20,9 +19,10 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/chain/actors/policy"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
@@ -47,25 +47,15 @@ var initCmd = &cli.Command{
 			Usage: "rpc token",
 			Value: "",
 		},
-		&cli.StringFlag{
-			Name:  "sector-size",
-			Usage: "specify sector size to use",
-			Value: units.BytesSize(float64(policy.GetDefaultSectorSize())),
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing venus miner")
 
-		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
-		if err != nil {
-			return err
-		}
-		ssize := abi.SectorSize(sectorSizeInt)
+		ctx := lcli.ReqContext(cctx)
 
 		log.Info("Checking proof parameters")
 
-		ctx := lcli.ReqContext(cctx)
-		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(ssize)); err != nil {
+		if err := fetchingProofParameters(ctx); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -322,4 +312,34 @@ func SyncWait(ctx context.Context, napi api.FullNode, watch bool) error {
 
 		i++
 	}
+}
+
+func fetchingProofParameters(ctx context.Context) error {
+	ss := make([]uint64, 0)
+
+	log.Info("SupportedProofTypes: ", miner0.SupportedProofTypes)
+	for spf := range miner0.SupportedProofTypes {
+		switch spf {
+		case abi.RegisteredSealProof_StackedDrg2KiBV1:
+			ss = append(ss, 2048)
+		case abi.RegisteredSealProof_StackedDrg8MiBV1:
+			ss = append(ss, 8<<20)
+		case abi.RegisteredSealProof_StackedDrg512MiBV1:
+			ss = append(ss, 512<<20)
+		case abi.RegisteredSealProof_StackedDrg32GiBV1:
+			ss = append(ss, 32<<30)
+		case abi.RegisteredSealProof_StackedDrg64GiBV1:
+			ss = append(ss, 64<<30)
+		default:
+
+		}
+	}
+
+	for _, ssize := range ss {
+		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(ssize)); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
+	}
+
+	return nil
 }
