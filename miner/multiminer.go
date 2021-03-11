@@ -129,8 +129,6 @@ func (m *Miner) Start(ctx context.Context) error {
 		return fmt.Errorf("miner already started")
 	}
 
-	log.Info("start to do winning poster")
-
 	// init miners
 	miners, err := m.minerManager.List()
 	if err != nil {
@@ -197,6 +195,15 @@ minerLoop:
 		default:
 		}
 
+		// if there are no miners, wait
+		if len(m.minerWPPMap) <=0 {
+			log.Warn("no miner is configured, please check ... ")
+			if !m.niceSleep(time.Second * 5) {
+				continue minerLoop
+			}
+			continue
+		}
+
 		var base *MiningBase
 		var onDone func(bool, abi.ChainEpoch, error)
 		var injectNulls abi.ChainEpoch
@@ -259,14 +266,18 @@ minerLoop:
 		// ToDo each miner mine once in each round, need to judge the timeout !!!
 		var (
 			winPoSts []*winPoStRes
+			wg       sync.WaitGroup
 		)
 		m.lkWPP.Lock()
 		for addr, mining := range m.minerWPPMap {
 			if mining.isMining {
+				wg.Add(1)
 				epp := mining.epp
 				tAddr := addr
 
 				go func() {
+					defer wg.Done()
+
 					// set timeout for miner once
 					tCtx, tCtxCancel := context.WithTimeout(ctx, time.Second*time.Duration(m.mineTimeout))
 					defer tCtxCancel()
@@ -293,6 +304,7 @@ minerLoop:
 
 			}
 		}
+		wg.Wait()
 		m.lkWPP.Unlock()
 
 		log.Infow("mining compute end", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
