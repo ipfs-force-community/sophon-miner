@@ -17,8 +17,6 @@ const defaultKey = "default-actor"
 
 var ErrNoDefault = xerrors.Errorf("not set default key")
 
-
-
 type MinerManageAPI interface {
 	Add(addr dtypes.MinerInfo) error
 	Has(checkAddr address.Address) bool
@@ -43,9 +41,12 @@ func NewMinerManger(ds dtypes.MetadataDS) (*MinerManager, error) {
 	}
 
 	var miners []dtypes.MinerInfo
-	err = json.Unmarshal(addrBytes, &miners)
-	if err != nil {
-		return nil, err
+
+	if err != datastore.ErrNotFound {
+		err = json.Unmarshal(addrBytes, &miners)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &MinerManager{da: ds, miners: miners}, nil
