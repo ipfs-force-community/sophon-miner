@@ -85,7 +85,7 @@ func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager miner
 
 		verifier: verifier,
 
-		mineTimeout: build.BlockDelaySecs - build.PropagationDelaySecs * 2, // The time to wait for the latest block is counted in
+		mineTimeout: build.BlockDelaySecs - build.PropagationDelaySecs*2, // The time to wait for the latest block is counted in
 	}
 }
 
@@ -196,7 +196,7 @@ minerLoop:
 		}
 
 		// if there are no miners, wait
-		if len(m.minerWPPMap) <=0 {
+		if len(m.minerWPPMap) <= 0 {
 			log.Warn("no miner is configured, please check ... ")
 			if !m.niceSleep(time.Second * 5) {
 				continue minerLoop
@@ -283,21 +283,19 @@ minerLoop:
 					defer tCtxCancel()
 
 					resChan, err := m.mineOne(tCtx, base, tAddr, epp)
-					if err != nil { // ToDo retry or continue minerLoop?
+					if err != nil { // ToDo retry or continue minerLoop ? currently err is always nil
 						log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
 						return
 					}
 
 					// waiting for mining results
-					for {
-						select {
-						case <-tCtx.Done():
-							log.Errorf("mining block timeout for %s", tAddr.String())
-							return
-						case res := <-resChan:
-							if res != nil && res.winner != nil {
-								winPoSts = append(winPoSts, res) //nolint:staticcheck
-							}
+					select {
+					case <-tCtx.Done():
+						log.Errorf("mining block timeout for %s", tAddr.String())
+						return
+					case res := <-resChan:
+						if res != nil && res.winner != nil {
+							winPoSts = append(winPoSts, res) //nolint:staticcheck
 						}
 					}
 				}()
