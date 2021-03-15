@@ -48,7 +48,7 @@ const UpgradeActorsV3Height = 999999999
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 
-	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
+	if os.Getenv("MINING_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
 	}
 
