@@ -85,7 +85,7 @@ func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager miner
 
 		verifier: verifier,
 
-		mineTimeout: build.BlockDelaySecs - build.PropagationDelaySecs,
+		mineTimeout: build.BlockDelaySecs - build.PropagationDelaySecs * 2, // The time to wait for the latest block is counted in
 	}
 }
 
@@ -517,13 +517,13 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 		}
 		if mbi == nil {
 			log.Infow("get nil MinerGetBaseInfo", "miner", addr)
-			out <- nil
+			out <- &winPoStRes{addr: addr, winner: nil}
 			return
 		}
 		if !mbi.EligibleForMining {
 			// slashed or just have no power yet
 			log.Warnw("slashed or just have no power yet", "miner", addr)
-			out <- nil
+			out <- &winPoStRes{addr: addr, winner: nil}
 			return
 		}
 
@@ -557,7 +557,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 
 		if winner == nil {
 			log.Infow("not to be winner", "miner", addr)
-			out <- nil
+			out <- &winPoStRes{addr: addr, winner: nil}
 			return
 		}
 
