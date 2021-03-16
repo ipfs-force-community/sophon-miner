@@ -56,7 +56,7 @@ func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager miner
 		panic(err)
 	}
 
-	return &Miner{
+	miner := &Miner{
 		api: api,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
 			// Wait around for half the block time in case other parents come in
@@ -84,9 +84,16 @@ func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager miner
 		minerWPPMap:  make(map[address.Address]*minerWPP),
 
 		verifier: verifier,
-
-		mineTimeout: build.BlockDelaySecs - build.PropagationDelaySecs*2, // The time to wait for the latest block is counted in
 	}
+
+	switch build.BuildType {
+	case build.BuildCalibnet, build.BuildMainnet: // The time to wait for the latest block is counted in
+		miner.mineTimeout = time.Duration(build.BlockDelaySecs-build.PropagationDelaySecs*2) * time.Second
+	default:
+		miner.mineTimeout = time.Millisecond * 2800 // 0.2S is used to select messages and generate blocks
+	}
+
+	return miner
 }
 
 type minerWPP struct {
@@ -117,7 +124,7 @@ type Miner struct {
 
 	verifier ffiwrapper.Verifier
 
-	mineTimeout uint64 // the timeout of mining once
+	mineTimeout time.Duration // the timeout of mining once
 
 	//blockRecord block_recorder.IBlockRecord
 }
@@ -279,7 +286,7 @@ minerLoop:
 					defer wg.Done()
 
 					// set timeout for miner once
-					tCtx, tCtxCancel := context.WithTimeout(ctx, time.Second*time.Duration(m.mineTimeout))
+					tCtx, tCtxCancel := context.WithTimeout(ctx, m.mineTimeout)
 					defer tCtxCancel()
 
 					resChan, err := m.mineOne(tCtx, base, tAddr, epp)
