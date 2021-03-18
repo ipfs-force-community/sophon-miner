@@ -181,6 +181,20 @@ func (m *Miner) niceSleep(d time.Duration) bool {
 	}
 }
 
+func (m *Miner) hasMinersMeedMining() bool {
+	if len(m.minerWPPMap) == 0 {
+		return false
+	}
+
+	for _, mw := range m.minerWPPMap {
+		if mw.isMining {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *Miner) mine(ctx context.Context) {
 	log.Info("start to do winning poster")
 	ctx, span := trace.StartSpan(ctx, "/mine")
@@ -202,9 +216,9 @@ minerLoop:
 		default:
 		}
 
-		// if there are no miners, wait
-		if len(m.minerWPPMap) <= 0 {
-			log.Warn("no miner is configured, please check ... ")
+		// if there is no miner to be mined, wait
+		if !m.hasMinersMeedMining() {
+			log.Warn("no miner is configured for mining, please check ... ")
 			if !m.niceSleep(time.Second * 5) {
 				continue minerLoop
 			}
