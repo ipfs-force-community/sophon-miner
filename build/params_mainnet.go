@@ -2,6 +2,7 @@
 // +build !2k
 // +build !testground
 // +build !calibnet
+// +build !nerpanet
 
 package build
 
@@ -43,7 +44,7 @@ const UpgradeOrangeHeight = 336458
 const UpgradeClausHeight = 343200
 
 // TODO
-const UpgradeActorsV3Height = 999999999
+const UpgradeActorsV3Height = abi.ChainEpoch(550321)
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
@@ -60,6 +61,3 @@ func init() {
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)
-
-// BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
-const BootstrapPeerThreshold = 4

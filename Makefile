@@ -60,6 +60,9 @@ debug: miner
 calibnet: GOFLAGS+=-tags=calibnet
 calibnet: miner
 
+nerpanet: GOFLAGS+=-tags=nerpanet
+nerpanet: miner
+
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
