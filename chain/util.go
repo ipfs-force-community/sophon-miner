@@ -4,15 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	//"encoding/hex"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	//logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+
+	"github.com/ipfs-force-community/venus-wallet/core"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
@@ -21,21 +25,25 @@ import (
 	"github.com/filecoin-project/venus-miner/lib/sigs"
 )
 
+//var log = logging.Logger("API")
+
 type WinningPoStProver interface {
 	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
 	ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error)
 }
 
 type MiningCheckAPI interface {
-	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	//ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	//ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
+	//MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
 
-	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
+	WalletSign(context.Context, address.Address, []byte, core.MsgMeta) (*crypto.Signature, error)
 }
 
-type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
+type SignFunc func(ctx context.Context, signer address.Address, toSign []byte, meta core.MsgMeta) (*crypto.Signature, error)
+
+// type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
 func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()
@@ -75,7 +83,8 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 }
 
 func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigInput []byte) ([]byte, error) {
-	sig, err := sign(ctx, worker, sigInput)
+	// log.Infof("sigInput: %s", hex.EncodeToString(sigInput))
+	sig, err := sign(ctx, worker, sigInput, core.MsgMeta{Type: core.MTDrawRandomParam})
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +104,23 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	electionRand, err := DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to draw randomness: %w", err)
+	electionRand := new(bytes.Buffer)
+	drp := &core.DrawRandomParams{
+		Rbase:   brand.Data,
+		Pers:    crypto.DomainSeparationTag_ElectionProofProduction,
+		Round:   round,
+		Entropy: buf.Bytes(),
 	}
+	err := drp.MarshalCBOR(electionRand)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to marshal randomness: %w", err)
+	}
+	//electionRand, err := DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
+	//if err != nil {
+	//	return nil, xerrors.Errorf("failed to draw randomness: %w", err)
+	//}
 
-	vrfout, err := ComputeVRF(ctx, a.WalletSign, mbi.WorkerKey, electionRand)
+	vrfout, err := ComputeVRF(ctx, a.WalletSign, mbi.WorkerKey, electionRand.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}

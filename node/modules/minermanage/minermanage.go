@@ -18,12 +18,12 @@ const defaultKey = "default-actor"
 var ErrNoDefault = xerrors.Errorf("not set default key")
 
 type MinerManageAPI interface {
-	Add(addr dtypes.MinerInfo) error
+	Put(addr dtypes.MinerInfo) error
+	Set(addr dtypes.MinerInfo) error
 	Has(checkAddr address.Address) bool
+	Get(checkAddr address.Address) *dtypes.MinerInfo
 	List() ([]dtypes.MinerInfo, error)
 	Remove(rmAddr address.Address) error
-	SetDefault(address.Address) error
-	Default() (address.Address, error)
 	Count() int
 }
 
@@ -52,7 +52,7 @@ func NewMinerManger(ds dtypes.MetadataDS) (*MinerManager, error) {
 	return &MinerManager{da: ds, miners: miners}, nil
 }
 
-func (m *MinerManager) Add(miner dtypes.MinerInfo) error {
+func (m *MinerManager) Put(miner dtypes.MinerInfo) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -75,6 +75,45 @@ func (m *MinerManager) Add(miner dtypes.MinerInfo) error {
 	return nil
 }
 
+func (m *MinerManager) Set(miner dtypes.MinerInfo) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	for k, addr := range m.miners {
+		if addr.Addr.String() == miner.Addr.String() {
+			if miner.Sealer.ListenAPI != "" && miner.Sealer.ListenAPI != m.miners[k].Sealer.ListenAPI {
+				m.miners[k].Sealer.ListenAPI = miner.Sealer.ListenAPI
+			}
+
+			if miner.Sealer.Token != "" && miner.Sealer.Token != m.miners[k].Sealer.Token {
+				m.miners[k].Sealer.Token = miner.Sealer.Token
+			}
+
+			if miner.Wallet.ListenAPI != "" && miner.Wallet.ListenAPI != m.miners[k].Wallet.ListenAPI {
+				m.miners[k].Wallet.ListenAPI = miner.Wallet.ListenAPI
+			}
+
+			if miner.Wallet.Token != "" && miner.Wallet.Token != m.miners[k].Wallet.Token {
+				m.miners[k].Wallet.Token = miner.Wallet.Token
+			}
+
+			addrBytes, err := json.Marshal(m.miners)
+			if err != nil {
+				return err
+			}
+
+			err = m.da.Put(datastore.NewKey(actorKey), addrBytes)
+			if err != nil {
+				return err
+			}
+
+			break
+		}
+	}
+
+	return nil
+}
+
 func (m *MinerManager) Has(addr address.Address) bool {
 	for _, miner := range m.miners {
 		if miner.Addr.String() == addr.String() {
@@ -83,6 +122,19 @@ func (m *MinerManager) Has(addr address.Address) bool {
 	}
 
 	return false
+}
+
+func (m *MinerManager) Get(addr address.Address) *dtypes.MinerInfo {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	for k := range m.miners {
+		if m.miners[k].Addr.String() == addr.String() {
+			return &m.miners[k]
+		}
+	}
+
+	return nil
 }
 
 func (m *MinerManager) List() ([]dtypes.MinerInfo, error) {

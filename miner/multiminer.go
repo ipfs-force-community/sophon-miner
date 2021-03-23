@@ -11,12 +11,15 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
+	"github.com/ipfs-force-community/venus-wallet/core"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/filecoin-project/venus-miner/api"
+	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/chain"
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
@@ -98,6 +101,7 @@ func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager miner
 
 type minerWPP struct {
 	epp      chain.WinningPoStProver
+	wn       dtypes.WalletNode
 	isMining bool
 }
 
@@ -146,7 +150,7 @@ func (m *Miner) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, isMining: true}
+		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, wn: minerInfo.Wallet, isMining: true}
 	}
 
 	m.stop = make(chan struct{})
@@ -568,7 +572,17 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 			return
 		}
 
-		winner, err := chain.IsRoundWinner(ctx, base.TipSet, round, addr, rbase, mbi, m.api)
+		var miningCheckAPI chain.MiningCheckAPI = m.api
+		if mining, ok := m.minerWPPMap[addr]; ok && mining.wn.Token != "" {
+			walletAPI, closer, err := client.NewWalletRPC(ctx, &mining.wn)
+			if err != nil {
+				log.Errorf("create wallet RPC failed: %w", err)
+				return
+			}
+			defer closer()
+			miningCheckAPI = walletAPI
+		}
+		winner, err := chain.IsRoundWinner(ctx, base.TipSet, round, addr, rbase, mbi, miningCheckAPI)
 		if err != nil {
 			log.Errorf("failed to check for %s if we win next round: %w", addr, err)
 			return
@@ -628,12 +642,33 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 		buf.Write(base.TipSet.MinTicket().VRFProof)
 	}
 
-	input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
+	input := new(bytes.Buffer)
+	drp := &core.DrawRandomParams{
+		Rbase:   brand.Data,
+		Pers:    crypto.DomainSeparationTag_TicketProduction,
+		Round:   round - build.TicketRandomnessLookback,
+		Entropy: buf.Bytes(),
+	}
+	err := drp.MarshalCBOR(input)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to marshal randomness: %w", err)
+	}
+	//input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	sign := m.api.WalletSign
+	if mining, ok := m.minerWPPMap[addr]; ok && mining.wn.Token != "" {
+		walletAPI, closer, err := client.NewWalletRPC(ctx, &mining.wn)
+		if err != nil {
+			return nil, err
+		}
+		defer closer()
+		sign = walletAPI.WalletSign
 	}
 
-	vrfOut, err := chain.ComputeVRF(ctx, m.api.WalletSign, mbi.WorkerKey, input)
+	vrfOut, err := chain.ComputeVRF(ctx, sign, mbi.WorkerKey, input.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -698,10 +733,49 @@ func (m *Miner) AddAddress(minerInfo dtypes.MinerInfo) error {
 			return err
 		}
 
-		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, isMining: true}
+		err = m.winPostWarmupForMiner(context.Background(), minerInfo.Addr, epp)
+		if err != nil {
+			return xerrors.Errorf("mining warm up failed: %w", err)
+		}
+
+		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, wn: minerInfo.Wallet, isMining: true}
 	}
 
-	return m.minerManager.Add(minerInfo)
+	return m.minerManager.Put(minerInfo)
+}
+
+func (m *Miner) UpdateAddress(minerInfo dtypes.MinerInfo) error {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+
+	if miner := m.minerManager.Get(minerInfo.Addr); miner != nil {
+		if (minerInfo.Sealer.Token != "" && miner.Sealer.Token != minerInfo.Sealer.Token) ||
+			(minerInfo.Sealer.ListenAPI != "" && miner.Sealer.ListenAPI != minerInfo.Sealer.ListenAPI) {
+			epp, err := NewWinningPoStProver(m.api, minerInfo, m.verifier)
+			if err != nil {
+				return err
+			}
+
+			err = m.winPostWarmupForMiner(context.Background(), minerInfo.Addr, epp)
+			if err != nil {
+				return xerrors.Errorf("mining warm up failed: %w", err)
+			}
+
+			m.minerWPPMap[minerInfo.Addr].epp = epp
+		}
+
+		if minerInfo.Wallet.Token != "" && miner.Wallet.Token != minerInfo.Wallet.Token {
+			m.minerWPPMap[minerInfo.Addr].wn.Token = minerInfo.Wallet.Token
+		}
+
+		if minerInfo.Wallet.ListenAPI != "" && miner.Wallet.ListenAPI != minerInfo.Wallet.ListenAPI {
+			m.minerWPPMap[minerInfo.Addr].wn.ListenAPI = minerInfo.Wallet.ListenAPI
+		}
+	} else {
+		return xerrors.Errorf("miner %s not exist", minerInfo.Addr)
+	}
+
+	return m.minerManager.Set(minerInfo)
 }
 
 func (m *Miner) RemoveAddress(addr address.Address) error {
