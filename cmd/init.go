@@ -38,13 +38,23 @@ var initCmd = &cli.Command{
 			Usage: "specify the address of an already created miner actor",
 		},
 		&cli.StringFlag{
-			Name:  "listen-api",
-			Usage: "rpc api",
+			Name:  "sealer-listen-api",
+			Usage: "sealer rpc api",
 			Value: "",
 		},
 		&cli.StringFlag{
-			Name:  "token",
-			Usage: "rpc token",
+			Name:  "sealer-token",
+			Usage: "sealer rpc token",
+			Value: "",
+		},
+		&cli.StringFlag{
+			Name:  "wallet-listen-api",
+			Usage: "wallet rpc api",
+			Value: "",
+		},
+		&cli.StringFlag{
+			Name:  "wallet-token",
+			Usage: "wallet rpc token",
 			Value: "",
 		},
 	},
@@ -152,14 +162,22 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
 		}
 
 		if actor.Protocol() == address.ID {
-			if cctx.String("listen-api") == "" || cctx.String("token") == "" {
+			if cctx.String("sealer-listen-api") == "" || cctx.String("sealer-token") == "" {
 				return xerrors.New("the actor's api & token cannot be empty")
 			}
 
 			posterAddr := dtypes.MinerInfo{
-				Addr:      actor,
-				ListenAPI: cctx.String("listen-api"),
-				Token:     cctx.String("token"),
+				Addr: actor,
+				Sealer: dtypes.SealerNode{
+					ListenAPI: cctx.String("sealer-listen-api"),
+					Token:     cctx.String("sealer-token"),
+				},
+			}
+			if cctx.String("wallet-listen-api") != "" && cctx.String("wallet-token") != "" {
+				posterAddr.Wallet = dtypes.WalletNode{
+					ListenAPI: cctx.String("wallet-listen-api"),
+					Token:     cctx.String("wallet-token"),
+				}
 			}
 
 			log.Infof("init new miner: %v", posterAddr)
@@ -171,10 +189,6 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
 				return err
 			}
 			if err := mds.Put(datastore.NewKey("miner-actors"), addrBytes); err != nil {
-				return err
-			}
-
-			if err := mds.Put(datastore.NewKey("default-actor"), actor.Bytes()); err != nil {
 				return err
 			}
 		} else {

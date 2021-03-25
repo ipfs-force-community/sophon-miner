@@ -53,10 +53,9 @@ var addressCmd = &cli.Command{
 	Usage: "manage the miner address",
 	Subcommands: []*cli.Command{
 		addCmd,
+		updateCmd,
 		removeCmd,
 		listCmd,
-		setdefaultCmd,
-		defaultCmd,
 		startMiningCmd,
 		stopMiningCmd,
 	},
@@ -73,16 +72,28 @@ var addCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:     "listen-api",
-			Usage:    "rpc api",
+			Name:     "sealer-listen-api",
+			Usage:    "sealer rpc api",
 			Value:    "",
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:     "token",
-			Usage:    "rpc token",
+			Name:     "sealer-token",
+			Usage:    "sealer rpc token",
 			Value:    "",
 			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "wallet-listen-api",
+			Usage:    "wallet rpc api",
+			Value:    "",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "wallet-token",
+			Usage:    "wallet rpc token",
+			Value:    "",
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -117,8 +128,16 @@ var addCmd = &cli.Command{
 
 		posterAddr := dtypes.MinerInfo{
 			Addr:      addr,
-			ListenAPI: cctx.String("listen-api"),
-			Token:     cctx.String("token"),
+			Sealer: dtypes.SealerNode {
+				ListenAPI: cctx.String("sealer-listen-api"),
+				Token:     cctx.String("sealer-token"),
+			},
+		}
+		if cctx.String("wallet-listen-api") != "" && cctx.String("wallet-token") != "" {
+			posterAddr.Wallet = dtypes.WalletNode{
+				ListenAPI: cctx.String("wallet-listen-api"),
+				Token:     cctx.String("wallet-token"),
+			}
 		}
 
 		err = postApi.AddAddress(posterAddr)
@@ -127,6 +146,76 @@ var addCmd = &cli.Command{
 		}
 
 		fmt.Println("add miner: ", posterAddr)
+		return nil
+	},
+}
+
+var updateCmd = &cli.Command{
+	Name:  "update",
+	Usage: "update address for poster, don't need to be updated",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "addr",
+			Usage:    "miner address",
+			Value:    "",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "sealer-listen-api",
+			Usage:    "sealer rpc api",
+			Value:    "",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "sealer-token",
+			Usage:    "sealer rpc token",
+			Value:    "",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "wallet-listen-api",
+			Usage:    "wallet rpc api",
+			Value:    "",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "wallet-token",
+			Usage:    "wallet rpc token",
+			Value:    "",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		addrStr := cctx.String("addr")
+		addr, err := address.NewFromString(addrStr)
+		if err != nil {
+			return err
+		}
+
+		postApi, closer, err := lcli.GetMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		posterAddr := dtypes.MinerInfo{
+			Addr:      addr,
+			Sealer: dtypes.SealerNode {
+				ListenAPI: cctx.String("sealer-listen-api"),
+				Token:     cctx.String("sealer-token"),
+			},
+			Wallet: dtypes.WalletNode{
+				ListenAPI: cctx.String("wallet-listen-api"),
+				Token:     cctx.String("wallet-token"),
+			},
+		}
+
+		err = postApi.UpdateAddress(posterAddr)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("update miner: ", addr)
 		return nil
 	},
 }
@@ -180,55 +269,6 @@ var listCmd = &cli.Command{
 		fmt.Println(string(formatJson))
 		return nil
 
-	},
-}
-
-var setdefaultCmd = &cli.Command{
-	Name:      "set-default",
-	Usage:     "set default address",
-	Flags:     []cli.Flag{},
-	ArgsUsage: "[address]",
-	Action: func(cctx *cli.Context) error {
-		postApi, closer, err := lcli.GetMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		addrStr := cctx.Args().First()
-		addr, err := address.NewFromString(addrStr)
-		if err != nil {
-			return err
-		}
-
-		err = postApi.SetDefault(addr)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("default miner: ", addr)
-		return nil
-	},
-}
-
-var defaultCmd = &cli.Command{
-	Name:  "default",
-	Usage: "get default address",
-	Flags: []cli.Flag{},
-	Action: func(cctx *cli.Context) error {
-		postApi, closer, err := lcli.GetMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		addr, err := postApi.Default()
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("default miner: ", addr)
-		return nil
 	},
 }
 

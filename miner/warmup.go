@@ -25,7 +25,8 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 		go func() {
 			err := m.winPostWarmupForMiner(ctx, tAddr, epp)
 			if err != nil {
-				m.minerWPPMap[tAddr].isMining = false // 未通过的不能进行挖矿
+				log.Infow("mining warm up failed", "miner", tAddr, "err", err.Error())
+				m.minerWPPMap[tAddr].isMining = false // Those who fail to pass cannot be mined
 			}
 		}()
 	}

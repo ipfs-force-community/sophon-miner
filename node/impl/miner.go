@@ -23,20 +23,17 @@ func (m *MinerAPI) AddAddress(minerInfo dtypes.MinerInfo) error {
 	return m.MiningAPI.AddAddress(minerInfo)
 }
 
+func (m *MinerAPI) UpdateAddress(minerInfo dtypes.MinerInfo) error {
+
+	return m.MiningAPI.UpdateAddress(minerInfo)
+}
+
 func (m *MinerAPI) RemoveAddress(addr address.Address) error {
 	return m.MiningAPI.RemoveAddress(addr)
 }
 
 func (m *MinerAPI) ListAddress() ([]dtypes.MinerInfo, error) {
 	return m.MiningAPI.ListAddress()
-}
-
-func (m *MinerAPI) SetDefault(addr address.Address) error {
-	return m.MinerManager.SetDefault(addr)
-}
-
-func (m *MinerAPI) Default() (address.Address, error) {
-	return m.MinerManager.Default()
 }
 
 func (m *MinerAPI) Start(ctx context.Context, addr address.Address) error {

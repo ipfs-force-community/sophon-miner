@@ -12,10 +12,9 @@ type MinerAPI interface {
 	Common
 
 	AddAddress(dtypes.MinerInfo) error
+	UpdateAddress(dtypes.MinerInfo) error
 	RemoveAddress(address.Address) error
 	ListAddress() ([]dtypes.MinerInfo, error)
-	SetDefault(address.Address) error
-	Default() (address.Address, error)
 	Start(context.Context, address.Address) error
 	Stop(context.Context, address.Address) error
 }

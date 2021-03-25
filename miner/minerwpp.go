@@ -74,7 +74,7 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo,
 	start := build.Clock.Now()
 
 	// todo call sealer rpc api
-	sealerAPI, closer, err := getSealerAPI(ctx, wpp.minerInfo)
+	sealerAPI, closer, err := getSealerAPI(ctx, wpp.minerInfo.Sealer)
 	if err != nil {
 		return nil, err
 	}
@@ -116,12 +116,12 @@ func newSealerRPC(addr string, requestHeader http.Header) (sealerAPI, jsonrpc.Cl
 	return &res, closer, err
 }
 
-func getSealerAPI(ctx context.Context, minerInfo dtypes.MinerInfo) (sealerAPI, jsonrpc.ClientCloser, error) {
-	addr, err := minerInfo.DialArgs()
+func getSealerAPI(ctx context.Context, sealer dtypes.SealerNode) (sealerAPI, jsonrpc.ClientCloser, error) {
+	addr, err := sealer.DialArgs()
 	if err != nil {
 		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
 
-	return newSealerRPC(addr, minerInfo.AuthHeader())
+	return newSealerRPC(addr, sealer.AuthHeader())
 }
