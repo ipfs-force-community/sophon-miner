@@ -439,6 +439,24 @@ minerLoop:
 					}
 				}(b)
 			}
+
+			// ToDo Under normal circumstances, when the block is created in a cycle,
+			// the block is broadcast at the time of (timestamp),
+			// and the latest block is often not received directly from the next round,
+			// resulting in  lastbase==base staying in the previous cycle,
+			// so that it will be broadcast again. Jump one cycle (L280), miss a cycle and possibly produce blocks.
+
+			nextRound := time.Unix(int64(blks[0].Header.Timestamp)+int64(build.PropagationDelaySecs), 0)
+
+			select {
+			case <-build.Clock.After(build.Clock.Until(nextRound)):
+			case <-m.stop:
+				stopping := m.stopping
+				m.stop = nil
+				m.stopping = nil
+				close(stopping)
+				return
+			}
 		} else {
 			base.NullRounds++
 			log.Info("no block and increase nullround")
