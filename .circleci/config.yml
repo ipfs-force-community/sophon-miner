@@ -223,7 +223,7 @@ jobs:
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/venus-miner/go.sum" }}
       - install-deps
       - run:
-          command: make build
+          command: make miner
           no_output_timeout: 30m
       - store_artifacts:
           path: venus-miner
