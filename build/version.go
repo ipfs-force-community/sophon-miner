@@ -15,6 +15,7 @@ const (
 	Build2k       = 0x2
 	BuildDebug    = 0x3
 	BuildCalibnet = 0x4
+	BuildNerpanet = 0x5
 )
 
 func buildType() string {
@@ -29,6 +30,8 @@ func buildType() string {
 		return "+debug"
 	case BuildCalibnet:
 		return "+calibnet"
+	case BuildNerpanet:
+		return "+nerpanet"
 	default:
 		return "+huh?"
 	}
@@ -86,8 +89,8 @@ func VersionForType(nodeType NodeType) (Version, error) {
 
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion   = newVer(1, 1, 0)
-	MinerAPIVersion  = newVer(1, 0, 1)
+	FullAPIVersion  = newVer(1, 1, 0)
+	MinerAPIVersion = newVer(1, 0, 1)
 )
 
 //nolint:varcheck,deadcode
