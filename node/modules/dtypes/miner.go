@@ -32,6 +32,12 @@ type MinerInfo struct {
 	Wallet WalletNode
 }
 
+type MinerState struct {
+	Addr     address.Address
+	IsMining bool
+	Err      error
+}
+
 func (sn SealerNode) DialArgs() (string, error) {
 	ma, err := multiaddr.NewMultiaddr(sn.ListenAPI)
 	if err == nil {

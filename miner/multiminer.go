@@ -103,6 +103,7 @@ type minerWPP struct {
 	epp      chain.WinningPoStProver
 	wn       dtypes.WalletNode
 	isMining bool
+	err      error
 }
 
 type Miner struct {
@@ -734,6 +735,7 @@ func (m *Miner) ManualStop(ctx context.Context, addr address.Address) error {
 
 	if mining, ok := m.minerWPPMap[addr]; ok {
 		mining.isMining = false
+		mining.err = nil
 		return nil
 	}
 
@@ -814,3 +816,25 @@ func (m *Miner) ListAddress() ([]dtypes.MinerInfo, error) {
 
 	return m.minerManager.List()
 }
+
+func (m *Miner) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, error) {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+
+	res := make([]dtypes.MinerState, 0)
+	if len(addrs) > 0 {
+		for _, addr := range addrs {
+			if val, ok := m.minerWPPMap[addr]; ok {
+				res = append(res, dtypes.MinerState{Addr: addr, IsMining: val.isMining, Err: val.err})
+			}
+		}
+	} else {
+		for k, v := range m.minerWPPMap {
+			res = append(res, dtypes.MinerState{Addr: k, IsMining: v.isMining, Err: v.err})
+		}
+	}
+
+
+	return res, nil
+}
+

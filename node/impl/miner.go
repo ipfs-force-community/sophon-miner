@@ -36,6 +36,10 @@ func (m *MinerAPI) ListAddress() ([]dtypes.MinerInfo, error) {
 	return m.MiningAPI.ListAddress()
 }
 
+func (m *MinerAPI) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, error) {
+	return m.MiningAPI.StatesForMining(addrs)
+}
+
 func (m *MinerAPI) Start(ctx context.Context, addr address.Address) error {
 	return m.MiningAPI.ManualStart(ctx, addr)
 }

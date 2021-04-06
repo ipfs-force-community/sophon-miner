@@ -15,6 +15,7 @@ type MinerAPI interface {
 	UpdateAddress(dtypes.MinerInfo) error
 	RemoveAddress(address.Address) error
 	ListAddress() ([]dtypes.MinerInfo, error)
+	StatesForMining([]address.Address) ([]dtypes.MinerState, error)
 	Start(context.Context, address.Address) error
 	Stop(context.Context, address.Address) error
 }

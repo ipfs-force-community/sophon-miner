@@ -166,12 +166,13 @@ type MinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		AddAddress    func(dtypes.MinerInfo) error                 `perm:"write"`
-		UpdateAddress func(dtypes.MinerInfo) error                 `perm:"write"`
-		RemoveAddress func(address.Address) error                  `perm:"write"`
-		ListAddress   func() ([]dtypes.MinerInfo, error)           `perm:"read"`
-		Start         func(context.Context, address.Address) error `perm:"write"`
-		Stop          func(context.Context, address.Address) error `perm:"write"`
+		AddAddress      func(dtypes.MinerInfo) error                         `perm:"write"`
+		UpdateAddress   func(dtypes.MinerInfo) error                         `perm:"write"`
+		RemoveAddress   func(address.Address) error                          `perm:"write"`
+		ListAddress     func() ([]dtypes.MinerInfo, error)                   `perm:"read"`
+		StatesForMining func([]address.Address) ([]dtypes.MinerState, error) `perm:"read"`
+		Start           func(context.Context, address.Address) error         `perm:"write"`
+		Stop            func(context.Context, address.Address) error         `perm:"write"`
 	}
 }
 
@@ -189,6 +190,10 @@ func (s *MinerStruct) RemoveAddress(addr address.Address) error {
 
 func (s *MinerStruct) ListAddress() ([]dtypes.MinerInfo, error) {
 	return s.Internal.ListAddress()
+}
+
+func (s *MinerStruct) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, error) {
+	return s.Internal.StatesForMining(addrs)
 }
 
 func (s *MinerStruct) Start(ctx context.Context, addr address.Address) error {

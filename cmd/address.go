@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -56,6 +55,7 @@ var addressCmd = &cli.Command{
 		updateCmd,
 		removeCmd,
 		listCmd,
+		stateCmd,
 		startMiningCmd,
 		stopMiningCmd,
 	},
@@ -127,8 +127,8 @@ var addCmd = &cli.Command{
 		defer closer()
 
 		posterAddr := dtypes.MinerInfo{
-			Addr:      addr,
-			Sealer: dtypes.SealerNode {
+			Addr: addr,
+			Sealer: dtypes.SealerNode{
 				ListenAPI: cctx.String("sealer-listen-api"),
 				Token:     cctx.String("sealer-token"),
 			},
@@ -199,8 +199,8 @@ var updateCmd = &cli.Command{
 		defer closer()
 
 		posterAddr := dtypes.MinerInfo{
-			Addr:      addr,
-			Sealer: dtypes.SealerNode {
+			Addr: addr,
+			Sealer: dtypes.SealerNode{
 				ListenAPI: cctx.String("sealer-listen-api"),
 				Token:     cctx.String("sealer-token"),
 			},
@@ -263,6 +263,43 @@ var listCmd = &cli.Command{
 		}
 
 		formatJson, err := json.MarshalIndent(addrs, "", "\t")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(formatJson))
+		return nil
+
+	},
+}
+
+var stateCmd = &cli.Command{
+	Name:      "state",
+	Usage:     "print state of mining",
+	Flags:     []cli.Flag{},
+	ArgsUsage: "[address ...]",
+	Action: func(cctx *cli.Context) error {
+		postApi, closer, err := lcli.GetMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		var addrs []address.Address
+		for i, s := range cctx.Args().Slice() {
+			minerAddr, err := address.NewFromString(s)
+			if err != nil {
+				return xerrors.Errorf("parsing %d-th miner: %w", i, err)
+			}
+
+			addrs = append(addrs, minerAddr)
+		}
+
+		states, err := postApi.StatesForMining(addrs)
+		if err != nil {
+			return err
+		}
+
+		formatJson, err := json.MarshalIndent(states, "", "\t")
 		if err != nil {
 			return err
 		}
