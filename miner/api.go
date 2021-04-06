@@ -24,11 +24,14 @@ type IMinerManager interface {
 	AddAddress(dtypes.MinerInfo) error
 	UpdateAddress(dtypes.MinerInfo) error
 	ListAddress() ([]dtypes.MinerInfo, error)
+	StatesForMining([]address.Address) ([]dtypes.MinerState, error)
 	RemoveAddress(address.Address) error
 }
 
 type MockMinerMgr struct {
 }
+
+var _ IMinerManager = &MockMinerMgr{}
 
 func (m MockMinerMgr) AddAddress(dtypes.MinerInfo) error {
 	return nil
@@ -39,6 +42,10 @@ func (m MockMinerMgr) UpdateAddress(dtypes.MinerInfo) error {
 }
 
 func (m MockMinerMgr) ListAddress() ([]dtypes.MinerInfo, error) {
+	return nil, nil
+}
+
+func (m MockMinerMgr) StatesForMining([]address.Address) ([]dtypes.MinerState, error) {
 	return nil, nil
 }
 
