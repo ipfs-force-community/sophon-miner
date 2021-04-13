@@ -103,7 +103,7 @@ type minerWPP struct {
 	epp      chain.WinningPoStProver
 	wn       dtypes.WalletNode
 	isMining bool
-	err      error
+	err      string
 }
 
 type Miner struct {
@@ -317,11 +317,14 @@ minerLoop:
 					// waiting for mining results
 					select {
 					case <-tCtx.Done():
-						log.Errorf("mining block timeout for %s", tAddr.String())
+						log.Errorf("mining timeout for %s", tAddr.String())
+						mining.err = "mining timeout!"
 						return
 					case res := <-resChan:
 						if res != nil && res.winner != nil {
 							winPoSts = append(winPoSts, res) //nolint:staticcheck
+						} else if res.err != nil {
+							mining.err = res.err.Error()
 						}
 					}
 				}()
@@ -530,6 +533,7 @@ type winPoStRes struct {
 	postProof []proof2.PoStProof
 	dur       time.Duration
 	timetable miningTimetable
+	err       error
 }
 
 // mineOne attempts to mine a single block, and does so synchronously, if and
@@ -555,6 +559,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 		mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
 		if err != nil {
 			log.Errorf("failed to get mining base info: %w, miner: %s", err, addr)
+			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
 		if mbi == nil {
@@ -588,6 +593,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 		ticket, err := m.computeTicket(ctx, &rbase, base, mbi, addr)
 		if err != nil {
 			log.Errorf("scratching ticket for %s failed: %w", addr, err)
+			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
 
@@ -596,6 +602,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 			walletAPI, closer, err := client.NewWalletRPC(ctx, &mining.wn)
 			if err != nil {
 				log.Errorf("create wallet RPC failed: %w", err)
+				out <- &winPoStRes{addr: addr, err: err}
 				return
 			}
 			defer closer()
@@ -604,6 +611,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 		winner, err := chain.IsRoundWinner(ctx, base.TipSet, round, addr, rbase, mbi, miningCheckAPI)
 		if err != nil {
 			log.Errorf("failed to check for %s if we win next round: %w", addr, err)
+			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
 
@@ -618,12 +626,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 		buf := new(bytes.Buffer)
 		if err := addr.MarshalCBOR(buf); err != nil {
 			log.Errorf("failed to marshal miner address: %w", err)
+			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
 
 		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
 			log.Errorf("failed to get randomness for winning post: %w, miner: %s", err, addr)
+			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
 
@@ -634,6 +644,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 		postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand)
 		if err != nil {
 			log.Errorf("failed to compute winning post proof: %w, miner: %s", err, addr)
+			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
 
@@ -735,7 +746,7 @@ func (m *Miner) ManualStop(ctx context.Context, addr address.Address) error {
 
 	if mining, ok := m.minerWPPMap[addr]; ok {
 		mining.isMining = false
-		mining.err = nil
+		mining.err = ""
 		return nil
 	}
 
@@ -834,7 +845,5 @@ func (m *Miner) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, e
 		}
 	}
 
-
 	return res, nil
 }
-
