@@ -356,7 +356,7 @@ minerLoop:
 			for idx, res := range winPoSts {
 				tRes := res
 				// TODO: winning post proof
-				b, err := m.createBlock(base, tRes.addr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
+				b, err := m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
 				if err != nil {
 					log.Errorf("failed to create block: %w", err)
 					return
@@ -527,6 +527,7 @@ type miningTimetable struct {
 
 type winPoStRes struct {
 	addr      address.Address
+	waddr     address.Address
 	ticket    *types.Ticket
 	winner    *types.ElectionProof
 	bvals     []types.BeaconEntry
@@ -654,7 +655,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 		tt := miningTimetable{
 			tStart: start, tMBI: tMBI, tDrand: tDrand, tPowercheck: tPowercheck, tTicket: tTicket, tSeed: tSeed, tProof: tProof,
 		}
-		out <- &winPoStRes{addr: addr, ticket: ticket, winner: winner, bvals: bvals, postProof: postProof, dur: dur, timetable: tt}
+		out <- &winPoStRes{addr: addr, waddr: mbi.WorkerKey, ticket: ticket, winner: winner, bvals: bvals, postProof: postProof, dur: dur, timetable: tt}
 		log.Infow("mined new block ( -> Proof)", "took", dur, "miner", addr)
 	}()
 
@@ -708,14 +709,14 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 	}, nil
 }
 
-func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
+func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr address.Address, ticket *types.Ticket,
 	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
 	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1
 
 	// why even return this? that api call could just submit it for us
-	return m.api.MinerCreateBlock(context.TODO(), &api.BlockTemplate{
+	blockMsg, err := m.api.MinerCreateBlock(context.TODO(), &api.BlockTemplate{
 		Miner:            addr,
 		Parents:          base.TipSet.Key(),
 		Ticket:           ticket,
@@ -726,6 +727,38 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 		Timestamp:        uts,
 		WinningPoStProof: wpostProof,
 	})
+
+	if err != nil {
+		return blockMsg, err
+	}
+
+	// ToDo check if BlockHeader is signed
+	if blockMsg.Header.BlockSig == nil {
+		sign := m.api.WalletSign
+		if mining, ok := m.minerWPPMap[addr]; ok && mining.wn.Token != "" {
+			walletAPI, closer, err := client.NewWalletRPC(ctx, &mining.wn)
+			if err != nil {
+				return nil, err
+			}
+			defer closer()
+			sign = walletAPI.WalletSign
+		}
+
+		nosigbytes, err := blockMsg.Header.SigningBytes()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get SigningBytes: %v", err)
+		}
+
+		sig, err := sign(ctx, waddr, nosigbytes, core.MsgMeta{
+			Type: core.MTBlock,
+		})
+		if err != nil {
+			return nil, xerrors.Errorf("failed to sign new block: %v", err)
+		}
+		blockMsg.Header.BlockSig = sig
+	}
+
+	return blockMsg, err
 }
 
 func (m *Miner) ManualStart(ctx context.Context, addr address.Address) error {
