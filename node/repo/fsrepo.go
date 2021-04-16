@@ -42,14 +42,11 @@ type RepoType int
 
 const (
 	_                 = iota // Default is invalid
-	FullNode RepoType = iota
-	Miner
+	Miner RepoType = iota
 )
 
 func defConfForType(t RepoType) interface{} {
 	switch t {
-	case FullNode:
-		return config.DefaultFullNode()
 	case Miner:
 		return config.DefaultMinerConfig()
 	default:
@@ -150,6 +147,29 @@ func (fsr *FsRepo) initConfig(t RepoType) error {
 		return xerrors.Errorf("close config: %w", err)
 	}
 	return nil
+}
+
+func (fsr *FsRepo) Update(cfg *config.MinerConfig) error {
+	f, err := os.Open(fsr.configPath)
+	if err != nil {
+		return err
+	}
+
+	comm, err := config.ConfigComment(cfg)
+	if err != nil {
+		return xerrors.Errorf("comment: %w", err)
+	}
+	_, err = f.Write(comm)
+	if err != nil {
+		return xerrors.Errorf("write config: %w", err)
+	}
+
+	if err := f.Close(); err != nil {
+		return xerrors.Errorf("close config: %w", err)
+	}
+
+	return nil
+
 }
 
 func (fsr *FsRepo) initKeystore() error {

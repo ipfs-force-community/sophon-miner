@@ -2,12 +2,18 @@ package config
 
 import (
 	"encoding"
+	"net/http"
+	"net/url"
 	"time"
+
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/prometheus/common/log"
 )
 
 // Common is common config between full node and miner
 type Common struct {
-	API    API
+	API API
 }
 
 // API contains configs for API endpoint
@@ -17,13 +23,50 @@ type API struct {
 	Timeout             Duration
 }
 
-// FullNode is a full node config
 type FullNode struct {
-	Common
+	ListenAPI string
+	Token     string
+}
+
+func (sn FullNode) DialArgs() (string, error) {
+	ma, err := multiaddr.NewMultiaddr(sn.ListenAPI)
+	if err == nil {
+		_, addr, err := manet.DialArgs(ma)
+		if err != nil {
+			return "", err
+		}
+
+		return "ws://" + addr + "/rpc/v0", nil
+	}
+
+	_, err = url.Parse(sn.ListenAPI)
+	if err != nil {
+		return "", err
+	}
+	return sn.ListenAPI + "/rpc/v0", nil
+}
+
+func (sn FullNode) AuthHeader() http.Header {
+	if len(sn.Token) != 0 {
+		headers := http.Header{}
+		headers.Add("Authorization", "Bearer "+string(sn.Token))
+		return headers
+	}
+	log.Warn("Sealer API Token not set and requested, capabilities might be limited.")
+	return nil
+}
+
+func defFullNode() FullNode {
+	return FullNode{
+		ListenAPI: "/ip4/127.0.0.1/tcp/1234/http",
+		Token:     "",
+	}
 }
 
 type MinerConfig struct {
 	Common
+
+	FullNode
 
 	BlockRecord string
 }
@@ -37,16 +80,10 @@ func defCommon() Common {
 	}
 }
 
-// DefaultFullNode returns the default config
-func DefaultFullNode() *FullNode {
-	return &FullNode{
-		Common: defCommon(),
-	}
-}
-
 func DefaultMinerConfig() *MinerConfig {
 	minerCfg := &MinerConfig{
 		Common:      defCommon(),
+		FullNode:    defFullNode(),
 		BlockRecord: "localdb",
 	}
 

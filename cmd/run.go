@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -69,7 +70,32 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
+		minerRepoPath := cctx.String(FlagMinerRepo)
+		r, err := repo.NewFS(minerRepoPath)
+		if err != nil {
+			return err
+		}
+
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
+		}
+
+		lr, err := r.Lock(repo.Miner)
+		if err != nil {
+			return err
+		}
+		cfgV, err := lr.Config()
+		if err != nil {
+			return err
+		}
+		cfg := cfgV.(*config.MinerConfig)
+
+		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx, cfg.FullNode)
+		lr.Close() //nolint:errcheck
 		if err != nil {
 			return xerrors.Errorf("getting full node api: %w", err)
 		}
@@ -98,20 +124,6 @@ var runCmd = &cli.Command{
 			if err := SyncWait(ctx, nodeApi, false); err != nil {
 				return xerrors.Errorf("sync wait: %w", err)
 			}
-		}
-
-		minerRepoPath := cctx.String(FlagMinerRepo)
-		r, err := repo.NewFS(minerRepoPath)
-		if err != nil {
-			return err
-		}
-
-		ok, err := r.Exists()
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
 		}
 
 		shutdownChan := make(chan struct{})

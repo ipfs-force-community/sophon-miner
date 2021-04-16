@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/venus-miner/chain/types"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
+	"github.com/filecoin-project/venus-miner/node/repo"
 )
 
 func isSupportedSectorSize(ssize abi.SectorSize) bool {
@@ -97,7 +99,34 @@ var addCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
+		minerRepoPath := cctx.String(FlagMinerRepo)
+		r, err := repo.NewFS(minerRepoPath)
+		if err != nil {
+			return err
+		}
+
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
+		}
+
+		lr, err := r.Lock(repo.Miner)
+		if err != nil {
+			return err
+		}
+		defer lr.Close() //nolint:errcheck
+
+		cfgV, err := lr.Config()
+		if err != nil {
+			return err
+		}
+
+		cfg := cfgV.(*config.MinerConfig)
+
+		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx, cfg.FullNode)
 		if err != nil {
 			return xerrors.Errorf("getting full node api: %w", err)
 		}
