@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"net/http"
 	"os"
 	"os/signal"
@@ -49,8 +50,6 @@ type ApiConnector func() api.FullNode
 // server (only used by the tests)
 func flagForAPI(t repo.RepoType) string {
 	switch t {
-	case repo.FullNode:
-		return "api-url"
 	case repo.Miner:
 		return "miner-api-url"
 	default:
@@ -60,8 +59,6 @@ func flagForAPI(t repo.RepoType) string {
 
 func flagForRepo(t repo.RepoType) string {
 	switch t {
-	case repo.FullNode:
-		return "repo"
 	case repo.Miner:
 		return "miner-repo"
 	default:
@@ -126,7 +123,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 	ti, ok := ctx.App.Metadata["repoType"]
 	if !ok {
 		log.Errorf("unknown repo type, are you sure you want to use GetAPI?")
-		ti = repo.FullNode
+		ti = repo.Miner
 	}
 	t, ok := ti.(repo.RepoType)
 	if !ok {
@@ -145,17 +142,13 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 	return client.NewCommonRPC(ctx.Context, addr, headers)
 }
 
-func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
-	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
-		return tn.(api.FullNode), func() {}, nil
-	}
-
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
+func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (api.FullNode, jsonrpc.ClientCloser, error) {
+	addr, err := fn.DialArgs()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
-	return client.NewFullNodeRPC(ctx.Context, addr, headers)
+	return client.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
 }
 
 func GetMinerAPI(ctx *cli.Context) (api.MinerAPI, jsonrpc.ClientCloser, error) {
@@ -166,7 +159,6 @@ func GetMinerAPI(ctx *cli.Context) (api.MinerAPI, jsonrpc.ClientCloser, error) {
 
 	return client.NewMinerRPC(addr, headers)
 }
-
 
 func DaemonContext(cctx *cli.Context) context.Context {
 	if mtCtx, ok := cctx.App.Metadata[metadataTraceContext]; ok {
@@ -207,4 +199,3 @@ func WithCategory(cat string, cmd *cli.Command) *cli.Command {
 	cmd.Category = cat
 	return cmd
 }
-

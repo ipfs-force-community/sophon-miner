@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"os"
 	"time"
 
@@ -38,6 +39,18 @@ var initCmd = &cli.Command{
 			Usage: "specify the address of an already created miner actor",
 		},
 		&cli.StringFlag{
+			Name:     "api",
+			Usage:    "full node api",
+			Value:    "",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "token",
+			Usage:    "full node token",
+			Value:    "",
+			Required: true,
+		},
+		&cli.StringFlag{
 			Name:  "sealer-listen-api",
 			Usage: "sealer rpc api",
 			Value: "",
@@ -63,15 +76,15 @@ var initCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		//log.Info("Checking proof parameters")
-
-		//if err := fetchingProofParameters(ctx); err != nil {
-		//	return xerrors.Errorf("fetching proof parameters: %w", err)
-		//}
-
 		log.Info("Trying to connect to full node RPC")
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		fullnode := config.FullNode{}
+		if cctx.String("api") != "" && cctx.String("token") != "" {
+			fullnode.ListenAPI = cctx.String("api")
+			fullnode.Token = cctx.String("token")
+		}
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx, fullnode)
 		if err != nil {
 			return err
 		}
@@ -110,7 +123,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if err := storageMinerInit(cctx, r); err != nil {
+		if err := storageMinerInit(cctx, r, fullnode); err != nil {
 			log.Errorf("Failed to initialize venus-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
@@ -129,7 +142,7 @@ var initCmd = &cli.Command{
 	},
 }
 
-func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
+func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error {
 	lr, err := r.Lock(repo.Miner)
 	if err != nil {
 		return err
@@ -194,6 +207,15 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo) error {
 		} else {
 			return xerrors.New("the actor's Protocol is not ID")
 		}
+	}
+
+	// modify config
+	log.Info("modify fullnode of config")
+	if err := lr.SetConfig(func(i interface{}) {
+		cfg := i.(*config.MinerConfig)
+		cfg.FullNode = fn
+	}); err != nil {
+		return xerrors.Errorf("modify config failed: %w", err)
 	}
 
 	return nil

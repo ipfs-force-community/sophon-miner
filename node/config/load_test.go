@@ -14,16 +14,16 @@ func TestDecodeNothing(t *testing.T) {
 	assert := assert.New(t)
 
 	{
-		cfg, err := FromFile(os.DevNull, DefaultFullNode())
+		cfg, err := FromFile(os.DevNull, DefaultMinerConfig())
 		assert.Nil(err, "error should be nil")
-		assert.Equal(DefaultFullNode(), cfg,
+		assert.Equal(DefaultMinerConfig(), cfg,
 			"config from empty file should be the same as default")
 	}
 
 	{
-		cfg, err := FromFile("./does-not-exist.toml", DefaultFullNode())
+		cfg, err := FromFile("./does-not-exist.toml", DefaultMinerConfig())
 		assert.Nil(err, "error should be nil")
-		assert.Equal(DefaultFullNode(), cfg,
+		assert.Equal(DefaultMinerConfig(), cfg,
 			"config from not exisiting file should be the same as default")
 	}
 }
@@ -34,11 +34,11 @@ func TestParitalConfig(t *testing.T) {
 		[API]
 		Timeout = "10s"
 		`
-	expected := DefaultFullNode()
+	expected := DefaultMinerConfig()
 	expected.API.Timeout = Duration(10 * time.Second)
 
 	{
-		cfg, err := FromReader(bytes.NewReader([]byte(cfgString)), DefaultFullNode())
+		cfg, err := FromReader(bytes.NewReader([]byte(cfgString)), DefaultMinerConfig())
 		assert.NoError(err, "error should be nil")
 		assert.Equal(expected, cfg,
 			"config from reader should contain changes")
@@ -55,7 +55,7 @@ func TestParitalConfig(t *testing.T) {
 		assert.NoError(err, "closing tmp file should not error")
 		defer os.Remove(fname) //nolint:errcheck
 
-		cfg, err := FromFile(fname, DefaultFullNode())
+		cfg, err := FromFile(fname, DefaultMinerConfig())
 		assert.Nil(err, "error should be nil")
 		assert.Equal(expected, cfg,
 			"config from reader should contain changes")
