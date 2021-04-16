@@ -77,11 +77,11 @@ var runCmd = &cli.Command{
 
 		ctx := lcli.DaemonContext(cctx)
 
-		log.Info("Checking proof parameters")
-
-		if err := fetchingProofParameters(ctx); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
-		}
+		//log.Info("Checking proof parameters")
+		//
+		//if err := fetchingProofParameters(ctx); err != nil {
+		//	return xerrors.Errorf("fetching proof parameters: %w", err)
+		//}
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {

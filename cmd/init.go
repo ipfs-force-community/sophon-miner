@@ -63,11 +63,11 @@ var initCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		log.Info("Checking proof parameters")
+		//log.Info("Checking proof parameters")
 
-		if err := fetchingProofParameters(ctx); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
-		}
+		//if err := fetchingProofParameters(ctx); err != nil {
+		//	return xerrors.Errorf("fetching proof parameters: %w", err)
+		//}
 
 		log.Info("Trying to connect to full node RPC")
 
@@ -328,7 +328,7 @@ func SyncWait(ctx context.Context, napi api.FullNode, watch bool) error {
 	}
 }
 
-func fetchingProofParameters(ctx context.Context) error {
+func fetchingProofParameters(ctx context.Context) error { // nolint
 	ss := make([]uint64, 0)
 
 	log.Info("SupportedProofTypes: ", miner0.SupportedProofTypes)
