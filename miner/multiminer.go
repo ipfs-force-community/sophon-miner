@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/api/client"
@@ -25,6 +24,7 @@ import (
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/journal"
+	"github.com/filecoin-project/venus-miner/node/modules/block_recorder"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
@@ -53,11 +53,7 @@ func randTimeOffset(width time.Duration) time.Duration {
 }
 
 func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager minermanage.MinerManageAPI,
-	sf *slashfilter.SlashFilter /*blockRecord block_recorder.IBlockRecord,*/, j journal.Journal) *Miner {
-	arc, err := lru.NewARC(10000)
-	if err != nil {
-		panic(err)
-	}
+	sf *slashfilter.SlashFilter, j journal.Journal, blockRecord block_recorder.IBlockRecord) *Miner {
 
 	miner := &Miner{
 		api: api,
@@ -73,10 +69,8 @@ func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager miner
 			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
 
-		sf:                sf,
-		minedBlockHeights: arc,
-
-		//blockRecord: blockRecord,
+		sf:          sf,
+		blockRecord: blockRecord,
 
 		evtTypes: [...]journal.EventType{
 			evtTypeBlockMined: j.RegisterEventType("miner", "block_mined"),
@@ -117,8 +111,9 @@ type Miner struct {
 
 	lastWork *MiningBase
 
-	sf                *slashfilter.SlashFilter
-	minedBlockHeights *lru.ARCCache
+	sf          *slashfilter.SlashFilter
+	blockRecord block_recorder.IBlockRecord
+	// minedBlockHeights *lru.ARCCache
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
@@ -131,7 +126,6 @@ type Miner struct {
 
 	mineTimeout time.Duration // the timeout of mining once
 
-	//blockRecord block_recorder.IBlockRecord
 }
 
 func (m *Miner) Start(ctx context.Context) error {
@@ -418,25 +412,16 @@ minerLoop:
 						return
 					}
 
-					blkKey := fmt.Sprintf("%s-%d", bm.Header.Miner, bm.Header.Height)
-					if _, ok := m.minedBlockHeights.Get(blkKey); ok {
+					has := m.blockRecord.Has(bm.Header.Miner, uint64(bm.Header.Height))
+					if has {
 						log.Warnw("Created a block at the same height as another block we've created", "height", bm.Header.Height, "miner", bm.Header.Miner, "parents", bm.Header.Parents)
 						return
 					}
 
-					m.minedBlockHeights.Add(blkKey, true)
-
-					// TODO: should do better 'anti slash' protection here
-					//has := m.blockRecord.Has(m.address, uint64(b.Header.Height))
-					//if has {
-					//	log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
-					//	continue
-					//}
-					//
-					//err = m.blockRecord.MarkAsProduced(m.address, uint64(b.Header.Height))
-					//if err != nil {
-					//	log.Errorf("failed to write db: %s", err)
-					//}
+					err = m.blockRecord.MarkAsProduced(bm.Header.Miner, uint64(bm.Header.Height))
+					if err != nil {
+						log.Errorf("failed to write db: %s", err)
+					}
 
 					if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
 						log.Errorf("failed to submit newly mined block: %s", err)

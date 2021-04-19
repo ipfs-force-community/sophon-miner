@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
 	"github.com/filecoin-project/venus-miner/journal"
 	"github.com/filecoin-project/venus-miner/miner"
+	"github.com/filecoin-project/venus-miner/node/modules/block_recorder"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
@@ -20,9 +21,9 @@ func NewWiningPoster(lc fx.Lifecycle,
 	verifier ffiwrapper.Verifier,
 	minerManager minermanage.MinerManageAPI,
 	j journal.Journal,
-	//blockRecord block_recorder.IBlockRecord
+	blockRecord block_recorder.IBlockRecord,
 ) (miner.MiningAPI, error) {
-	m := miner.NewMiner(api, verifier, minerManager, slashfilter.New(ds), j)
+	m := miner.NewMiner(api, verifier, minerManager, slashfilter.New(ds), j, blockRecord)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

@@ -84,7 +84,7 @@ func DefaultMinerConfig() *MinerConfig {
 	minerCfg := &MinerConfig{
 		Common:      defCommon(),
 		FullNode:    defFullNode(),
-		BlockRecord: "localdb",
+		BlockRecord: "cache",
 	}
 
 	minerCfg.Common.API.ListenAddress = "/ip4/0.0.0.0/tcp/12308/http" //change default address
