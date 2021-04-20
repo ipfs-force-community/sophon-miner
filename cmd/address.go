@@ -113,17 +113,10 @@ var addCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
 		}
 
-		lr, err := r.Lock(repo.Miner)
+		cfgV, err := r.Config()
 		if err != nil {
 			return err
 		}
-		defer lr.Close() //nolint:errcheck
-
-		cfgV, err := lr.Config()
-		if err != nil {
-			return err
-		}
-
 		cfg := cfgV.(*config.MinerConfig)
 
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx, cfg.FullNode)
