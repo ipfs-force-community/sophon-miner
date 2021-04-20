@@ -229,6 +229,10 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 	return bytes.TrimSpace(tb), nil
 }
 
+func (fsr *FsRepo) Config() (interface{}, error) {
+	return config.FromFile(fsr.configPath, defConfForType(Miner))
+}
+
 // Lock acquires exclusive lock on this repo
 func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
 	locked, err := fslock.Locked(fsr.path, fsLock)

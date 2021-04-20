@@ -63,12 +63,6 @@ func main() {
 				Name: "color",
 			},
 			&cli.StringFlag{
-				Name:    "repo",
-				EnvVars: []string{"VENUS_PATH"},
-				Hidden:  true,
-				Value:   "~/.venus", // TODO: Consider XDG_DATA_HOME
-			},
-			&cli.StringFlag{
 				Name:    FlagMinerRepo,
 				Aliases: []string{FlagMinerRepoDeprecation},
 				EnvVars: []string{"VENUS_MINER_PATH"},
