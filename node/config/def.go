@@ -63,12 +63,38 @@ func defFullNode() FullNode {
 	}
 }
 
+type MySQLConfig struct {
+	User            string        `json:"user"`
+	Password        string        `json:"password"`
+	Host            string        `json:"host"`
+	Port            uint          `json:"port"`
+	DbName          string        `json:"dbName"`
+	MaxOpenConn     int           `json:"maxOpenConn"`     // 100
+	MaxIdleConn     int           `json:"maxIdleConn"`     // 10
+	ConnMaxLifeTime time.Duration `json:"connMaxLifeTime"` // minuter: 60
+	Debug           bool          `json:"debug"`
+}
+
+type MinerDbConfig struct {
+	Type  string      `json:"type"`
+	MySQL MySQLConfig `json:"mysql"`
+}
+
+func newDefaultMinerDbConfig() *MinerDbConfig {
+	return &MinerDbConfig{
+		Type:  "local",
+		MySQL: MySQLConfig{},
+	}
+}
+
 type MinerConfig struct {
 	Common
 
 	FullNode
 
 	BlockRecord string
+
+	Db *MinerDbConfig `json:"db"`
 }
 
 func defCommon() Common {
@@ -85,6 +111,7 @@ func DefaultMinerConfig() *MinerConfig {
 		Common:      defCommon(),
 		FullNode:    defFullNode(),
 		BlockRecord: "cache",
+		Db:          newDefaultMinerDbConfig(),
 	}
 
 	minerCfg.Common.API.ListenAddress = "/ip4/0.0.0.0/tcp/12308/http" //change default address

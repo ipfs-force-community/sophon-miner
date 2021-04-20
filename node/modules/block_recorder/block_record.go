@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	LocalDb     = "localdb"
-	Cache       = "cache"
-	Distributed = "distributeds"
+	Local = "local"
+	Cache = "cache"
+	MySQL = "mysql"
 )
 
 type IBlockRecord interface {
