@@ -1,4 +1,4 @@
-package minermanage
+package local
 
 import (
 	"encoding/json"
@@ -10,22 +10,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
+	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
 )
 
 const actorKey = "miner-actors"
 const defaultKey = "default-actor"
 
 var ErrNoDefault = xerrors.Errorf("not set default key")
-
-type MinerManageAPI interface {
-	Put(addr dtypes.MinerInfo) error
-	Set(addr dtypes.MinerInfo) error
-	Has(checkAddr address.Address) bool
-	Get(checkAddr address.Address) *dtypes.MinerInfo
-	List() ([]dtypes.MinerInfo, error)
-	Remove(rmAddr address.Address) error
-	Count() int
-}
 
 type MinerManager struct {
 	miners []dtypes.MinerInfo
@@ -34,7 +25,7 @@ type MinerManager struct {
 	lk sync.Mutex
 }
 
-func NewMinerManger(ds dtypes.MetadataDS) (*MinerManager, error) {
+func NewMinerManger(ds dtypes.MetadataDS) (minermanage.MinerManageAPI, error) {
 	addrBytes, err := ds.Get(datastore.NewKey(actorKey))
 	if err != nil && err != datastore.ErrNotFound {
 		return nil, err
@@ -223,4 +214,4 @@ func (m *MinerManager) Count() int {
 	return len(m.miners)
 }
 
-var _ MinerManageAPI = &MinerManager{}
+var _ minermanage.MinerManageAPI = &MinerManager{}

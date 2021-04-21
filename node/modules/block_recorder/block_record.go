@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	LocalDb     = "localdb"
-	Cache       = "cache"
-	Distributed = "distributeds"
+	Local = "local"
+	Cache = "cache"
+	MySQL = "mysql"
 )
 
 type IBlockRecord interface {
@@ -57,7 +57,7 @@ func NewCacheRecord() (*CacheRecord, error) {
 
 func (c *CacheRecord) MarkAsProduced(miner address.Address, height uint64) error {
 	blkKey := datastore.NewKey(fmt.Sprintf("%s-%d", miner, height))
-	c.cache.Add(blkKey, struct{}{})
+	c.cache.Add(blkKey, true)
 	return nil
 }
 

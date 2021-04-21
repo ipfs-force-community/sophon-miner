@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	metricsi "github.com/ipfs/go-metrics-interface"
 
 	logging "github.com/ipfs/go-log"
+	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
@@ -26,6 +26,8 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/helpers"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
+	"github.com/filecoin-project/venus-miner/node/modules/minermanage/local"
+	"github.com/filecoin-project/venus-miner/node/modules/minermanage/mysql"
 	"github.com/filecoin-project/venus-miner/node/repo"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/venus-miner/system"
@@ -111,14 +113,12 @@ func Online() Option {
 		),
 
 		// miner
-		ApplyIf(isType(repo.Miner),
-
-		),
+		ApplyIf(isType(repo.Miner)),
 	)
 }
 
 // Config sets up constructors based on the provided Config
-func ConfigCommon( cfg *config.Common) Option {
+func ConfigCommon(cfg *config.Common) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
@@ -194,7 +194,6 @@ func ConfigPostOptions(cctx *cli.Context, c interface{}) Option {
 	shareOps := Options(
 		Override(new(*config.MinerConfig), scfg),
 
-		Override(new(minermanage.MinerManageAPI), minermanage.NewMinerManger),
 		Override(new(api.Common), From(new(common.CommonAPI))),
 		Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 	)
@@ -217,8 +216,14 @@ func PostWinningOptions(postCfg *config.MinerConfig) (Option, error) {
 		return nil, err
 	}
 
+	minerManageAPIOp, err := newMinerManageAPI(postCfg.Db)
+	if err != nil {
+		return nil, err
+	}
+
 	return Options(
 		blockRecordOp,
+		minerManageAPIOp,
 		Override(new(miner.MiningAPI), modules.NewWiningPoster),
 	), nil
 }
@@ -246,8 +251,21 @@ func MinerAPI(out *api.MinerAPI) Option {
 	)
 }
 
+func newMinerManageAPI(dbConfig *config.MinerDbConfig) (Option, error) {
+	switch dbConfig.Type {
+	case minermanage.Local:
+		return Override(new(minermanage.MinerManageAPI), local.NewMinerManger), nil
+	case minermanage.MySQL:
+		return Override(new(minermanage.MinerManageAPI), mysql.NewMinerManger(&dbConfig.MySQL)), nil
+	default:
+
+	}
+
+	return nil, xerrors.Errorf("unsupport db type")
+}
+
 func newBlockRecord(t string) (Option, error) {
-	if t == block_recorder.LocalDb {
+	if t == block_recorder.Local {
 		return Override(new(block_recorder.IBlockRecord), block_recorder.NewLocalDBRecord), nil
 	} else if t == block_recorder.Cache {
 		return Override(new(block_recorder.IBlockRecord), block_recorder.NewCacheRecord), nil
