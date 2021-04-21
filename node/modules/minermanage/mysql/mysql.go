@@ -26,6 +26,10 @@ type mysqlMinerInfo struct {
 	WalletToken string `gorm:"column:wallet_token;type:varchar(256);"`
 }
 
+func (m *mysqlMinerInfo) TableName() string {
+	return "miner_infos"
+}
+
 type MinerManagerForMySQL struct {
 	miners []dtypes.MinerInfo
 
@@ -71,7 +75,7 @@ func NewMinerManger(cfg *config.MySQLConfig) func() (minermanage.MinerManageAPI,
 		// The maximum time that the connection can be reused is set.
 		sqlDB.SetConnMaxLifetime(time.Minute * cfg.ConnMaxLifeTime)
 
-		log.Info("init mysql success for SlashFilter!")
+		log.Info("init mysql success for MinerManger!")
 		m := &MinerManagerForMySQL{
 			_db: db,
 		}
