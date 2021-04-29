@@ -1,5 +1,8 @@
 SHELL=/usr/bin/env bash
 
+all: build
+.PHONY: all
+
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
 ifeq ($(shell expr $(GOVERSION) \< 15), 1)
 $(warning Your Golang version is go 1.$(GOVERSION))
@@ -52,16 +55,19 @@ deps: $(BUILD_DEPS)
 .PHONY: deps
 
 debug: GOFLAGS+=-tags=debug
-debug: miner
+debug: build
 
 2k: GOFLAGS+=-tags=2k
-2k: miner
+2k: build
 
 calibnet: GOFLAGS+=-tags=calibnet
-calibnet: miner
+calibnet: build
 
 nerpanet: GOFLAGS+=-tags=nerpanet
-nerpanet: miner
+nerpanet: build
+
+build: miner
+.PHONY: build
 
 deps: $(BUILD_DEPS)
 .PHONY: deps
@@ -72,7 +78,7 @@ miner: $(BUILD_DEPS)
 	go run github.com/GeertJohan/go.rice/rice append --exec venus-miner -i ./build
 
 .PHONY: miner
-BINS+=miner
+BINS+=venus-miner
 
 # MISC
 
