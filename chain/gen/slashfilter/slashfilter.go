@@ -15,12 +15,16 @@ import (
 	"github.com/filecoin-project/venus-miner/chain/types"
 )
 
+type SlashFilterAPI interface {
+	MinedBlock(*types.BlockHeader,  abi.ChainEpoch) error
+}
+
 type SlashFilter struct {
 	byEpoch   ds.Datastore // double-fork mining faults, parent-grinding fault
 	byParents ds.Datastore // time-offset mining faults
 }
 
-func New(dstore ds.Batching) *SlashFilter {
+func NewLocal(dstore ds.Batching) SlashFilterAPI {
 	return &SlashFilter{
 		byEpoch:   namespace.Wrap(dstore, ds.NewKey("/slashfilter/epoch")),
 		byParents: namespace.Wrap(dstore, ds.NewKey("/slashfilter/parents")),

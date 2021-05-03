@@ -64,11 +64,7 @@ func defFullNode() FullNode {
 }
 
 type MySQLConfig struct {
-	User            string        `json:"user"`
-	Password        string        `json:"password"`
-	Host            string        `json:"host"`
-	Port            uint          `json:"port"`
-	DbName          string        `json:"dbName"`
+	Conn            string        `json:"conn"`
 	MaxOpenConn     int           `json:"maxOpenConn"`     // 100
 	MaxIdleConn     int           `json:"maxIdleConn"`     // 10
 	ConnMaxLifeTime time.Duration `json:"connMaxLifeTime"` // minuter: 60

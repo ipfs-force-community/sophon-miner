@@ -13,6 +13,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus-miner/api"
+	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/journal"
 	_ "github.com/filecoin-project/venus-miner/lib/sigs/bls"
@@ -221,9 +222,15 @@ func PostWinningOptions(postCfg *config.MinerConfig) (Option, error) {
 		return nil, err
 	}
 
+	slashFilterAPIOp, err := newSlashFilterAPI(postCfg.Db)
+	if err != nil {
+		return nil, err
+	}
+	
 	return Options(
 		blockRecordOp,
 		minerManageAPIOp,
+		slashFilterAPIOp,
 		Override(new(miner.MiningAPI), modules.NewWiningPoster),
 	), nil
 }
@@ -257,6 +264,19 @@ func newMinerManageAPI(dbConfig *config.MinerDbConfig) (Option, error) {
 		return Override(new(minermanage.MinerManageAPI), local.NewMinerManger), nil
 	case minermanage.MySQL:
 		return Override(new(minermanage.MinerManageAPI), mysql.NewMinerManger(&dbConfig.MySQL)), nil
+	default:
+
+	}
+
+	return nil, xerrors.Errorf("unsupport db type")
+}
+
+func newSlashFilterAPI(dbConfig *config.MinerDbConfig) (Option, error) {
+	switch dbConfig.Type{
+	case minermanage.Local:
+		return Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal), nil
+	case minermanage.MySQL:
+		return Override(new(slashfilter.SlashFilterAPI), slashfilter.NewMysqlSlashFilter(&dbConfig.MySQL)), nil
 	default:
 
 	}

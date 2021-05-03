@@ -1,7 +1,6 @@
 package mysql
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -39,19 +38,12 @@ type MinerManagerForMySQL struct {
 
 func NewMinerManger(cfg *config.MySQLConfig) func() (minermanage.MinerManageAPI, error) {
 	return func() (minermanage.MinerManageAPI, error){
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&timeout=%s",
-			cfg.User,
-			cfg.Password,
-			cfg.Host,
-			cfg.Port,
-			cfg.DbName,
-			"10s")
-
-		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		// root:123456@tcp(ip:3306)/venus_miner?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s
+		db, err := gorm.Open(mysql.Open(cfg.Conn), &gorm.Config{
 			//Logger: logger.Default.LogMode(logger.Info),
 		})
 		if err != nil {
-			return nil, xerrors.Errorf("[db connection failed] Database name: %s %w", cfg.DbName, err)
+			return nil, xerrors.Errorf("[db connection failed] conn: %s %w", cfg.Conn, err)
 		}
 
 		db.Set("gorm:table_options", "CHARSET=utf8mb4")
@@ -73,7 +65,7 @@ func NewMinerManger(cfg *config.MySQLConfig) func() (minermanage.MinerManageAPI,
 		// Set the maximum number of open database connections.
 		sqlDB.SetMaxOpenConns(cfg.MaxOpenConn)
 		// The maximum time that the connection can be reused is set.
-		sqlDB.SetConnMaxLifetime(time.Minute * cfg.ConnMaxLifeTime)
+		sqlDB.SetConnMaxLifetime(time.Second * cfg.ConnMaxLifeTime)
 
 		log.Info("init mysql success for MinerManger!")
 		m := &MinerManagerForMySQL{
