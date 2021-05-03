@@ -53,7 +53,7 @@ func randTimeOffset(width time.Duration) time.Duration {
 }
 
 func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager minermanage.MinerManageAPI,
-	sf *slashfilter.SlashFilter, j journal.Journal, blockRecord block_recorder.IBlockRecord) *Miner {
+	sf slashfilter.SlashFilterAPI, j journal.Journal, blockRecord block_recorder.IBlockRecord) *Miner {
 
 	miner := &Miner{
 		api: api,
@@ -112,7 +112,7 @@ type Miner struct {
 
 	lastWork *MiningBase
 
-	sf          *slashfilter.SlashFilter
+	sf          slashfilter.SlashFilterAPI
 	blockRecord block_recorder.IBlockRecord
 	// minedBlockHeights *lru.ARCCache
 
