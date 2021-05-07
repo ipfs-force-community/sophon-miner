@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/chain/types"
+	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
 
 type SlashFilterAPI interface {
@@ -24,7 +25,11 @@ type SlashFilter struct {
 	byParents ds.Datastore // time-offset mining faults
 }
 
-func NewLocal(dstore ds.Batching) SlashFilterAPI {
+func NewLocal(ds dtypes.MetadataDS) SlashFilterAPI {
+	return New(ds)
+}
+
+func New(dstore ds.Batching) *SlashFilter {
 	return &SlashFilter{
 		byEpoch:   namespace.Wrap(dstore, ds.NewKey("/slashfilter/epoch")),
 		byParents: namespace.Wrap(dstore, ds.NewKey("/slashfilter/parents")),
