@@ -27,7 +27,7 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 			if err != nil {
 				log.Infow("mining warm up failed", "miner", tAddr, "err", err.Error())
 				m.minerWPPMap[tAddr].isMining = false // Those who fail to pass cannot be mined
-				m.minerWPPMap[tAddr].err = err.Error()
+				m.minerWPPMap[tAddr].err = append(m.minerWPPMap[tAddr].err, time.Now().Format("2006-01-02 15:04:05 ")+err.Error())
 			}
 		}()
 	}

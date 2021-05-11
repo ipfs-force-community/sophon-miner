@@ -35,7 +35,7 @@ type MinerInfo struct {
 type MinerState struct {
 	Addr     address.Address
 	IsMining bool
-	Err      string
+	Err      []string
 }
 
 func (sn SealerNode) DialArgs() (string, error) {
