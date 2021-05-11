@@ -41,6 +41,8 @@ const (
 	evtTypeBlockMined = iota
 )
 
+var DefaultMaxErrCounts = 20
+
 // returns a callback reporting whether we mined a blocks in this round
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error)
 
@@ -98,7 +100,7 @@ type minerWPP struct {
 	epp      chain.WinningPoStProver
 	wn       dtypes.WalletNode
 	isMining bool
-	err      string
+	err      []string
 }
 
 type Miner struct {
@@ -313,13 +315,19 @@ minerLoop:
 					select {
 					case <-tCtx.Done():
 						log.Errorf("mining timeout for %s", tAddr.String())
-						mining.err = "mining timeout!"
+						if len(mining.err) >= DefaultMaxErrCounts {
+							mining.err = mining.err[:DefaultMaxErrCounts-2]
+						}
+						mining.err = append(mining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
 						return
 					case res := <-resChan:
 						if res != nil && res.winner != nil {
 							winPoSts = append(winPoSts, res) //nolint:staticcheck
 						} else if res.err != nil {
-							mining.err = res.err.Error()
+							if len(mining.err) > DefaultMaxErrCounts {
+								mining.err = mining.err[:DefaultMaxErrCounts-2]
+							}
+							mining.err = append(mining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
 						}
 					}
 				}()
@@ -765,7 +773,7 @@ func (m *Miner) ManualStop(ctx context.Context, addr address.Address) error {
 
 	if mining, ok := m.minerWPPMap[addr]; ok {
 		mining.isMining = false
-		mining.err = ""
+		mining.err = []string{}
 		return nil
 	}
 
