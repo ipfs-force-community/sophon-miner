@@ -295,7 +295,7 @@ minerLoop:
 		for addr, mining := range m.minerWPPMap {
 			if mining.isMining {
 				wg.Add(1)
-				epp := mining.epp
+				tMining := mining
 				tAddr := addr
 
 				go func() {
@@ -305,7 +305,7 @@ minerLoop:
 					tCtx, tCtxCancel := context.WithTimeout(ctx, m.mineTimeout)
 					defer tCtxCancel()
 
-					resChan, err := m.mineOne(tCtx, base, tAddr, epp)
+					resChan, err := m.mineOne(tCtx, base, tAddr, tMining.epp)
 					if err != nil { // ToDo retry or continue minerLoop ? currently err is always nil
 						log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
 						return
@@ -315,19 +315,19 @@ minerLoop:
 					select {
 					case <-tCtx.Done():
 						log.Errorf("mining timeout for %s", tAddr.String())
-						if len(mining.err) >= DefaultMaxErrCounts {
-							mining.err = mining.err[:DefaultMaxErrCounts-2]
+						if len(tMining.err) >= DefaultMaxErrCounts {
+							tMining.err = tMining.err[:DefaultMaxErrCounts-2]
 						}
-						mining.err = append(mining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
+						tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
 						return
 					case res := <-resChan:
 						if res != nil && res.winner != nil {
 							winPoSts = append(winPoSts, res) //nolint:staticcheck
 						} else if res.err != nil {
-							if len(mining.err) > DefaultMaxErrCounts {
-								mining.err = mining.err[:DefaultMaxErrCounts-2]
+							if len(tMining.err) > DefaultMaxErrCounts {
+								tMining.err = tMining.err[:DefaultMaxErrCounts-2]
 							}
-							mining.err = append(mining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
+							tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
 						}
 					}
 				}()
