@@ -54,18 +54,6 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-debug: GOFLAGS+=-tags=debug
-debug: build
-
-2k: GOFLAGS+=-tags=2k
-2k: build
-
-calibnet: GOFLAGS+=-tags=calibnet
-calibnet: build
-
-nerpanet: GOFLAGS+=-tags=nerpanet
-nerpanet: build
-
 build: miner
 .PHONY: build
 

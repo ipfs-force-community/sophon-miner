@@ -36,6 +36,13 @@ var runCmd = &cli.Command{
 			Name:  "miner-api",
 			Usage: "12308",
 		},
+		&cli.StringFlag{
+			Name:     "nettype",
+			Usage:    "network type, one of: mainnet, nerpanet, debug, 2k, calibnet",
+			Value:    "mainnet",
+			DefaultText: "mainnet",
+			Required: false,
+		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
 			Usage: "enable use of GPU for mining operations",
@@ -52,6 +59,12 @@ var runCmd = &cli.Command{
 		node.CLIFLAGBlockRecord,
 	},
 	Action: func(cctx *cli.Context) error {
+		log.Info("Initializing build params")
+
+		if err := build.InitNetWorkParams(cctx.String("nettype")); err != nil {
+			return err
+		}
+
 		// default enlarge max os threads to 20000
 		maxOSThreads := 20000
 		if fMaxOSThreads := os.Getenv("FORCE_MAX_OS_THREADS"); fMaxOSThreads != "" {

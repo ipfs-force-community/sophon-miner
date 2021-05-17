@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -77,6 +78,8 @@ func TestEqualCall(t *testing.T) {
 }
 
 func TestMessageJson(t *testing.T) {
+	address.CurrentNetwork = address.Mainnet
+
 	m := &Message{
 		To:    builtin2.StoragePowerActorAddr,
 		From:  builtin2.SystemActorAddr,
@@ -106,6 +109,8 @@ func TestMessageJson(t *testing.T) {
 }
 
 func TestSignedMessageJson(t *testing.T) {
+	address.CurrentNetwork = address.Mainnet
+
 	m := Message{
 		To:    builtin2.StoragePowerActorAddr,
 		From:  builtin2.SystemActorAddr,
