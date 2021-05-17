@@ -39,6 +39,13 @@ var initCmd = &cli.Command{
 			Usage: "specify the address of an already created miner actor",
 		},
 		&cli.StringFlag{
+			Name:     "nettype",
+			Usage:    "network type, one of: mainnet, nerpanet, debug, 2k, calibnet",
+			Value:    "mainnet",
+			DefaultText: "mainnet",
+			Required: false,
+		},
+		&cli.StringFlag{
 			Name:     "api",
 			Usage:    "full node api",
 			Value:    "",
@@ -75,6 +82,12 @@ var initCmd = &cli.Command{
 		log.Info("Initializing venus miner")
 
 		ctx := lcli.ReqContext(cctx)
+
+		log.Info("Initializing build params")
+
+		if err := build.InitNetWorkParams(cctx.String("nettype")); err != nil {
+			return err
+		}
 
 		log.Info("Trying to connect to full node RPC")
 

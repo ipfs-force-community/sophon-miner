@@ -42,6 +42,16 @@ const FilBase = uint64(2_000_000_000)
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
+// Build Settings
+var (
+	UpgradeSmokeHeight abi.ChainEpoch = -1
+	UpgradeOrangeHeight abi.ChainEpoch = 336458
+
+ 	BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
+
+ 	PropagationDelaySecs = uint64(12)
+)
+
 func init() {
 	if os.Getenv("VENUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
 		SetAddressNetwork(address.Mainnet)

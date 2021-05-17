@@ -85,14 +85,6 @@ jobs:
           paths:
             - linux
 
-  build-debug:
-    executor: golang
-    steps:
-      - install-deps
-      - prepare
-      - run:
-          command: make debug
-
   test: &test
     description: |
       Run tests with gotestsum.
@@ -179,16 +171,6 @@ jobs:
     <<: *test
   test-terminate:
     <<: *test
-  build-ntwk-calibration:
-    description: |
-      Compile venus-miner binaries for the calibration network
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run: make calibnet
 
 
   build-macos:
@@ -481,8 +463,6 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
-      - build-ntwk-calibration
-      - build-debug
       - build-all:
           requires:
             - test-short
