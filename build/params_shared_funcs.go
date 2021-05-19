@@ -48,6 +48,8 @@ func InitNetWorkParams(nettype string) error {
 			abi.RegisteredSealProof_StackedDrg64GiBV1,
 		)
 
+		SetAddressNetwork(address.Testnet)
+
 		// Lower the most time-consuming parts of PoRep
 		policy.SetPreCommitChallengeDelay(10)
 
@@ -62,11 +64,13 @@ func InitNetWorkParams(nettype string) error {
 		UpgradeOrangeHeight = 307500
 		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 		PropagationDelaySecs = uint64(6)
-	case  "debug","2k":
+	case "debug", "2k":
 		{
 			policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 			policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 			policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
+
+			SetAddressNetwork(address.Testnet)
 
 			switch nettype {
 			case "debug":

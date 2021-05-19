@@ -17,7 +17,6 @@ var BlocksPerEpoch = uint64(builtin2.ExpectedLeadersPerEpoch)
 
 // Epochs
 const Finality = policy.ChainFinality
-const MessageConfidence = uint64(5)
 
 // /////
 // Mining
@@ -44,16 +43,16 @@ const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
 // Build Settings
 var (
-	UpgradeSmokeHeight abi.ChainEpoch = -1
+	UpgradeSmokeHeight  abi.ChainEpoch = -1
 	UpgradeOrangeHeight abi.ChainEpoch = 336458
 
- 	BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
+	BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
- 	PropagationDelaySecs = uint64(12)
+	PropagationDelaySecs = uint64(12)
 )
 
 func init() {
-	if os.Getenv("VENUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
+	if os.Getenv("MINING_USE_TEST_ADDRESSES") != "1" || os.Getenv("VENUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
 		SetAddressNetwork(address.Mainnet)
 	}
 }
