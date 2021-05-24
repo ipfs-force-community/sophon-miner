@@ -96,6 +96,11 @@ func NewMiner(api api.FullNode, verifier ffiwrapper.Verifier, minerManager miner
 	return miner
 }
 
+type syncStatus struct {
+	heightDiff int64
+	err        error
+}
+
 type minerWPP struct {
 	epp      chain.WinningPoStProver
 	wn       dtypes.WalletNode
@@ -120,6 +125,8 @@ type Miner struct {
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
+
+	st syncStatus
 
 	lkWPP        sync.Mutex
 	minerWPPMap  map[address.Address]*minerWPP
@@ -153,6 +160,7 @@ func (m *Miner) Start(ctx context.Context) error {
 
 	m.stop = make(chan struct{})
 	go m.mine(context.TODO())
+	go m.SyncStatus(ctx)
 	return nil
 }
 
@@ -217,6 +225,8 @@ minerLoop:
 
 		default:
 		}
+
+		log.Infow("sync status", "HeightDiff", m.st.heightDiff, "err:", m.st.err)
 
 		// if there is no miner to be mined, wait
 		if !m.hasMinersNeedMining() {
@@ -873,4 +883,65 @@ func (m *Miner) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, e
 	}
 
 	return res, nil
+}
+
+func (m *Miner) SyncStatus(ctx context.Context) {
+	ticker := time.NewTicker(2 * time.Minute)
+
+	log.Info("check sync start ...")
+	for {
+		select {
+		case <-ticker.C:
+			{
+				for {
+					state, err := m.api.SyncState(ctx)
+					if err != nil {
+						m.st = syncStatus{heightDiff: -1, err: err}
+						break
+					}
+
+					if len(state.ActiveSyncs) == 0 {
+						time.Sleep(time.Second)
+						continue
+					}
+
+					head, err := m.api.ChainHead(ctx)
+					if err != nil {
+						m.st = syncStatus{heightDiff: -1, err: err}
+						break
+					}
+
+					working := -1
+					for i, ss := range state.ActiveSyncs {
+						switch ss.Stage {
+						case api.StageSyncComplete:
+						default:
+							working = i
+						case api.StageIdle:
+							// not complete, not actively working
+						}
+					}
+
+					if working == -1 {
+						working = len(state.ActiveSyncs) - 1
+					}
+
+					ss := state.ActiveSyncs[working]
+					var heightDiff int64 = -1
+					if ss.Target != nil {
+						heightDiff = int64(ss.Target.Height() - head.Height())
+					}
+
+					if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
+						heightDiff = 0
+					}
+					m.st = syncStatus{heightDiff: heightDiff}
+					break
+				}
+			}
+		case <-ctx.Done():
+			log.Info("check sync exit ...")
+			return
+		}
+	}
 }
