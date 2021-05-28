@@ -43,8 +43,9 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ChainHead         func(context.Context) (*types.TipSet, error)                 `perm:"read"`
-		ChainTipSetWeight func(context.Context, types.TipSetKey) (types.BigInt, error) `perm:"read"`
+		ChainHead              func(context.Context) (*types.TipSet, error)                                  `perm:"read"`
+		ChainGetTipSetByHeight func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) `perm:"read"`
+		ChainTipSetWeight      func(context.Context, types.TipSetKey) (types.BigInt, error)                  `perm:"read"`
 
 		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
@@ -111,6 +112,10 @@ func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.ChainHead(ctx)
 }
 
+func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	return c.Internal.ChainGetTipSetByHeight(ctx, h, tsk)
+}
+
 func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
 	return c.Internal.ChainTipSetWeight(ctx, tsk)
 }
@@ -166,13 +171,14 @@ type MinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		AddAddress      func(dtypes.MinerInfo) error                         `perm:"write"`
-		UpdateAddress   func(dtypes.MinerInfo) error                         `perm:"write"`
-		RemoveAddress   func(address.Address) error                          `perm:"write"`
-		ListAddress     func() ([]dtypes.MinerInfo, error)                   `perm:"read"`
-		StatesForMining func([]address.Address) ([]dtypes.MinerState, error) `perm:"read"`
-		Start           func(context.Context, address.Address) error         `perm:"write"`
-		Stop            func(context.Context, address.Address) error         `perm:"write"`
+		AddAddress      func(dtypes.MinerInfo) error                                                           `perm:"write"`
+		UpdateAddress   func(dtypes.MinerInfo) error                                                           `perm:"write"`
+		RemoveAddress   func(address.Address) error                                                            `perm:"write"`
+		ListAddress     func() ([]dtypes.MinerInfo, error)                                                     `perm:"read"`
+		StatesForMining func([]address.Address) ([]dtypes.MinerState, error)                                   `perm:"read"`
+		CountWinners    func([]address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) `perm:"write"`
+		Start           func(context.Context, address.Address) error                                           `perm:"write"`
+		Stop            func(context.Context, address.Address) error                                           `perm:"write"`
 	}
 }
 
@@ -194,6 +200,10 @@ func (s *MinerStruct) ListAddress() ([]dtypes.MinerInfo, error) {
 
 func (s *MinerStruct) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, error) {
 	return s.Internal.StatesForMining(addrs)
+}
+
+func (s *MinerStruct) CountWinners(addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+	return s.Internal.CountWinners(addrs, start, end)
 }
 
 func (s *MinerStruct) Start(ctx context.Context, addr address.Address) error {

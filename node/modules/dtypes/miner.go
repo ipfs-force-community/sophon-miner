@@ -93,3 +93,15 @@ func (wn WalletNode) AuthHeader() http.Header {
 	log.Warn("Sealer API Token not set and requested, capabilities might be limited.")
 	return nil
 }
+
+type SimpleWinInfo struct {
+	Epoch    abi.ChainEpoch `json:"epoch"`
+	WinCount int64          `json:"winCount"`
+}
+
+type CountWinners struct {
+	Miner         address.Address `json:"miner"`
+	TotalWinCount int64           `json:"totalWinCount"`
+	Msg           string          `json:"msg"`
+	WinEpochList  []SimpleWinInfo `json:"winEpochList"`
+}

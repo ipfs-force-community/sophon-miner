@@ -885,6 +885,108 @@ func (m *Miner) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, e
 	return res, nil
 }
 
+func (m *Miner) winCountInRound(ctx context.Context, mAddr address.Address, api chain.MiningCheckAPI, epoch abi.ChainEpoch) (*types.ElectionProof, error) {
+	ts, err := m.api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types.EmptyTSK)
+	if err != nil {
+		log.Error("chain get tipset by height error", err)
+		return nil, err
+	}
+
+	mbi, err := m.api.MinerGetBaseInfo(ctx, mAddr, ts.Height()+1, ts.Key())
+	if err != nil {
+		log.Error("miner get base info", err)
+		return nil, err
+	}
+
+	if mbi == nil {
+		return nil, xerrors.Errorf("can't find base info on chain, addr %s should be a new miner or no sector found before chain finality", mAddr.String())
+	}
+
+	rbase := mbi.PrevBeaconEntry
+	if len(mbi.BeaconEntries) > 0 {
+		rbase = mbi.BeaconEntries[len(mbi.BeaconEntries)-1]
+	}
+
+	return chain.IsRoundWinner(ctx, ts, ts.Height()+1, mAddr, rbase, mbi, api)
+}
+
+func (m *Miner) CountWinners(addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+	res := make([]dtypes.CountWinners, 0)
+	wg := sync.WaitGroup{}
+	ctx := context.TODO()
+
+	mAddrs := make([]address.Address, 0)
+	m.lkWPP.Lock()
+	if len(addrs) > 0 {
+		for _, addr := range addrs {
+			if _, ok := m.minerWPPMap[addr]; ok {
+				mAddrs = append(mAddrs, addr)
+			} else {
+				res = append(res, dtypes.CountWinners{Msg: "miner not exist", Miner: addr})
+			}
+		}
+	} else {
+		for k := range m.minerWPPMap {
+			mAddrs = append(mAddrs, k)
+		}
+	}
+	m.lkWPP.Unlock()
+
+	if len(mAddrs) > 0 {
+		wg.Add(len(mAddrs))
+		for _, addr := range mAddrs {
+			tAddr := addr
+
+			go func() {
+				defer wg.Done()
+
+				winInfo := make([]dtypes.SimpleWinInfo, 0)
+				totalWinCount := int64(0)
+
+				var miningCheckAPI chain.MiningCheckAPI = nil
+				if mining, ok := m.minerWPPMap[tAddr]; ok && mining.wn.Token != "" {
+					walletAPI, closer, err := client.NewWalletRPC(ctx, &mining.wn)
+					if err != nil {
+						log.Errorf("[%v] create wallet RPC failed: %w", tAddr, err)
+						res = append(res, dtypes.CountWinners{Msg: err.Error(), Miner: tAddr})
+						return
+					}
+					defer closer()
+					miningCheckAPI = walletAPI
+				} else {
+					res = append(res, dtypes.CountWinners{Msg: "token is empty", Miner: tAddr})
+					return
+				}
+
+				wgWin := sync.WaitGroup{}
+				for epoch := start; epoch <= end; epoch++ {
+					wgWin.Add(1)
+
+					go func(epoch abi.ChainEpoch) {
+						defer wgWin.Done()
+
+						winner, err := m.winCountInRound(ctx, tAddr, miningCheckAPI, epoch)
+						if err != nil {
+							log.Errorf("generate winner met error %w", err)
+							return
+						}
+
+						if winner != nil {
+							totalWinCount += winner.WinCount
+							winInfo = append(winInfo, dtypes.SimpleWinInfo{Epoch: epoch+1, WinCount: winner.WinCount})
+						}
+					}(epoch)
+				}
+				wgWin.Wait()
+				res = append(res, dtypes.CountWinners{Miner: tAddr, TotalWinCount: totalWinCount, WinEpochList: winInfo})
+			}()
+		}
+		wg.Wait()
+	}
+
+	return res, nil
+}
+
 func (m *Miner) SyncStatus(ctx context.Context) {
 	ticker := time.NewTicker(2 * time.Minute)
 

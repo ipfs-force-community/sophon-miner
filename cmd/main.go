@@ -30,6 +30,7 @@ func main() {
 		runCmd,
 		stopCmd,
 		addressCmd,
+		winnerCmd,
 		configCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("venus-miner")
