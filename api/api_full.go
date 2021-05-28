@@ -28,6 +28,11 @@ type FullNode interface {
 	// ChainHead returns the current head of the chain.
 	ChainHead(context.Context) (*types.TipSet, error)
 
+	// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
+	// If there are no blocks at the specified epoch, a tipset at an earlier epoch
+	// will be returned.
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+
 	// ChainTipSetWeight computes weight for the specified tipset.
 	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
 

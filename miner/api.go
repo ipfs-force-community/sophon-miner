@@ -2,6 +2,7 @@ package miner
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-address"
 
@@ -25,6 +26,7 @@ type IMinerManager interface {
 	UpdateAddress(dtypes.MinerInfo) error
 	ListAddress() ([]dtypes.MinerInfo, error)
 	StatesForMining([]address.Address) ([]dtypes.MinerState, error)
+	CountWinners([]address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error)
 	RemoveAddress(address.Address) error
 }
 
@@ -46,6 +48,10 @@ func (m MockMinerMgr) ListAddress() ([]dtypes.MinerInfo, error) {
 }
 
 func (m MockMinerMgr) StatesForMining([]address.Address) ([]dtypes.MinerState, error) {
+	return nil, nil
+}
+
+func (m MockMinerMgr) CountWinners([]address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) {
 	return nil, nil
 }
 

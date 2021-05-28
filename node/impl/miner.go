@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/venus-miner/miner"
 	"github.com/filecoin-project/venus-miner/node/impl/common"
@@ -38,6 +39,10 @@ func (m *MinerAPI) ListAddress() ([]dtypes.MinerInfo, error) {
 
 func (m *MinerAPI) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, error) {
 	return m.MiningAPI.StatesForMining(addrs)
+}
+
+func (m *MinerAPI) CountWinners(addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+	return m.MiningAPI.CountWinners(addrs, start, end)
 }
 
 func (m *MinerAPI) Start(ctx context.Context, addr address.Address) error {

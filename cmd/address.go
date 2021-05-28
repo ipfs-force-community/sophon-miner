@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus-miner/node/config"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/venus-miner/chain/types"
 	lcli "github.com/filecoin-project/venus-miner/cli"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
 )
