@@ -55,7 +55,7 @@ var countCmd = &cli.Command{
 		epochStart := cctx.Int64("epoch-start")
 		epochEnd := cctx.Int64("epoch-end")
 
-		winners, err := minerAPI.CountWinners(addrs, abi.ChainEpoch(epochStart), abi.ChainEpoch(epochEnd))
+		winners, err := minerAPI.CountWinners(cctx.Context, addrs, abi.ChainEpoch(epochStart), abi.ChainEpoch(epochEnd))
 		if err != nil {
 			return err
 		}

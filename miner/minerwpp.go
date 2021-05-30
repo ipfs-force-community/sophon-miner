@@ -2,36 +2,38 @@ package miner
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
+	gwtypes "github.com/ipfs-force-community/venus-gateway/types"
+
 	"github.com/filecoin-project/venus-miner/api"
+	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/chain"
 	"github.com/filecoin-project/venus-miner/chain/actors/builtin"
 	"github.com/filecoin-project/venus-miner/chain/types"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
 )
 
-
 type MiningWpp struct {
-	minerInfo dtypes.MinerInfo
+	minerInfo   dtypes.MinerInfo
+	gatewayNode *config.GatewayNode
 
 	verifier ffiwrapper.Verifier
 	miner    abi.ActorID
 	winnRpt  abi.RegisteredPoStProof
 }
 
-func NewWinningPoStProver(api api.FullNode, minerInfo dtypes.MinerInfo, verifier ffiwrapper.Verifier) (*MiningWpp, error) {
+func NewWinningPoStProver(api api.FullNode, gatewayNode *config.GatewayNode, minerInfo dtypes.MinerInfo, verifier ffiwrapper.Verifier) (*MiningWpp, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), minerInfo.Addr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
@@ -48,7 +50,7 @@ func NewWinningPoStProver(api api.FullNode, minerInfo dtypes.MinerInfo, verifier
 		return nil, err
 	}
 
-	return &MiningWpp{minerInfo: minerInfo, verifier: verifier, miner: abi.ActorID(minerId), winnRpt: mi.WindowPoStProofType}, nil
+	return &MiningWpp{gatewayNode: gatewayNode, minerInfo: minerInfo, verifier: verifier, miner: abi.ActorID(minerId), winnRpt: mi.WindowPoStProofType}, nil
 }
 
 var _ chain.WinningPoStProver = (*MiningWpp)(nil)
@@ -73,14 +75,14 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo,
 
 	start := build.Clock.Now()
 
-	// todo call sealer rpc api
-	sealerAPI, closer, err := getSealerAPI(ctx, wpp.minerInfo.Sealer)
+	// todo call gateway api
+	api, closer, err := client.NewGatewayRPC(wpp.gatewayNode)
 	if err != nil {
 		return nil, err
 	}
 	defer closer()
 
-	proofBuf, err := sealerAPI.ComputeProof(ctx, ssi, rand)
+	proofBuf, err := api.ComputeProof(ctx, wpp.minerInfo.Addr, &gwtypes.ComputeProofRequest{SectorInfos: ssi, Rand: rand})
 	if err != nil {
 		return nil, err
 	}
@@ -89,39 +91,35 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo,
 	return proofBuf, nil
 }
 
-type sealerAPI interface {
-	ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error)
-}
-
-// sealerStruct
-type sealerStruct struct {
-	Internal struct {
-		ComputeProof func(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) `perm:"read"`
-	}
-}
-
-func (s *sealerStruct) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo, rand abi.PoStRandomness) ([]proof2.PoStProof, error) {
-	return s.Internal.ComputeProof(ctx, ssi, rand)
-}
-
-func newSealerRPC(addr string, requestHeader http.Header) (sealerAPI, jsonrpc.ClientCloser, error) {
-	var res sealerStruct
-	closer, err := jsonrpc.NewMergeClient(context.Background(), addr, "Filecoin",
-		[]interface{}{
-			&res.Internal,
-		},
-		requestHeader,
-	)
-
-	return &res, closer, err
-}
-
-func getSealerAPI(ctx context.Context, sealer dtypes.SealerNode) (sealerAPI, jsonrpc.ClientCloser, error) {
-	addr, err := sealer.DialArgs()
-	if err != nil {
-		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
-	}
-
-
-	return newSealerRPC(addr, sealer.AuthHeader())
-}
+//// sealerStruct
+//type sealerStruct struct {
+//	Internal struct {
+//		ComputeProof func(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) `perm:"read"`
+//	}
+//}
+//
+//func (s *sealerStruct) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo, rand abi.PoStRandomness) ([]proof2.PoStProof, error) {
+//	return s.Internal.ComputeProof(ctx, ssi, rand)
+//}
+//
+//func newSealerRPC(addr string, requestHeader http.Header) (sealerAPI, jsonrpc.ClientCloser, error) {
+//	var res sealerStruct
+//	closer, err := jsonrpc.NewMergeClient(context.Background(), addr, "Filecoin",
+//		[]interface{}{
+//			&res.Internal,
+//		},
+//		requestHeader,
+//	)
+//
+//	return &res, closer, err
+//}
+//
+//func getSealerAPI(ctx context.Context, sealer dtypes.SealerNode) (sealerAPI, jsonrpc.ClientCloser, error) {
+//	addr, err := sealer.DialArgs()
+//	if err != nil {
+//		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
+//	}
+//
+//
+//	return newSealerRPC(addr, sealer.AuthHeader())
+//}

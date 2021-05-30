@@ -74,12 +74,14 @@ type MySQLConfig struct {
 type MinerDbConfig struct {
 	Type  string      `json:"type"`
 	MySQL MySQLConfig `json:"mysql"`
+	Auth  *AuthConfig  `json:"auth"`
 }
 
 func newDefaultMinerDbConfig() *MinerDbConfig {
 	return &MinerDbConfig{
-		Type:  "local",
+		Type:  "auth",
 		MySQL: MySQLConfig{},
+		Auth:  newDefaultAuthConfig(),
 	}
 }
 
@@ -89,6 +91,8 @@ type MinerConfig struct {
 	FullNode
 
 	BlockRecord string
+
+	Gateway *GatewayNode `json:"gateway"`
 
 	Db *MinerDbConfig `json:"db"`
 }
@@ -107,6 +111,7 @@ func DefaultMinerConfig() *MinerConfig {
 		Common:      defCommon(),
 		FullNode:    defFullNode(),
 		BlockRecord: "cache",
+		Gateway:     newDefaultGatewayNode(),
 		Db:          newDefaultMinerDbConfig(),
 	}
 

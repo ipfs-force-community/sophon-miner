@@ -3,20 +3,16 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus-miner/node/config"
 	"os"
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -26,7 +22,7 @@ import (
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	lcli "github.com/filecoin-project/venus-miner/cli"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
 )
 
@@ -35,46 +31,40 @@ var initCmd = &cli.Command{
 	Usage: "Initialize a venus miner repo",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "actor",
-			Usage: "specify the address of an already created miner actor",
-		},
-		&cli.StringFlag{
-			Name:     "nettype",
-			Usage:    "network type, one of: mainnet, nerpanet, debug, 2k, calibnet",
-			Value:    "mainnet",
+			Name:        "nettype",
+			Usage:       "network type, one of: mainnet, nerpanet, debug, 2k, calibnet",
+			Value:       "mainnet",
 			DefaultText: "mainnet",
-			Required: false,
+			Required:    false,
 		},
 		&cli.StringFlag{
 			Name:     "api",
 			Usage:    "full node api",
-			Value:    "",
 			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "token",
 			Usage:    "full node token",
-			Value:    "",
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "sealer-listen-api",
-			Usage: "sealer rpc api",
+			Name:     "auth-api",
+			Usage:    "auth node api",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "auth-token",
+			Usage:    "auth node token",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "gateway-api",
+			Usage: "gateway api",
 			Value: "",
 		},
 		&cli.StringFlag{
-			Name:  "sealer-token",
-			Usage: "sealer rpc token",
-			Value: "",
-		},
-		&cli.StringFlag{
-			Name:  "wallet-listen-api",
-			Usage: "wallet rpc api",
-			Value: "",
-		},
-		&cli.StringFlag{
-			Name:  "wallet-token",
-			Usage: "wallet rpc token",
+			Name:  "gateway-token",
+			Usage: "gateway token",
 			Value: "",
 		},
 	},
@@ -175,58 +165,31 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 	//}
 	//log.Infow("init new peer: %s", peerID)
 
-	mds, err := lr.Datastore(context.TODO(), "/metadata")
-	if err != nil {
-		return err
-	}
-
-	var actor address.Address
-	if cctx.String("actor") != "" {
-		actor, err = address.NewFromString(cctx.String("actor"))
-		if err != nil {
-			return err
-		}
-
-		if actor.Protocol() == address.ID {
-			if cctx.String("sealer-listen-api") == "" || cctx.String("sealer-token") == "" {
-				return xerrors.New("the actor's api & token cannot be empty")
-			}
-
-			posterAddr := dtypes.MinerInfo{
-				Addr: actor,
-				Sealer: dtypes.SealerNode{
-					ListenAPI: cctx.String("sealer-listen-api"),
-					Token:     cctx.String("sealer-token"),
-				},
-			}
-			if cctx.String("wallet-listen-api") != "" && cctx.String("wallet-token") != "" {
-				posterAddr.Wallet = dtypes.WalletNode{
-					ListenAPI: cctx.String("wallet-listen-api"),
-					Token:     cctx.String("wallet-token"),
-				}
-			}
-
-			log.Infof("init new miner: %v", posterAddr)
-
-			miners := make([]dtypes.MinerInfo, 0)
-			miners = append(miners, posterAddr)
-			addrBytes, err := json.Marshal(miners)
-			if err != nil {
-				return err
-			}
-			if err := mds.Put(datastore.NewKey("miner-actors"), addrBytes); err != nil {
-				return err
-			}
-		} else {
-			return xerrors.New("the actor's Protocol is not ID")
-		}
-	}
+	//mds, err := lr.Datastore(context.TODO(), "/metadata")
+	//if err != nil {
+	//	return err
+	//}
 
 	// modify config
 	log.Info("modify fullnode of config")
 	if err := lr.SetConfig(func(i interface{}) {
 		cfg := i.(*config.MinerConfig)
 		cfg.FullNode = fn
+
+		if cctx.String("gateway-api") != "" && cctx.String("gateway-token") != "" {
+			cfg.Gateway = &config.GatewayNode{
+				ListenAPI: cctx.String("gateway-api"),
+				Token:     cctx.String("gateway-token"),
+			}
+		}
+
+		cfg.Db =  &config.MinerDbConfig{
+			Type:  "auth",
+			Auth:  &config.AuthConfig{
+				ListenAPI: cctx.String("auth-api"),
+				Token:     cctx.String("auth-token"),
+			},
+		}
 	}); err != nil {
 		return xerrors.Errorf("modify config failed: %w", err)
 	}

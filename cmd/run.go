@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-miner/node/config"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/node"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
 )

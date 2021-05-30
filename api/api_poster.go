@@ -12,12 +12,10 @@ import (
 type MinerAPI interface {
 	Common
 
-	AddAddress(dtypes.MinerInfo) error
-	UpdateAddress(dtypes.MinerInfo) error
-	RemoveAddress(address.Address) error
-	ListAddress() ([]dtypes.MinerInfo, error)
-	StatesForMining([]address.Address) ([]dtypes.MinerState, error)
-	CountWinners([]address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error)
+	UpdateAddress(context.Context, int64, int64) ([]dtypes.MinerInfo, error)
+	ListAddress(context.Context) ([]dtypes.MinerInfo, error)
+	StatesForMining(context.Context, []address.Address) ([]dtypes.MinerState, error)
+	CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error)
 	Start(context.Context, address.Address) error
 	Stop(context.Context, address.Address) error
 }

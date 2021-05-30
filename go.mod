@@ -22,14 +22,16 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/specs-actors v0.9.13
-	github.com/filecoin-project/specs-actors/v2 v2.3.4
-	github.com/filecoin-project/specs-actors/v3 v3.0.3
+	github.com/filecoin-project/specs-actors/v2 v2.3.5-0.20210114162132-5b58b773f4fb
+	github.com/filecoin-project/specs-actors/v3 v3.1.1
+	github.com/filecoin-project/venus-wallet v1.1.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
+	github.com/go-resty/resty/v2 v2.4.0
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/ipfs-force-community/venus-wallet v0.0.0-20210319091347-c3cd243356ce
+	github.com/ipfs-force-community/venus-gateway v0.0.0-20210525072315-8c87f4d464f8
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
@@ -41,7 +43,7 @@ require (
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-log v1.0.4
-	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
+	github.com/ipfs/go-log/v2 v2.1.3
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-buffer-pool v0.0.2
@@ -54,9 +56,7 @@ require (
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multihash v0.0.14
-	github.com/prometheus/client_golang v1.6.0 // indirect
-	github.com/prometheus/common v0.10.0
-	github.com/prometheus/procfs v0.1.0 // indirect
+	github.com/prometheus/common v0.25.0
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.0.1
 	github.com/stretchr/testify v1.7.0

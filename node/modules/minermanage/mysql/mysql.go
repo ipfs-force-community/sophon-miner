@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -18,11 +19,12 @@ import (
 var log = logging.Logger("mysql")
 
 type mysqlMinerInfo struct {
-	Addr        string `gorm:"column:addr;type:varchar(20);uniqueIndex;NOT NULL"`
-	SealerAPI   string `gorm:"column:sealer_api;type:varchar(256);"`
-	SealerToken string `gorm:"column:sealer_token;type:varchar(256);"`
-	WalletAPI   string `gorm:"column:wallet_api;type:varchar(256);"`
-	WalletToken string `gorm:"column:wallet_token;type:varchar(256);"`
+	Addr       string `gorm:"column:addr;type:varchar(20);uniqueIndex;NOT NULL"`
+	Name       string `gorm:"column:name;type:varchar(50);"`
+	Comment    string `gorm:"column:comment;type:varchar(50);"`
+	State      int    `gorm:"column:state;type:int(10);comment:'0 for init,1 for active'"`
+	CreateTime uint64 `gorm:"column:create_time;not null;type:bigint(20) unsigned" json:"createTime"`
+	UpdateTime uint64 `gorm:"column:update_time;not null;type:bigint(20) unsigned" json:"updateTime"`
 }
 
 func (m *mysqlMinerInfo) TableName() string {
@@ -37,7 +39,7 @@ type MinerManagerForMySQL struct {
 }
 
 func NewMinerManger(cfg *config.MySQLConfig) func() (minermanage.MinerManageAPI, error) {
-	return func() (minermanage.MinerManageAPI, error){
+	return func() (minermanage.MinerManageAPI, error) {
 		// root:123456@tcp(ip:3306)/venus_miner?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s
 		db, err := gorm.Open(mysql.Open(cfg.Conn), &gorm.Config{
 			//Logger: logger.Default.LogMode(logger.Info),
@@ -81,9 +83,6 @@ func NewMinerManger(cfg *config.MySQLConfig) func() (minermanage.MinerManageAPI,
 }
 
 func (m *MinerManagerForMySQL) init() error {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-
 	var res []mysqlMinerInfo
 	if err := m._db.Find(&res).Error; err != nil {
 		return err
@@ -96,26 +95,17 @@ func (m *MinerManagerForMySQL) init() error {
 		}
 		m.miners = append(m.miners, dtypes.MinerInfo{
 			Addr: addr,
-			Sealer: dtypes.SealerNode{
-				ListenAPI: val.SealerAPI,
-				Token:     val.SealerToken,
-			},
-			Wallet: dtypes.WalletNode{
-				ListenAPI: val.WalletAPI,
-				Token:     val.WalletToken,
-			},
 		})
 	}
 
 	return nil
 }
 
-func (m *MinerManagerForMySQL) Put(miner dtypes.MinerInfo) error {
+func (m *MinerManagerForMySQL) Put(ctx context.Context, miner dtypes.MinerInfo) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
-	err := m._db.Create(&mysqlMinerInfo{Addr: miner.Addr.String(), SealerAPI: miner.Sealer.ListenAPI,
-		SealerToken: miner.Sealer.Token, WalletAPI: miner.Wallet.ListenAPI, WalletToken: miner.Wallet.Token}).Error
+	err := m._db.Create(&mysqlMinerInfo{Addr: miner.Addr.String()}).Error
 	if err != nil {
 		return err
 	}
@@ -124,29 +114,15 @@ func (m *MinerManagerForMySQL) Put(miner dtypes.MinerInfo) error {
 	return nil
 }
 
-func (m *MinerManagerForMySQL) Set(miner dtypes.MinerInfo) error {
+func (m *MinerManagerForMySQL) Set(ctx context.Context, miner dtypes.MinerInfo) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
-	for k, addr := range m.miners {
+	for _, addr := range m.miners {
 		if addr.Addr.String() == miner.Addr.String() {
-			if miner.Sealer.ListenAPI != "" && miner.Sealer.ListenAPI != m.miners[k].Sealer.ListenAPI {
-				m.miners[k].Sealer.ListenAPI = miner.Sealer.ListenAPI
-			}
+			// ToDo other changes
 
-			if miner.Sealer.Token != "" && miner.Sealer.Token != m.miners[k].Sealer.Token {
-				m.miners[k].Sealer.Token = miner.Sealer.Token
-			}
-
-			if miner.Wallet.ListenAPI != "" && miner.Wallet.ListenAPI != m.miners[k].Wallet.ListenAPI {
-				m.miners[k].Wallet.ListenAPI = miner.Wallet.ListenAPI
-			}
-
-			if miner.Wallet.Token != "" && miner.Wallet.Token != m.miners[k].Wallet.Token {
-				m.miners[k].Wallet.Token = miner.Wallet.Token
-			}
-
-			err := m.Put(miner)
+			err := m.Put(ctx, miner)
 			if err != nil {
 				return err
 			}
@@ -157,7 +133,7 @@ func (m *MinerManagerForMySQL) Set(miner dtypes.MinerInfo) error {
 	return nil
 }
 
-func (m *MinerManagerForMySQL) Has(addr address.Address) bool {
+func (m *MinerManagerForMySQL) Has(ctx context.Context, addr address.Address) bool {
 	for _, miner := range m.miners {
 		if miner.Addr.String() == addr.String() {
 			return true
@@ -167,7 +143,7 @@ func (m *MinerManagerForMySQL) Has(addr address.Address) bool {
 	return false
 }
 
-func (m *MinerManagerForMySQL) Get(addr address.Address) *dtypes.MinerInfo {
+func (m *MinerManagerForMySQL) Get(ctx context.Context, addr address.Address) *dtypes.MinerInfo {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -180,18 +156,18 @@ func (m *MinerManagerForMySQL) Get(addr address.Address) *dtypes.MinerInfo {
 	return nil
 }
 
-func (m *MinerManagerForMySQL) List() ([]dtypes.MinerInfo, error) {
+func (m *MinerManagerForMySQL) List(ctx context.Context) ([]dtypes.MinerInfo, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
 	return m.miners, nil
 }
 
-func (m *MinerManagerForMySQL) Remove(rmAddr address.Address) error {
+func (m *MinerManagerForMySQL) Remove(ctx context.Context, rmAddr address.Address) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
-	if !m.Has(rmAddr) {
+	if !m.Has(ctx, rmAddr) {
 		return nil
 	}
 
@@ -214,7 +190,11 @@ func (m *MinerManagerForMySQL) Remove(rmAddr address.Address) error {
 	return nil
 }
 
-func (m *MinerManagerForMySQL) Count() int {
+func (m *MinerManagerForMySQL) Update(ctx context.Context, skip, limit int64) ([]dtypes.MinerInfo, error) {
+	return nil, nil
+}
+
+func (m *MinerManagerForMySQL) Count(ctx context.Context) int {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
