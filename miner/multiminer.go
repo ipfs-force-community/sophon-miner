@@ -103,6 +103,7 @@ type syncStatus struct {
 }
 
 type minerWPP struct {
+	account  string
 	epp      chain.WinningPoStProver
 	isMining bool
 	err      []string
@@ -157,7 +158,7 @@ func (m *Miner) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, isMining: true}
+		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name, isMining: true}
 	}
 
 	m.stop = make(chan struct{})
@@ -317,7 +318,7 @@ minerLoop:
 					tCtx, tCtxCancel := context.WithTimeout(ctx, m.mineTimeout)
 					defer tCtxCancel()
 
-					resChan, err := m.mineOne(tCtx, base, tAddr, tMining.epp)
+					resChan, err := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
 					if err != nil { // ToDo retry or continue minerLoop ? currently err is always nil
 						log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
 						return
@@ -553,7 +554,7 @@ type winPoStRes struct {
 // This method does the following:
 //
 //  1.
-func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Address, epp chain.WinningPoStProver) (<-chan *winPoStRes, error) {
+func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, addr address.Address, epp chain.WinningPoStProver) (<-chan *winPoStRes, error) {
 	log.Infow("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
 
 	out := make(chan *winPoStRes)
@@ -619,7 +620,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, addr address.Addr
 			out <- &winPoStRes{addr: addr, err: xerrors.New("miner not exist")}
 			return
 		}
-		winner, err := chain.IsRoundWinner(ctx, base.TipSet, round, addr, rbase, mbi, sign)
+		winner, err := chain.IsRoundWinner(ctx, round, account, addr, rbase, mbi, sign)
 		if err != nil {
 			log.Errorf("failed to check for %s if we win next round: %w", addr, err)
 			out <- &winPoStRes{addr: addr, err: err}
@@ -700,7 +701,9 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 	//}
 
 	var sign chain.SignFunc
-	if _, ok := m.minerWPPMap[addr]; ok {
+	accout := ""
+	if val, ok := m.minerWPPMap[addr]; ok {
+		accout = val.account
 		walletAPI, closer, err := client.NewGatewayRPC(m.gatewayNode)
 		if err != nil {
 			log.Errorf("create wallet RPC failed: %w", err)
@@ -713,7 +716,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 		return nil, xerrors.New("miner not exist")
 	}
 
-	vrfOut, err := chain.ComputeVRF(ctx, sign, mbi.WorkerKey, input.Bytes())
+	vrfOut, err := chain.ComputeVRF(ctx, sign, accout, mbi.WorkerKey, input.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -749,7 +752,9 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 	// ToDo check if BlockHeader is signed
 	if blockMsg.Header.BlockSig == nil {
 		var sign chain.SignFunc
-		if _, ok := m.minerWPPMap[addr]; ok {
+		account := ""
+		if val, ok := m.minerWPPMap[addr]; ok {
+			account = val.account
 			walletAPI, closer, err := client.NewGatewayRPC(m.gatewayNode)
 			if err != nil {
 				log.Errorf("create wallet RPC failed: %w", err)
@@ -767,7 +772,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, xerrors.Errorf("failed to get SigningBytes: %v", err)
 		}
 
-		sig, err := sign(ctx, "", waddr, nosigbytes, core.MsgMeta{
+		sig, err := sign(ctx, account, waddr, nosigbytes, core.MsgMeta{
 			Type: core.MTBlock,
 		})
 		if err != nil {
@@ -822,7 +827,7 @@ func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]dtypes.
 				continue
 			}
 
-			m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, isMining: true}
+			m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name, isMining: true}
 		}
 	}
 
@@ -858,7 +863,7 @@ func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([
 	return res, nil
 }
 
-func (m *Miner) winCountInRound(ctx context.Context, mAddr address.Address, api chain.SignFunc, epoch abi.ChainEpoch) (*types.ElectionProof, error) {
+func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr address.Address, api chain.SignFunc, epoch abi.ChainEpoch) (*types.ElectionProof, error) {
 	ts, err := m.api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types.EmptyTSK)
 	if err != nil {
 		log.Error("chain get tipset by height error", err)
@@ -880,7 +885,7 @@ func (m *Miner) winCountInRound(ctx context.Context, mAddr address.Address, api 
 		rbase = mbi.BeaconEntries[len(mbi.BeaconEntries)-1]
 	}
 
-	return chain.IsRoundWinner(ctx, ts, ts.Height()+1, mAddr, rbase, mbi, api)
+	return chain.IsRoundWinner(ctx, ts.Height()+1, account, mAddr, rbase, mbi, api)
 }
 
 func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
@@ -915,8 +920,10 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 				winInfo := make([]dtypes.SimpleWinInfo, 0)
 				totalWinCount := int64(0)
 
-				var miningCheckAPI chain.SignFunc = nil
-				if _, ok := m.minerWPPMap[tAddr]; ok {
+				var sign chain.SignFunc = nil
+				account := ""
+				if val, ok := m.minerWPPMap[tAddr]; ok {
+					account = val.account
 					walletAPI, closer, err := client.NewGatewayRPC(m.gatewayNode)
 					if err != nil {
 						log.Errorf("[%v] create wallet RPC failed: %w", tAddr, err)
@@ -924,7 +931,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 						return
 					}
 					defer closer()
-					miningCheckAPI = walletAPI.WalletSign
+					sign = walletAPI.WalletSign
 				} else {
 					res = append(res, dtypes.CountWinners{Msg: "miner not exist", Miner: tAddr})
 					return
@@ -937,7 +944,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					go func(epoch abi.ChainEpoch) {
 						defer wgWin.Done()
 
-						winner, err := m.winCountInRound(ctx, tAddr, miningCheckAPI, epoch)
+						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
 						if err != nil {
 							log.Errorf("generate winner met error %w", err)
 							return
