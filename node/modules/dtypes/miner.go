@@ -20,13 +20,14 @@ type MinerState struct {
 }
 
 type User struct {
-	ID         string
-	Name       string
-	Miner      string
-	Comment    string
-	State      int //0 for init, 1 for active
-	CreateTime uint64
-	UpdateTime uint64
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Miner      string `json:"miner"` // miner address f01234
+	SourceType int    `json:"sourceType"`
+	Comment    string `json:"comment"`
+	State      int    `json:"state"`
+	CreateTime int64  `json:"createTime"`
+	UpdateTime int64  `json:"updateTime"`
 }
 
 type SimpleWinInfo struct {

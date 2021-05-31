@@ -71,9 +71,9 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 	return nil
 }
 
-func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigInput []byte) ([]byte, error) {
+func ComputeVRF(ctx context.Context, sign SignFunc, account string, worker address.Address, sigInput []byte) ([]byte, error) {
 	// log.Infof("sigInput: %s", hex.EncodeToString(sigInput))
-	sig, err := sign(ctx, "", worker, sigInput, core.MsgMeta{Type: core.MTDrawRandomParam})
+	sig, err := sign(ctx, account, worker, sigInput, core.MsgMeta{Type: core.MTDrawRandomParam})
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigI
 	return sig.Data, nil
 }
 
-func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
+func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
 	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, sign SignFunc) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
@@ -109,7 +109,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	//	return nil, xerrors.Errorf("failed to draw randomness: %w", err)
 	//}
 
-	vrfout, err := ComputeVRF(ctx, sign, mbi.WorkerKey, electionRand.Bytes())
+	vrfout, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, electionRand.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}

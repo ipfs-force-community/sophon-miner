@@ -55,7 +55,7 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "auth-token",
 			Usage:    "auth node token",
-			Required: true,
+			Value:    "",
 		},
 		&cli.StringFlag{
 			Name:  "gateway-api",
