@@ -19,30 +19,21 @@ type MinerAPI struct {
 	miner.MiningAPI
 }
 
-func (m *MinerAPI) AddAddress(minerInfo dtypes.MinerInfo) error {
+func (m *MinerAPI) UpdateAddress(ctx context.Context, skip int64, limit int64) ([]dtypes.MinerInfo, error) {
 
-	return m.MiningAPI.AddAddress(minerInfo)
+	return m.MiningAPI.UpdateAddress(ctx, skip, limit)
 }
 
-func (m *MinerAPI) UpdateAddress(minerInfo dtypes.MinerInfo) error {
-
-	return m.MiningAPI.UpdateAddress(minerInfo)
+func (m *MinerAPI) ListAddress(ctx context.Context) ([]dtypes.MinerInfo, error) {
+	return m.MiningAPI.ListAddress(ctx)
 }
 
-func (m *MinerAPI) RemoveAddress(addr address.Address) error {
-	return m.MiningAPI.RemoveAddress(addr)
+func (m *MinerAPI) StatesForMining(ctx context.Context, addrs []address.Address) ([]dtypes.MinerState, error) {
+	return m.MiningAPI.StatesForMining(ctx, addrs)
 }
 
-func (m *MinerAPI) ListAddress() ([]dtypes.MinerInfo, error) {
-	return m.MiningAPI.ListAddress()
-}
-
-func (m *MinerAPI) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, error) {
-	return m.MiningAPI.StatesForMining(addrs)
-}
-
-func (m *MinerAPI) CountWinners(addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
-	return m.MiningAPI.CountWinners(addrs, start, end)
+func (m *MinerAPI) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+	return m.MiningAPI.CountWinners(ctx, addrs, start, end)
 }
 
 func (m *MinerAPI) Start(ctx context.Context, addr address.Address) error {

@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	//"encoding/hex"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	//logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -16,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/ipfs-force-community/venus-wallet/core"
+	"github.com/filecoin-project/venus-wallet/core"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
@@ -32,16 +30,7 @@ type WinningPoStProver interface {
 	ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error)
 }
 
-type MiningCheckAPI interface {
-	//ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	//ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-
-	//MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
-
-	WalletSign(context.Context, address.Address, []byte, core.MsgMeta) (*crypto.Signature, error)
-}
-
-type SignFunc func(ctx context.Context, signer address.Address, toSign []byte, meta core.MsgMeta) (*crypto.Signature, error)
+type SignFunc func(ctx context.Context, account string, signer address.Address, toSign []byte, meta core.MsgMeta) (*crypto.Signature, error)
 
 // type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
@@ -84,7 +73,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 
 func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigInput []byte) ([]byte, error) {
 	// log.Infof("sigInput: %s", hex.EncodeToString(sigInput))
-	sig, err := sign(ctx, worker, sigInput, core.MsgMeta{Type: core.MTDrawRandomParam})
+	sig, err := sign(ctx, "", worker, sigInput, core.MsgMeta{Type: core.MTDrawRandomParam})
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +86,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigI
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
-	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
+	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, sign SignFunc) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
@@ -120,7 +109,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	//	return nil, xerrors.Errorf("failed to draw randomness: %w", err)
 	//}
 
-	vrfout, err := ComputeVRF(ctx, a.WalletSign, mbi.WorkerKey, electionRand.Bytes())
+	vrfout, err := ComputeVRF(ctx, sign, mbi.WorkerKey, electionRand.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}

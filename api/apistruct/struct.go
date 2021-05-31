@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/ipfs-force-community/venus-wallet/core"
+	"github.com/filecoin-project/venus-wallet/core"
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/actors/builtin/miner"
@@ -171,39 +171,29 @@ type MinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		AddAddress      func(dtypes.MinerInfo) error                                                           `perm:"write"`
-		UpdateAddress   func(dtypes.MinerInfo) error                                                           `perm:"write"`
-		RemoveAddress   func(address.Address) error                                                            `perm:"write"`
-		ListAddress     func() ([]dtypes.MinerInfo, error)                                                     `perm:"read"`
-		StatesForMining func([]address.Address) ([]dtypes.MinerState, error)                                   `perm:"read"`
-		CountWinners    func([]address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) `perm:"write"`
-		Start           func(context.Context, address.Address) error                                           `perm:"write"`
-		Stop            func(context.Context, address.Address) error                                           `perm:"write"`
+		UpdateAddress   func(context.Context, int64, int64) ([]dtypes.MinerInfo, error)                                                       `perm:"write"`
+		ListAddress     func(context.Context) ([]dtypes.MinerInfo, error)                                                       `perm:"read"`
+		StatesForMining func(context.Context, []address.Address) ([]dtypes.MinerState, error)                                   `perm:"read"`
+		CountWinners    func(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) `perm:"write"`
+		Start           func(context.Context, address.Address) error                                                            `perm:"write"`
+		Stop            func(context.Context, address.Address) error                                                            `perm:"write"`
 	}
 }
 
-func (s *MinerStruct) AddAddress(miner dtypes.MinerInfo) error {
-	return s.Internal.AddAddress(miner)
+func (s *MinerStruct) UpdateAddress(ctx context.Context, skip int64, limit int64) ([]dtypes.MinerInfo, error) {
+	return s.Internal.UpdateAddress(ctx, skip, limit)
 }
 
-func (s *MinerStruct) UpdateAddress(miner dtypes.MinerInfo) error {
-	return s.Internal.UpdateAddress(miner)
+func (s *MinerStruct) ListAddress(ctx context.Context) ([]dtypes.MinerInfo, error) {
+	return s.Internal.ListAddress(ctx)
 }
 
-func (s *MinerStruct) RemoveAddress(addr address.Address) error {
-	return s.Internal.RemoveAddress(addr)
+func (s *MinerStruct) StatesForMining(ctx context.Context, addrs []address.Address) ([]dtypes.MinerState, error) {
+	return s.Internal.StatesForMining(ctx, addrs)
 }
 
-func (s *MinerStruct) ListAddress() ([]dtypes.MinerInfo, error) {
-	return s.Internal.ListAddress()
-}
-
-func (s *MinerStruct) StatesForMining(addrs []address.Address) ([]dtypes.MinerState, error) {
-	return s.Internal.StatesForMining(addrs)
-}
-
-func (s *MinerStruct) CountWinners(addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
-	return s.Internal.CountWinners(addrs, start, end)
+func (s *MinerStruct) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+	return s.Internal.CountWinners(ctx, addrs, start, end)
 }
 
 func (s *MinerStruct) Start(ctx context.Context, addr address.Address) error {

@@ -12,14 +12,10 @@ import (
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
-	"github.com/filecoin-project/venus-miner/chain/types"
 	lcli "github.com/filecoin-project/venus-miner/cli"
-	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
-	"github.com/filecoin-project/venus-miner/node/repo"
 )
 
-func isSupportedSectorSize(ssize abi.SectorSize) bool {
+func isSupportedSectorSize(ssize abi.SectorSize) bool { // nolint
 	for spf := range miner0.SupportedProofTypes {
 		switch spf {
 		case abi.RegisteredSealProof_StackedDrg2KiBV1:
@@ -54,9 +50,7 @@ var addressCmd = &cli.Command{
 	Name:  "address",
 	Usage: "manage the miner address",
 	Subcommands: []*cli.Command{
-		addCmd,
 		updateCmd,
-		removeCmd,
 		listCmd,
 		stateCmd,
 		startMiningCmd,
@@ -64,190 +58,19 @@ var addressCmd = &cli.Command{
 	},
 }
 
-var addCmd = &cli.Command{
-	Name:  "add",
-	Usage: "add address for poster",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "addr",
-			Usage:    "miner address",
-			Value:    "",
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "sealer-listen-api",
-			Usage:    "sealer rpc api",
-			Value:    "",
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "sealer-token",
-			Usage:    "sealer rpc token",
-			Value:    "",
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "wallet-listen-api",
-			Usage:    "wallet rpc api",
-			Value:    "",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "wallet-token",
-			Usage:    "wallet rpc token",
-			Value:    "",
-			Required: false,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		minerRepoPath := cctx.String(FlagMinerRepo)
-		r, err := repo.NewFS(minerRepoPath)
-		if err != nil {
-			return err
-		}
-
-		ok, err := r.Exists()
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
-		}
-
-		cfgV, err := r.Config()
-		if err != nil {
-			return err
-		}
-		cfg := cfgV.(*config.MinerConfig)
-
-		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx, cfg.FullNode)
-		if err != nil {
-			return xerrors.Errorf("getting full node api: %w", err)
-		}
-		defer ncloser()
-
-		// check actor
-		addrStr := cctx.String("addr")
-		addr, err := address.NewFromString(addrStr)
-		if err != nil {
-			return err
-		}
-
-		ctx := lcli.DaemonContext(cctx)
-		mi, err := nodeApi.StateMinerInfo(ctx, addr, types.EmptyTSK)
-		if err != nil {
-			return xerrors.Errorf("looking up actor: %w", err)
-		}
-
-		if !isSupportedSectorSize(mi.SectorSize) {
-			return xerrors.New("Sector-Size not supported")
-		}
-
-		postApi, closer, err := lcli.GetMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		posterAddr := dtypes.MinerInfo{
-			Addr: addr,
-			Sealer: dtypes.SealerNode{
-				ListenAPI: cctx.String("sealer-listen-api"),
-				Token:     cctx.String("sealer-token"),
-			},
-		}
-		if cctx.String("wallet-listen-api") != "" && cctx.String("wallet-token") != "" {
-			posterAddr.Wallet = dtypes.WalletNode{
-				ListenAPI: cctx.String("wallet-listen-api"),
-				Token:     cctx.String("wallet-token"),
-			}
-		}
-
-		err = postApi.AddAddress(posterAddr)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("add miner: ", posterAddr)
-		return nil
-	},
-}
-
 var updateCmd = &cli.Command{
 	Name:  "update",
-	Usage: "update address for poster, don't need to be updated",
+	Usage: "reacquire address from venus-auth",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "addr",
-			Usage:    "miner address",
-			Value:    "",
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "sealer-listen-api",
-			Usage:    "sealer rpc api",
-			Value:    "",
+		&cli.Int64Flag{
+			Name:     "skip",
 			Required: false,
 		},
-		&cli.StringFlag{
-			Name:     "sealer-token",
-			Usage:    "sealer rpc token",
-			Value:    "",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "wallet-listen-api",
-			Usage:    "wallet rpc api",
-			Value:    "",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "wallet-token",
-			Usage:    "wallet rpc token",
-			Value:    "",
+		&cli.Int64Flag{
+			Name:     "limit",
 			Required: false,
 		},
 	},
-	Action: func(cctx *cli.Context) error {
-		addrStr := cctx.String("addr")
-		addr, err := address.NewFromString(addrStr)
-		if err != nil {
-			return err
-		}
-
-		postApi, closer, err := lcli.GetMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		posterAddr := dtypes.MinerInfo{
-			Addr: addr,
-			Sealer: dtypes.SealerNode{
-				ListenAPI: cctx.String("sealer-listen-api"),
-				Token:     cctx.String("sealer-token"),
-			},
-			Wallet: dtypes.WalletNode{
-				ListenAPI: cctx.String("wallet-listen-api"),
-				Token:     cctx.String("wallet-token"),
-			},
-		}
-
-		err = postApi.UpdateAddress(posterAddr)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("update miner: ", addr)
-		return nil
-	},
-}
-
-var removeCmd = &cli.Command{
-	Name:      "rm",
-	Usage:     "remove the specified miner from the miners",
-	ArgsUsage: "[address]",
-	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		postApi, closer, err := lcli.GetMinerAPI(cctx)
 		if err != nil {
@@ -255,16 +78,20 @@ var removeCmd = &cli.Command{
 		}
 		defer closer()
 
-		minerAddr, err := address.NewFromString(cctx.Args().Get(0))
-		if err != nil {
-			return err
-		}
-		err = postApi.RemoveAddress(minerAddr)
+		skip := cctx.Int64("skip")
+		limit := cctx.Int64("limit")
+
+		miners, err := postApi.UpdateAddress(cctx.Context, skip, limit)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("remove miner: ", minerAddr)
+		formatJson, err := json.MarshalIndent(miners, "", "\t")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(formatJson))
+
 		return nil
 	},
 }
@@ -280,12 +107,12 @@ var listCmd = &cli.Command{
 		}
 		defer closer()
 
-		addrs, err := postApi.ListAddress()
+		miners, err := postApi.ListAddress(cctx.Context)
 		if err != nil {
 			return err
 		}
 
-		formatJson, err := json.MarshalIndent(addrs, "", "\t")
+		formatJson, err := json.MarshalIndent(miners, "", "\t")
 		if err != nil {
 			return err
 		}
@@ -317,7 +144,7 @@ var stateCmd = &cli.Command{
 			addrs = append(addrs, minerAddr)
 		}
 
-		states, err := postApi.StatesForMining(addrs)
+		states, err := postApi.StatesForMining(cctx.Context, addrs)
 		if err != nil {
 			return err
 		}

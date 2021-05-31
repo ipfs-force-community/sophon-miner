@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/helpers"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
+	"github.com/filecoin-project/venus-miner/node/modules/minermanage/auth"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage/local"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage/mysql"
 	"github.com/filecoin-project/venus-miner/node/repo"
@@ -231,6 +232,7 @@ func PostWinningOptions(postCfg *config.MinerConfig) (Option, error) {
 		blockRecordOp,
 		minerManageAPIOp,
 		slashFilterAPIOp,
+		Override(new(*config.GatewayNode), postCfg.Gateway),
 		Override(new(miner.MiningAPI), modules.NewWiningPoster),
 	), nil
 }
@@ -264,6 +266,8 @@ func newMinerManageAPI(dbConfig *config.MinerDbConfig) (Option, error) {
 		return Override(new(minermanage.MinerManageAPI), local.NewMinerManger), nil
 	case minermanage.MySQL:
 		return Override(new(minermanage.MinerManageAPI), mysql.NewMinerManger(&dbConfig.MySQL)), nil
+	case minermanage.Auth:
+		return Override(new(minermanage.MinerManageAPI), auth.NewMinerManager(dbConfig.Auth.ListenAPI, "venus-miner", dbConfig.Auth.Token)), nil
 	default:
 
 	}

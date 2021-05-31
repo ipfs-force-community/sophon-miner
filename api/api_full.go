@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/ipfs-force-community/venus-wallet/core"
+	"github.com/filecoin-project/venus-wallet/core"
 
 	"github.com/filecoin-project/venus-miner/chain/actors/builtin"
 	"github.com/filecoin-project/venus-miner/chain/actors/builtin/miner"
