@@ -53,11 +53,6 @@ var initCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:     "auth-token",
-			Usage:    "auth node token",
-			Value:    "",
-		},
-		&cli.StringFlag{
 			Name:  "gateway-api",
 			Usage: "gateway api",
 			Value: "",
@@ -176,19 +171,19 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 		cfg := i.(*config.MinerConfig)
 		cfg.FullNode = fn
 
-		if cctx.String("gateway-api") != "" && cctx.String("gateway-token") != "" {
+		if cctx.String("gateway-api") != "" {
 			cfg.Gateway = &config.GatewayNode{
 				ListenAPI: cctx.String("gateway-api"),
-				Token:     cctx.String("gateway-token"),
+				Token:     cctx.String("token"),
 			}
 		}
 
-		cfg.Db =  &config.MinerDbConfig{
-			Type:  "auth",
-			Auth:  &config.AuthConfig{
+		if cctx.String("auth-api") != "" {
+			cfg.Db.Type = "auth"
+			cfg.Db.Auth =  &config.AuthConfig{
 				ListenAPI: cctx.String("auth-api"),
 				Token:     cctx.String("auth-token"),
-			},
+			}
 		}
 	}); err != nil {
 		return xerrors.Errorf("modify config failed: %w", err)

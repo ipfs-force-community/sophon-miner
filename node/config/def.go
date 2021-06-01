@@ -72,14 +72,16 @@ type MySQLConfig struct {
 }
 
 type MinerDbConfig struct {
-	Type  string      `json:"type"`
-	MySQL MySQLConfig `json:"mysql"`
-	Auth  *AuthConfig  `json:"auth"`
+	Type   string      `json:"type"`
+	SFType string      `sfType`
+	MySQL  MySQLConfig `json:"mysql"`
+	Auth   *AuthConfig `json:"auth"`
 }
 
 func newDefaultMinerDbConfig() *MinerDbConfig {
 	return &MinerDbConfig{
 		Type:  "auth",
+		SFType: "local",
 		MySQL: MySQLConfig{},
 		Auth:  newDefaultAuthConfig(),
 	}

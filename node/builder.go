@@ -227,7 +227,7 @@ func PostWinningOptions(postCfg *config.MinerConfig) (Option, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return Options(
 		blockRecordOp,
 		minerManageAPIOp,
@@ -267,16 +267,16 @@ func newMinerManageAPI(dbConfig *config.MinerDbConfig) (Option, error) {
 	case minermanage.MySQL:
 		return Override(new(minermanage.MinerManageAPI), mysql.NewMinerManger(&dbConfig.MySQL)), nil
 	case minermanage.Auth:
-		return Override(new(minermanage.MinerManageAPI), auth.NewMinerManager(dbConfig.Auth.ListenAPI, "venus-miner", dbConfig.Auth.Token)), nil
+		return Override(new(minermanage.MinerManageAPI), auth.NewMinerManager(dbConfig.Auth.ListenAPI, dbConfig.Auth.Token)), nil
 	default:
 
 	}
 
-	return nil, xerrors.Errorf("unsupport db type")
+	return nil, xerrors.Errorf("unsupported db type [%s]", dbConfig.Type)
 }
 
 func newSlashFilterAPI(dbConfig *config.MinerDbConfig) (Option, error) {
-	switch dbConfig.Type{
+	switch dbConfig.SFType {
 	case minermanage.Local:
 		return Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal), nil
 	case minermanage.MySQL:
@@ -285,7 +285,7 @@ func newSlashFilterAPI(dbConfig *config.MinerDbConfig) (Option, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unsupport db type")
+	return nil, xerrors.Errorf("unsupported db type [%s]", dbConfig.SFType)
 }
 
 func newBlockRecord(t string) (Option, error) {

@@ -20,18 +20,17 @@ const CoMinersLimit = 200
 var log = logging.Logger("auth-miners")
 
 type MinerManagerForAuth struct {
-	cli         *resty.Client
-	serviceName string
-	token       string
+	cli   *resty.Client
+	token string
 
 	miners []dtypes.MinerInfo
 	lk     sync.Mutex
 }
 
-func NewMinerManager(url, serviceName, token string) func() (minermanage.MinerManageAPI, error) {
+func NewMinerManager(url, token string) func() (minermanage.MinerManageAPI, error) {
 	return func() (minermanage.MinerManageAPI, error) {
 		cli := resty.New().SetHostURL(url).SetHeader("Accept", "application/json")
-		m := &MinerManagerForAuth{cli: cli, serviceName: serviceName, token: token}
+		m := &MinerManagerForAuth{cli: cli, token: token}
 
 		miners, err := m.Update(context.TODO(), 0, 0)
 		if err != nil {
@@ -81,13 +80,11 @@ func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]
 		limit = CoMinersLimit
 	}
 
-	response, err := m.cli.R().
-		SetHeader("svcName", m.serviceName).
-		SetFormData(map[string]string{
-			"token": m.token,
-			"skip":  fmt.Sprintf("%d", skip),
-			"limit": fmt.Sprintf("%d", limit),
-		}).Post("/user/list")
+	response, err := m.cli.R().SetQueryParams(map[string]string{
+		"token": m.token,
+		"skip":  fmt.Sprintf("%d", skip),
+		"limit": fmt.Sprintf("%d", limit),
+	}).Get("/user/list")
 	if err != nil {
 		return nil, err
 	}
