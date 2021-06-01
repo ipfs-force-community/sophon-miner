@@ -28,7 +28,7 @@ func NewGatewayRPC(cfg *config.GatewayNode) (*GatewayAPI, jsonrpc.ClientCloser, 
 	}
 
 	var gatewayAPI = &GatewayAPI{}
-	closer, err := jsonrpc.NewMergeClient(context.Background(), addr, "Filecoin",
+	closer, err := jsonrpc.NewMergeClient(context.Background(), addr, "Gateway",
 		[]interface{}{
 			gatewayAPI,
 		},
