@@ -11,8 +11,6 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
-	gwtypes "github.com/ipfs-force-community/venus-gateway/types"
-
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
@@ -82,7 +80,7 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo,
 	}
 	defer closer()
 
-	proofBuf, err := api.ComputeProof(ctx, wpp.minerInfo.Addr, &gwtypes.ComputeProofRequest{SectorInfos: ssi, Rand: rand})
+	proofBuf, err := api.ComputeProof(ctx, wpp.minerInfo.Addr, ssi, rand)
 	if err != nil {
 		return nil, err
 	}
