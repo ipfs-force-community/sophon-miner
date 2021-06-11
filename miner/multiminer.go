@@ -810,28 +810,24 @@ func (m *Miner) ManualStop(ctx context.Context, addr address.Address) error {
 }
 
 func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]dtypes.MinerInfo, error) {
-	m.lkWPP.Lock()
-	defer m.lkWPP.Unlock()
-
 	miners, err := m.minerManager.Update(ctx, skip, limit)
 	if err != nil {
 		return nil, err
 	}
 
 	// update minerWPPMap
+	m.lkWPP.Lock()
+	m.minerWPPMap = make(map[address.Address]*minerWPP)
 	for _, minerInfo := range miners {
-		if _, ok := m.minerWPPMap[minerInfo.Addr]; !ok {
-			epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
-			if err != nil {
-				log.Errorf("create WinningPoStProver failed for [%v]", minerInfo.Addr.String())
-				continue
-			}
-
-			m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name, isMining: true}
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
+		if err != nil {
+			log.Errorf("create WinningPoStProver failed for [%v]", minerInfo.Addr.String())
+			continue
 		}
-	}
 
-	// todo: delete sync???
+		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name, isMining: true}
+	}
+	m.lkWPP.Unlock()
 
 	return miners, nil
 }
