@@ -96,6 +96,7 @@ func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]
 			return nil, err
 		}
 
+		m.lk.Lock()
 		m.miners = make([]dtypes.MinerInfo, 0)
 		for _, val := range res {
 			addr, err := address.NewFromString(val.Miner)
@@ -109,6 +110,7 @@ func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]
 				log.Errorf("miner [%s] is error", val.Miner)
 			}
 		}
+		m.lk.Unlock()
 		return m.miners, err
 	default:
 		response.Result()
