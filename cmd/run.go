@@ -37,11 +37,11 @@ var runCmd = &cli.Command{
 			Usage: "12308",
 		},
 		&cli.StringFlag{
-			Name:     "nettype",
-			Usage:    "network type, one of: mainnet, nerpanet, debug, 2k, calibnet",
-			Value:    "mainnet",
+			Name:        "nettype",
+			Usage:       "network type, one of: mainnet, nerpanet, debug, 2k, calibnet",
+			Value:       "mainnet",
 			DefaultText: "mainnet",
-			Required: false,
+			Required:    false,
 		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",

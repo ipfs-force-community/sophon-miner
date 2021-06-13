@@ -171,7 +171,7 @@ type MinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		UpdateAddress   func(context.Context, int64, int64) ([]dtypes.MinerInfo, error)                                                       `perm:"write"`
+		UpdateAddress   func(context.Context, int64, int64) ([]dtypes.MinerInfo, error)                                         `perm:"write"`
 		ListAddress     func(context.Context) ([]dtypes.MinerInfo, error)                                                       `perm:"read"`
 		StatesForMining func(context.Context, []address.Address) ([]dtypes.MinerState, error)                                   `perm:"read"`
 		CountWinners    func(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) `perm:"write"`

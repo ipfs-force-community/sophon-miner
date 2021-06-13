@@ -95,6 +95,7 @@ type Blockstore struct {
 }
 
 var _ blockstore.Blockstore = (*Blockstore)(nil)
+
 //var _ blockstore.Viewer = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 

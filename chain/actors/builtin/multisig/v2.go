@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -13,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus-miner/chain/actors/adt"
 
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
-	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 var _ State = (*state2)(nil)
@@ -67,7 +68,7 @@ func (s *state2) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 		if n <= 0 {
 			return xerrors.Errorf("invalid pending transaction key: %v", key)
 		}
-		return cb(txid, (Transaction)(out))
+		return cb(txid, (Transaction)(out)) //nolint:unconvert
 	})
 }
 

@@ -17,7 +17,7 @@ import (
 )
 
 type SlashFilterAPI interface {
-	MinedBlock(*types.BlockHeader,  abi.ChainEpoch) error
+	MinedBlock(*types.BlockHeader, abi.ChainEpoch) error
 }
 
 type SlashFilter struct {

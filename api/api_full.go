@@ -36,7 +36,6 @@ type FullNode interface {
 	// ChainTipSetWeight computes weight for the specified tipset.
 	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
 
-
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
 

@@ -81,4 +81,3 @@ func (a APIInfo) AuthHeader() http.Header {
 	log.Warn("API Token not set and requested, capabilities might be limited.")
 	return nil
 }
-

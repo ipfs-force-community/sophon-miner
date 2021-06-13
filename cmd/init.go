@@ -180,7 +180,7 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 
 		if cctx.String("auth-api") != "" {
 			cfg.Db.Type = "auth"
-			cfg.Db.Auth =  &config.AuthConfig{
+			cfg.Db.Auth = &config.AuthConfig{
 				ListenAPI: cctx.String("auth-api"),
 				Token:     cctx.String("auth-token"),
 			}
@@ -343,7 +343,7 @@ func fetchingProofParameters(ctx context.Context) error { // nolint
 	}
 
 	for _, ssize := range ss {
-		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(ssize)); err != nil {
+		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 	}
