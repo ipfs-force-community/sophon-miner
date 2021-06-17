@@ -156,7 +156,8 @@ func (m *Miner) Start(ctx context.Context) error {
 	for _, minerInfo := range miners {
 		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
 		if err != nil {
-			return err
+			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
+			continue
 		}
 		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name, isMining: true}
 	}
@@ -821,7 +822,7 @@ func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]dtypes.
 	for _, minerInfo := range miners {
 		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
 		if err != nil {
-			log.Errorf("create WinningPoStProver failed for [%v]", minerInfo.Addr.String())
+			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
 		}
 
