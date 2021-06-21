@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
