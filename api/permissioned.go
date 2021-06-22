@@ -1,8 +1,7 @@
-package apistruct
+package api
 
 import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/venus-miner/api"
 )
 
 const (
@@ -17,14 +16,14 @@ const (
 var AllPermissions = []auth.Permission{PermRead, PermWrite, PermSign, PermAdmin}
 var DefaultPerms = []auth.Permission{PermRead}
 
-func PermissionedMinerAPI(a api.MinerAPI) api.MinerAPI {
+func PermissionedMinerAPI(a MinerAPI) MinerAPI {
 	var out MinerStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
 	return &out
 }
 
-func PermissionedFullAPI(a api.FullNode) api.FullNode {
+func PermissionedFullAPI(a FullNode) FullNode {
 	var out FullNodeStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)

@@ -7,21 +7,15 @@ import (
 	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/api/apistruct"
 )
 
-func MetricedFullAPI(a api.FullNode) api.FullNode {
-	var out apistruct.FullNodeStruct
+func MetricedMinerAPI(a api.MinerAPI) api.MinerAPI {
+	var out api.MinerStruct
 	proxy(a, &out.Internal)
 	proxy(a, &out.CommonStruct.Internal)
 	return &out
 }
 
-func MetricedMinerAPI(a api.MinerAPI) api.MinerAPI {
-	var out apistruct.MinerStruct
-	proxy(a, &out.Internal)
-	return &out
-}
 
 func proxy(in interface{}, out interface{}) {
 	rint := reflect.ValueOf(out).Elem()

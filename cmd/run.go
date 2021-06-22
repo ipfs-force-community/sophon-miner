@@ -2,26 +2,28 @@ package main
 
 import (
 	"context"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime/debug"
-	"strconv"
 	"syscall"
 
-	"contrib.go.opencensus.io/exporter/prometheus"
+	"github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
-	"github.com/filecoin-project/venus-miner/api"
+	lapi "github.com/filecoin-project/venus-miner/api"
+	"github.com/filecoin-project/venus-miner/api/v0api"
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
+	"github.com/filecoin-project/venus-miner/metrics"
 	"github.com/filecoin-project/venus-miner/node"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
@@ -61,20 +63,22 @@ var runCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing build params")
 
+		ctx := lcli.ReqContext(cctx)
+
 		if err := build.InitNetWorkParams(cctx.String("nettype")); err != nil {
 			return err
 		}
 
 		// default enlarge max os threads to 20000
-		maxOSThreads := 20000
-		if fMaxOSThreads := os.Getenv("FORCE_MAX_OS_THREADS"); fMaxOSThreads != "" {
-			var err error
-			maxOSThreads, err = strconv.Atoi(fMaxOSThreads)
-			if err != nil {
-				return err
-			}
-		}
-		debug.SetMaxThreads(maxOSThreads)
+		//maxOSThreads := 20000
+		//if fMaxOSThreads := os.Getenv("FORCE_MAX_OS_THREADS"); fMaxOSThreads != "" {
+		//	var err error
+		//	maxOSThreads, err = strconv.Atoi(fMaxOSThreads)
+		//	if err != nil {
+		//		return err
+		//	}
+		//}
+		//debug.SetMaxThreads(maxOSThreads)
 
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
@@ -97,6 +101,12 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
 		}
 
+		//log.Info("Checking proof parameters")
+		//
+		//if err := fetchingProofParameters(ctx); err != nil {
+		//	return xerrors.Errorf("fetching proof parameters: %w", err)
+		//}
+
 		lr, err := r.Lock(repo.Miner)
 		if err != nil {
 			return err
@@ -107,41 +117,37 @@ var runCmd = &cli.Command{
 		}
 		cfg := cfgV.(*config.MinerConfig)
 
-		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx, cfg.FullNode)
+		if err := checkV1ApiSupport(ctx, cctx, cfg.FullNode); err != nil {
+			return err
+		}
+
+		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx, cfg.FullNode)
 		lr.Close() //nolint:errcheck
 		if err != nil {
 			return xerrors.Errorf("getting full node api: %w", err)
 		}
 		defer ncloser()
 
-		ctx := lcli.DaemonContext(cctx)
-
-		//log.Info("Checking proof parameters")
-		//
-		//if err := fetchingProofParameters(ctx); err != nil {
-		//	return xerrors.Errorf("fetching proof parameters: %w", err)
-		//}
-
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
 			return err
 		}
 
-		if v.APIVersion != build.FullAPIVersion {
-			return xerrors.Errorf("venus-daemon API version doesn't match: expected: %s", api.Version{APIVersion: build.FullAPIVersion})
+		if v.APIVersion != lapi.FullAPIVersion1 {
+			return xerrors.Errorf("venus-daemon API version doesn't match: expected: %s", lapi.APIVersion{APIVersion: lapi.FullAPIVersion1})
 		}
 
 		log.Info("Checking full node sync status")
 
 		if !cctx.Bool("nosync") {
-			if err := SyncWait(ctx, nodeApi, false); err != nil {
+			if err := SyncWait(ctx, &v0api.WrapperV1Full{FullNode: nodeApi}, false); err != nil {
 				return xerrors.Errorf("sync wait: %w", err)
 			}
 		}
 
 		shutdownChan := make(chan struct{})
 
-		var minerAPI api.MinerAPI
+		var minerAPI lapi.MinerAPI
 		stop, err := node.New(ctx,
 			node.MinerAPI(&minerAPI),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
@@ -152,7 +158,7 @@ var runCmd = &cli.Command{
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/" + cctx.String("miner-api"))
 				})),
-			node.Override(new(api.FullNode), nodeApi),
+			node.Override(new(lapi.FullNode), nodeApi),
 		)
 		if err != nil {
 			return xerrors.Errorf("creating node: %w", err)
@@ -179,7 +185,7 @@ var runCmd = &cli.Command{
 	},
 }
 
-func serveRPC(api api.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64) error {
+func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64) error {
 	lst, err := manet.Listen(addr)
 	if err != nil {
 		return xerrors.Errorf("could not listen: %w", err)
@@ -189,27 +195,27 @@ func serveRPC(api api.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, sh
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
 	}
+
 	rpcServer := jsonrpc.NewServer(serverOptions...)
-	rpcServer.Register("Filecoin", api) // ???
-	//rpcServer.Register("Filecoin", apistruct.PermissionedMinerAPI(metrics.MetricedMinerAPI(api)))
+	rpcServer.Register("Filecoin", lapi.PermissionedMinerAPI(metrics.MetricedMinerAPI(minerAPI)))
+	// rpcServer.Register("Filecoin", minerAPI)
+
+	mux := mux.NewRouter()
+	mux.Handle("/rpc/v0", rpcServer)
+	mux.Handle("/debug/metrics", metrics.Exporter())
+	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 	ah := &auth.Handler{
-		Verify: api.AuthVerify,
-		Next:   rpcServer.ServeHTTP,
+		Verify: minerAPI.AuthVerify,
+		Next:   mux.ServeHTTP,
 	}
-	http.Handle("/rpc/v0", ah)
-
-	exporter, err := prometheus.NewExporter(prometheus.Options{
-		Namespace: "venus-miner",
-	})
-	if err != nil {
-		log.Fatalf("could not create the prometheus stats exporter: %v", err)
-	}
-
-	http.Handle("/debug/metrics", exporter)
 
 	srv := &http.Server{
 		Handler: ah,
+		BaseContext: func(listener net.Listener) context.Context {
+			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "venus-miner"))
+			return ctx
+		},
 	}
 
 	sigChan := make(chan os.Signal, 2)

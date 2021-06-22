@@ -1,18 +1,15 @@
-package api
+package v0api
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/venus-wallet/core"
 
-	"github.com/filecoin-project/venus-miner/chain/actors/builtin"
+	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/actors/builtin/miner"
 	"github.com/filecoin-project/venus-miner/chain/types"
 )
@@ -46,10 +43,10 @@ type FullNode interface {
 
 	// MethodGroup: Sync
 	// The Sync method group contains methods for interacting with and
-	// observing the venus sync service.
+	// observing the lotus sync service.
 
-	// SyncState returns the current status of the venus sync system.
-	SyncState(context.Context) (*SyncState, error) //perm:read
+	// SyncState returns the current status of the lotus sync system.
+	SyncState(context.Context) (*api.SyncState, error) //perm:read
 
 	// SyncSubmitBlock can be used to submit a newly created block to the.
 	// network through this node
@@ -67,8 +64,8 @@ type FullNode interface {
 
 	// MethodGroup: Miner
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) //perm:read
-	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) //perm:read
+	MinerCreateBlock(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
 
 	// // UX ?
 
@@ -82,105 +79,17 @@ type FullNode interface {
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
-	// Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+	// Most methods take a TipSetKey as a parameter. The state looked up is the parent state of the tipset.
 	// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 	// StateMinerInfo returns info about the indicated miner
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error) //perm:read
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
-	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]Deadline, error) //perm:read
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error) //perm:read
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 	// expiration epoch
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error) //perm:read
 	// StateMinerPartitions returns all partitions in the specified deadline
-	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error) //perm:read
-}
-
-type ActiveSync struct {
-	WorkerID uint64
-	Base     *types.TipSet
-	Target   *types.TipSet
-
-	Stage  SyncStateStage
-	Height abi.ChainEpoch
-
-	Start   time.Time
-	End     time.Time
-	Message string
-}
-
-type SyncState struct {
-	ActiveSyncs []ActiveSync
-
-	VMApplied uint64
-}
-
-type SyncStateStage int
-
-const (
-	StageIdle = SyncStateStage(iota)
-	StageHeaders
-	StagePersistHeaders
-	StageMessages
-	StageSyncComplete
-	StageSyncErrored
-	StageFetchingMessages
-)
-
-func (v SyncStateStage) String() string {
-	switch v {
-	case StageIdle:
-		return "idle"
-	case StageHeaders:
-		return "header sync"
-	case StagePersistHeaders:
-		return "persisting headers"
-	case StageMessages:
-		return "message sync"
-	case StageSyncComplete:
-		return "complete"
-	case StageSyncErrored:
-		return "error"
-	case StageFetchingMessages:
-		return "fetching messages"
-	default:
-		return fmt.Sprintf("<unknown: %d>", v)
-	}
-}
-
-type MiningBaseInfo struct {
-	MinerPower        types.BigInt
-	NetworkPower      types.BigInt
-	Sectors           []builtin.SectorInfo
-	WorkerKey         address.Address
-	SectorSize        abi.SectorSize
-	PrevBeaconEntry   types.BeaconEntry
-	BeaconEntries     []types.BeaconEntry
-	EligibleForMining bool
-}
-
-type BlockTemplate struct {
-	Miner            address.Address
-	Parents          types.TipSetKey
-	Ticket           *types.Ticket
-	Eproof           *types.ElectionProof
-	BeaconValues     []types.BeaconEntry
-	Messages         []*types.SignedMessage
-	Epoch            abi.ChainEpoch
-	Timestamp        uint64
-	WinningPoStProof []builtin.PoStProof
-}
-
-type Deadline struct {
-	PostSubmissions      bitfield.BitField
-	DisputableProofCount uint64
-}
-
-type Partition struct {
-	AllSectors        bitfield.BitField
-	FaultySectors     bitfield.BitField
-	RecoveringSectors bitfield.BitField
-	LiveSectors       bitfield.BitField
-	ActiveSectors     bitfield.BitField
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error) //perm:read
 }

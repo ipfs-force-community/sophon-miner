@@ -1,4 +1,4 @@
-package apistruct
+package api
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/venus-wallet/core"
 
-	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/actors/builtin/miner"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
@@ -26,8 +25,8 @@ type CommonStruct struct {
 		AuthVerify func(ctx context.Context, token string) ([]auth.Permission, error) `perm:"read"`
 		AuthNew    func(ctx context.Context, perms []auth.Permission) ([]byte, error) `perm:"admin"`
 
-		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
-		Version func(context.Context) (api.Version, error) `perm:"read"`
+		ID      func(context.Context) (peer.ID, error)    `perm:"read"`
+		Version func(context.Context) (APIVersion, error) `perm:"read"`
 
 		LogList     func(context.Context) ([]string, error)     `perm:"write"`
 		LogSetLevel func(context.Context, string, string) error `perm:"write"`
@@ -49,21 +48,21 @@ type FullNodeStruct struct {
 
 		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
-		SyncState func(context.Context) (*api.SyncState, error) `perm:"read"`
+		SyncState func(context.Context) (*SyncState, error) `perm:"read"`
 
 		SyncSubmitBlock func(ctx context.Context, blk *types.BlockMsg) error `perm:"write"`
 
 		MpoolSelect  func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)     `perm:"read"`
 		MpoolSelects func(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error) `perm:"read"`
 
-		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
-		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
+		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) `perm:"read"`
+		MinerCreateBlock func(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
 
 		WalletSign func(context.Context, address.Address, []byte, core.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
 
 		StateMinerInfo       func(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)                            `perm:"read"`
-		StateMinerDeadlines  func(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error)                             `perm:"read"`
-		StateMinerPartitions func(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error)    `perm:"read"`
+		StateMinerDeadlines  func(context.Context, address.Address, types.TipSetKey) ([]Deadline, error)                                 `perm:"read"`
+		StateMinerPartitions func(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error)        `perm:"read"`
 		StateSectorGetInfo   func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error) `perm:"read"`
 	}
 }
@@ -79,7 +78,7 @@ func (c *CommonStruct) AuthNew(ctx context.Context, perms []auth.Permission) ([]
 }
 
 // Version implements API.Version
-func (c *CommonStruct) Version(ctx context.Context) (api.Version, error) {
+func (c *CommonStruct) Version(ctx context.Context) (APIVersion, error) {
 	return c.Internal.Version(ctx)
 }
 
@@ -104,7 +103,7 @@ func (c *CommonStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
 }
 
 // FullNodeStruct
-func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) (*types.BlockMsg, error) {
+func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, bt *BlockTemplate) (*types.BlockMsg, error) {
 	return c.Internal.MinerCreateBlock(ctx, bt)
 }
 
@@ -128,11 +127,11 @@ func (c *FullNodeStruct) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoc
 	return c.Internal.BeaconGetEntry(ctx, epoch)
 }
 
-func (c *FullNodeStruct) SyncState(ctx context.Context) (*api.SyncState, error) {
+func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
 	return c.Internal.SyncState(ctx)
 }
 
-func (c *FullNodeStruct) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+func (c *FullNodeStruct) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*MiningBaseInfo, error) {
 	return c.Internal.MinerGetBaseInfo(ctx, maddr, epoch, tsk)
 }
 
@@ -144,11 +143,11 @@ func (c *FullNodeStruct) StateMinerInfo(ctx context.Context, actor address.Addre
 	return c.Internal.StateMinerInfo(ctx, actor, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerDeadlines(ctx context.Context, actor address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
+func (c *FullNodeStruct) StateMinerDeadlines(ctx context.Context, actor address.Address, tsk types.TipSetKey) ([]Deadline, error) {
 	return c.Internal.StateMinerDeadlines(ctx, actor, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error) {
+func (c *FullNodeStruct) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error) {
 	return c.Internal.StateMinerPartitions(ctx, m, dlIdx, tsk)
 }
 
@@ -164,8 +163,8 @@ func (c *FullNodeStruct) MpoolSelects(ctx context.Context, tsk types.TipSetKey, 
 	return c.Internal.MpoolSelects(ctx, tsk, ticketQualitys)
 }
 
-var _ api.Common = &CommonStruct{}
-var _ api.FullNode = &FullNodeStruct{}
+var _ Common = &CommonStruct{}
+var _ FullNode = &FullNodeStruct{}
 
 type MinerStruct struct {
 	CommonStruct
@@ -204,4 +203,4 @@ func (s *MinerStruct) Stop(ctx context.Context, addr address.Address) error {
 	return s.Internal.Stop(ctx, addr)
 }
 
-var _ api.MinerAPI = &MinerStruct{}
+var _ MinerAPI = &MinerStruct{}
