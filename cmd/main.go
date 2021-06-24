@@ -3,14 +3,16 @@ package main
 import (
 	"fmt"
 
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
+	"go.opencensus.io/trace"
+
+	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/lib/tracing"
 	"github.com/filecoin-project/venus-miner/lib/venuslog"
 	"github.com/filecoin-project/venus-miner/node/repo"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/urfave/cli/v2"
-	"go.opencensus.io/trace"
 )
 
 var log = logging.Logger("main")
@@ -21,7 +23,7 @@ const FlagMinerRepo = "miner-repo"
 const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
-	build.RunningNodeType = build.NodeMiner
+	api.RunningNodeType = api.NodeMiner
 
 	venuslog.SetupLogLevels()
 

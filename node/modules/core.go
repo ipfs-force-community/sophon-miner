@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/filecoin-project/venus-miner/api"
 	"io"
 	"io/ioutil"
 	"os"
@@ -20,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
-	"github.com/filecoin-project/venus-miner/api/apistruct"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
@@ -158,7 +158,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 
 		// TODO: make this configurable
 		p := JwtPayload{
-			Allow: apistruct.AllPermissions,
+			Allow: api.AllPermissions,
 		}
 
 		cliToken, err := jwt.Sign(&p, jwt.NewHS256(key.PrivateKey))

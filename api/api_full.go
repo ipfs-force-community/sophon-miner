@@ -26,16 +26,15 @@ type FullNode interface {
 	// blockchain, but that do not require any form of state computation.
 
 	// ChainHead returns the current head of the chain.
-	ChainHead(context.Context) (*types.TipSet, error)
+	ChainHead(context.Context) (*types.TipSet, error) //perm:read
 
 	// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
 	// If there are no blocks at the specified epoch, a tipset at an earlier epoch
 	// will be returned.
-	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) //perm:read
 
 	// ChainTipSetWeight computes weight for the specified tipset.
-	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
-
+	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error) //perm:read
 
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
@@ -43,41 +42,41 @@ type FullNode interface {
 	// BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
 	// the entry has not yet been produced, the call will block until the entry
 	// becomes available
-	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)
+	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) //perm:read
 
 	// MethodGroup: Sync
 	// The Sync method group contains methods for interacting with and
 	// observing the venus sync service.
 
 	// SyncState returns the current status of the venus sync system.
-	SyncState(context.Context) (*SyncState, error)
+	SyncState(context.Context) (*SyncState, error) //perm:read
 
 	// SyncSubmitBlock can be used to submit a newly created block to the.
 	// network through this node
-	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
+	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error //perm:write
 
 	// MethodGroup: Mpool
 	// The Mpool methods are for interacting with the message pool. The message pool
 	// manages all incoming and outgoing 'messages' going over the network.
 
 	// MpoolSelect returns a list of pending messages for inclusion in the next block
-	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
+	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error) //perm:read
 
 	// MpoolSelects returns a list of pending messages for inclusion in the blocks
-	MpoolSelects(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error)
+	MpoolSelects(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error) //perm:write
 
 	// MethodGroup: Miner
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
-	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) //perm:read
+	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
 
 	// // UX ?
 
 	// MethodGroup: Wallet
 
 	// WalletSign signs the given bytes using the given address.
-	WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta core.MsgMeta) (*crypto.Signature, error)
-	//WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
+	WalletSign(context.Context, address.Address, []byte, core.MsgMeta) (*crypto.Signature, error) //perm:sign
+	//WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error) //perm:sign
 
 	// Other
 
@@ -87,15 +86,15 @@ type FullNode interface {
 	// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 	// StateMinerInfo returns info about the indicated miner
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error) //perm:read
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
-	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]Deadline, error)
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]Deadline, error) //perm:read
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 	// expiration epoch
-	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error) //perm:read
 	// StateMinerPartitions returns all partitions in the specified deadline
-	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error)
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error) //perm:read
 }
 
 type ActiveSync struct {
@@ -131,6 +130,8 @@ const (
 
 func (v SyncStateStage) String() string {
 	switch v {
+	case StageIdle:
+		return "idle"
 	case StageHeaders:
 		return "header sync"
 	case StagePersistHeaders:

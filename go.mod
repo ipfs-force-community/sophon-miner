@@ -17,14 +17,18 @@ require (
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-bitfield v0.2.4
+	github.com/filecoin-project/go-commp-utils v0.1.0 // indirect
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v1.2.7
+	github.com/filecoin-project/go-fil-markets v1.2.5 // indirect
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
-	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
-	github.com/filecoin-project/go-state-types v0.1.0
+	github.com/filecoin-project/go-paramfetch v0.0.2-0.20210614165157-25a6c7769498
+	github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48
+	github.com/filecoin-project/go-statestore v0.1.1 // indirect
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.5-0.20210114162132-5b58b773f4fb
-	github.com/filecoin-project/specs-actors/v3 v3.1.1
+	github.com/filecoin-project/specs-actors/v3 v3.1.0
+	github.com/filecoin-project/specs-actors/v4 v4.0.0
+	github.com/filecoin-project/specs-actors/v5 v5.0.1
 	github.com/filecoin-project/venus-wallet v1.1.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -32,6 +36,7 @@ require (
 	github.com/golang/protobuf v1.5.1 // indirect
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
 	github.com/google/uuid v1.2.0
+	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-cid v0.0.7
@@ -43,7 +48,6 @@ require (
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.5
-	github.com/ipfs/go-log v1.0.4
 	github.com/ipfs/go-log/v2 v2.1.3
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -58,6 +62,7 @@ require (
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multihash v0.0.14
+	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/common v0.25.0
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.0.1

@@ -46,13 +46,13 @@ func (a *CommonAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byt
 	return jwt.Sign(&p, (*jwt.HMACSHA)(a.APISecret))
 }
 
-func (a *CommonAPI) Version(context.Context) (api.Version, error) {
-	v, err := build.VersionForType(build.RunningNodeType)
+func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
+	v, err := api.VersionForType(api.RunningNodeType)
 	if err != nil {
-		return api.Version{}, err
+		return api.APIVersion{}, err
 	}
 
-	return api.Version{
+	return api.APIVersion{
 		Version:    build.UserVersion(),
 		APIVersion: v,
 

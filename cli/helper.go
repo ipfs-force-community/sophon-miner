@@ -77,4 +77,3 @@ func (a *AppFmt) Printf(fmtstr string, args ...interface{}) {
 func (a *AppFmt) Scan(args ...interface{}) (int, error) {
 	return fmt.Fscan(a.Stdin, args...)
 }
-

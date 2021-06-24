@@ -41,7 +41,7 @@ const (
 type RepoType int
 
 const (
-	_                 = iota // Default is invalid
+	_              = iota // Default is invalid
 	Miner RepoType = iota
 )
 

@@ -28,7 +28,7 @@ type FullNode struct {
 	Token     string
 }
 
-func (sn FullNode) DialArgs() (string, error) {
+func (sn FullNode) DialArgs(version string) (string, error) {
 	ma, err := multiaddr.NewMultiaddr(sn.ListenAPI)
 	if err == nil {
 		_, addr, err := manet.DialArgs(ma)
@@ -36,14 +36,14 @@ func (sn FullNode) DialArgs() (string, error) {
 			return "", err
 		}
 
-		return "ws://" + addr + "/rpc/v0", nil
+		return "ws://" + addr + "/rpc/" + version, nil
 	}
 
 	_, err = url.Parse(sn.ListenAPI)
 	if err != nil {
 		return "", err
 	}
-	return sn.ListenAPI + "/rpc/v0", nil
+	return sn.ListenAPI + "/rpc/" + version, nil
 }
 
 func (sn FullNode) AuthHeader() http.Header {

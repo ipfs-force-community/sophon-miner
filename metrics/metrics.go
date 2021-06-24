@@ -28,16 +28,16 @@ var (
 
 // Measures
 var (
-	PubsubPublishMessage                = stats.Int64("pubsub/published", "Counter for total published messages", stats.UnitDimensionless)
-	PubsubDeliverMessage                = stats.Int64("pubsub/delivered", "Counter for total delivered messages", stats.UnitDimensionless)
-	PubsubRejectMessage                 = stats.Int64("pubsub/rejected", "Counter for total rejected messages", stats.UnitDimensionless)
-	PubsubDuplicateMessage              = stats.Int64("pubsub/duplicate", "Counter for total duplicate messages", stats.UnitDimensionless)
-	PubsubRecvRPC                       = stats.Int64("pubsub/recv_rpc", "Counter for total received RPCs", stats.UnitDimensionless)
-	PubsubSendRPC                       = stats.Int64("pubsub/send_rpc", "Counter for total sent RPCs", stats.UnitDimensionless)
-	PubsubDropRPC                       = stats.Int64("pubsub/drop_rpc", "Counter for total dropped RPCs", stats.UnitDimensionless)
-	APIRequestDuration                  = stats.Float64("api/request_duration_ms", "Duration of API requests", stats.UnitMilliseconds)
-	VMFlushCopyDuration                 = stats.Float64("vm/flush_copy_ms", "Time spent in VM Flush Copy", stats.UnitMilliseconds)
-	VMFlushCopyCount                    = stats.Int64("vm/flush_copy_count", "Number of copied objects", stats.UnitDimensionless)
+	PubsubPublishMessage   = stats.Int64("pubsub/published", "Counter for total published messages", stats.UnitDimensionless)
+	PubsubDeliverMessage   = stats.Int64("pubsub/delivered", "Counter for total delivered messages", stats.UnitDimensionless)
+	PubsubRejectMessage    = stats.Int64("pubsub/rejected", "Counter for total rejected messages", stats.UnitDimensionless)
+	PubsubDuplicateMessage = stats.Int64("pubsub/duplicate", "Counter for total duplicate messages", stats.UnitDimensionless)
+	PubsubRecvRPC          = stats.Int64("pubsub/recv_rpc", "Counter for total received RPCs", stats.UnitDimensionless)
+	PubsubSendRPC          = stats.Int64("pubsub/send_rpc", "Counter for total sent RPCs", stats.UnitDimensionless)
+	PubsubDropRPC          = stats.Int64("pubsub/drop_rpc", "Counter for total dropped RPCs", stats.UnitDimensionless)
+	APIRequestDuration     = stats.Float64("api/request_duration_ms", "Duration of API requests", stats.UnitMilliseconds)
+	VMFlushCopyDuration    = stats.Float64("vm/flush_copy_ms", "Time spent in VM Flush Copy", stats.UnitMilliseconds)
+	VMFlushCopyCount       = stats.Int64("vm/flush_copy_count", "Number of copied objects", stats.UnitDimensionless)
 )
 
 var (

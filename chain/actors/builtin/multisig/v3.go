@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/venus-miner/chain/actors/adt"
 
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	msig3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/multisig"
 )
 
@@ -69,17 +70,17 @@ func (s *state3) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 		if n <= 0 {
 			return xerrors.Errorf("invalid pending transaction key: %v", key)
 		}
-		return cb(txid, (Transaction)(out))
+		return cb(txid, (Transaction)(out)) //nolint:unconvert
 	})
 }
 
 func (s *state3) PendingTxnChanged(other State) (bool, error) {
-	other2, ok := other.(*state3)
+	other3, ok := other.(*state3)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
-	return !s.State.PendingTxns.Equals(other2.PendingTxns), nil
+	return !s.State.PendingTxns.Equals(other3.PendingTxns), nil
 }
 
 func (s *state3) transactions() (adt.Map, error) {

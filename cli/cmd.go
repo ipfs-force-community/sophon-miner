@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-miner/api/v1api"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"net/http"
 	"os"
@@ -105,13 +106,13 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (cliutil.APIInfo, error) {
 	}, nil
 }
 
-func GetRawAPI(ctx *cli.Context, t repo.RepoType) (string, http.Header, error) {
+func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get API info: %w", err)
 	}
 
-	addr, err := ainfo.DialArgs()
+	addr, err := ainfo.DialArgs(version)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
@@ -134,30 +135,39 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		return tn.(api.FullNode), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, t)
+	addr, headers, err := GetRawAPI(ctx, t, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewCommonRPC(ctx.Context, addr, headers)
+	return client.NewCommonRPCV0(ctx.Context, addr, headers)
 }
 
 func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (api.FullNode, jsonrpc.ClientCloser, error) {
-	addr, err := fn.DialArgs()
+	addr, err := fn.DialArgs("v0")
 	if err != nil {
 		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
-	return client.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
+	return client.NewFullNodeRPCV0(ctx.Context, addr, fn.AuthHeader())
+}
+
+func GetFullNodeAPIV1(ctx *cli.Context, fn config.FullNode) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+	addr, err := fn.DialArgs("v1")
+	if err != nil {
+		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
+	}
+
+	return client.NewFullNodeRPCV1(ctx.Context, addr, fn.AuthHeader())
 }
 
 func GetMinerAPI(ctx *cli.Context) (api.MinerAPI, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.Miner)
+	addr, headers, err := GetRawAPI(ctx, repo.Miner, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewMinerRPC(addr, headers)
+	return client.NewMinerRPCV0(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {
