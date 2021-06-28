@@ -15,7 +15,7 @@ const (
 )
 
 type MinerManageAPI interface {
-	//Put(ctx context.Context, addr dtypes.MinerInfo) error
+	Put(ctx context.Context, addr dtypes.MinerInfo) error
 	//Set(ctx context.Context, addr dtypes.MinerInfo) error
 	Has(ctx context.Context, checkAddr address.Address) bool
 	Get(ctx context.Context, checkAddr address.Address) *dtypes.MinerInfo
