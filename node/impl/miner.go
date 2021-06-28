@@ -36,10 +36,14 @@ func (m *MinerAPI) CountWinners(ctx context.Context, addrs []address.Address, st
 	return m.MiningAPI.CountWinners(ctx, addrs, start, end)
 }
 
-func (m *MinerAPI) Start(ctx context.Context, addr address.Address) error {
-	return m.MiningAPI.ManualStart(ctx, addr)
+func (m *MinerAPI) Start(ctx context.Context, addrs []address.Address) error {
+	return m.MiningAPI.ManualStart(ctx, addrs)
 }
 
-func (m *MinerAPI) Stop(ctx context.Context, addr address.Address) error {
-	return m.MiningAPI.ManualStop(ctx, addr)
+func (m *MinerAPI) Stop(ctx context.Context, addrs []address.Address) error {
+	return m.MiningAPI.ManualStop(ctx, addrs)
+}
+
+func (s *MinerAPI) AddAddress(ctx context.Context, mi dtypes.MinerInfo) error {
+	return s.MiningAPI.AddAddress(ctx, mi)
 }

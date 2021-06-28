@@ -816,29 +816,46 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 	return blockMsg, err
 }
 
-func (m *Miner) ManualStart(ctx context.Context, addr address.Address) error {
+func (m *Miner) ManualStart(ctx context.Context, addrs []address.Address) error {
 	m.lkWPP.Lock()
 	defer m.lkWPP.Unlock()
 
-	if mining, ok := m.minerWPPMap[addr]; ok {
-		mining.isMining = true
-		return nil
+	if len(addrs) > 0 {
+		for _, addr := range addrs {
+			if _, ok := m.minerWPPMap[addr]; ok {
+				m.minerWPPMap[addr].isMining = true
+			} else {
+				return xerrors.Errorf("%s not exist", addr)
+			}
+		}
+	} else {
+		for k := range m.minerWPPMap {
+			m.minerWPPMap[k].isMining = true
+		}
 	}
 
-	return xerrors.Errorf("%s not exist", addr)
+	return nil
 }
 
-func (m *Miner) ManualStop(ctx context.Context, addr address.Address) error {
+func (m *Miner) ManualStop(ctx context.Context, addrs []address.Address) error {
 	m.lkWPP.Lock()
 	defer m.lkWPP.Unlock()
 
-	if mining, ok := m.minerWPPMap[addr]; ok {
-		mining.isMining = false
-		mining.err = []string{}
-		return nil
+	if len(addrs) > 0 {
+		for _, addr := range addrs {
+			if _, ok := m.minerWPPMap[addr]; ok {
+				m.minerWPPMap[addr].isMining = false
+			} else {
+				return xerrors.Errorf("%s not exist", addr)
+			}
+		}
+	} else {
+		for k := range m.minerWPPMap {
+			m.minerWPPMap[k].isMining = false
+		}
 	}
 
-	return xerrors.Errorf("%s not exist", addr)
+	return nil
 }
 
 func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]dtypes.MinerInfo, error) {
@@ -862,6 +879,17 @@ func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]dtypes.
 	m.lkWPP.Unlock()
 
 	return miners, nil
+}
+
+func (m *Miner) AddAddress(ctx context.Context, mi dtypes.MinerInfo) error {
+	epp, err := NewWinningPoStProver(m.api, m.gatewayNode, mi, m.verifier)
+	if err != nil {
+		return err
+	}
+
+	m.minerWPPMap[mi.Addr] = &minerWPP{epp: epp, account: mi.Name, isMining: true}
+
+	return m.minerManager.Put(ctx, mi)
 }
 
 func (m *Miner) ListAddress(ctx context.Context) ([]dtypes.MinerInfo, error) {

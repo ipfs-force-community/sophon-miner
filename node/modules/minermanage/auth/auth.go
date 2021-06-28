@@ -42,6 +42,19 @@ func NewMinerManager(url, token string) func() (minermanage.MinerManageAPI, erro
 	}
 }
 
+func (m *MinerManagerForAuth) Put(ctx context.Context, mi dtypes.MinerInfo) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	if m.Has(ctx, mi.Addr) {
+		log.Warnf("addr %s has exit", mi.Addr)
+		return nil
+	}
+
+	m.miners = append(m.miners, mi)
+	return nil
+}
+
 func (m *MinerManagerForAuth) Has(ctx context.Context, addr address.Address) bool {
 	m.lk.Lock()
 	defer m.lk.Unlock()

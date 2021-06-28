@@ -116,9 +116,10 @@ type MinerStruct struct {
 		UpdateAddress   func(context.Context, int64, int64) ([]dtypes.MinerInfo, error)                                         `perm:"write"`
 		ListAddress     func(context.Context) ([]dtypes.MinerInfo, error)                                                       `perm:"read"`
 		StatesForMining func(context.Context, []address.Address) ([]dtypes.MinerState, error)                                   `perm:"read"`
-		CountWinners    func(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) `perm:"write"`
-		Start           func(context.Context, address.Address) error                                                            `perm:"write"`
-		Stop            func(context.Context, address.Address) error                                                            `perm:"write"`
+		CountWinners    func(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) `perm:"read"`
+		Start           func(context.Context, []address.Address) error                                                          `perm:"admin"`
+		Stop            func(context.Context, []address.Address) error                                                          `perm:"admin"`
+		AddAddress      func(context.Context, dtypes.MinerInfo) error                                                           `perm:"admin"`
 	}
 }
 
@@ -138,12 +139,16 @@ func (s *MinerStruct) CountWinners(ctx context.Context, addrs []address.Address,
 	return s.Internal.CountWinners(ctx, addrs, start, end)
 }
 
-func (s *MinerStruct) Start(ctx context.Context, addr address.Address) error {
-	return s.Internal.Start(ctx, addr)
+func (s *MinerStruct) Start(ctx context.Context, addrs []address.Address) error {
+	return s.Internal.Start(ctx, addrs)
 }
 
-func (s *MinerStruct) Stop(ctx context.Context, addr address.Address) error {
-	return s.Internal.Stop(ctx, addr)
+func (s *MinerStruct) Stop(ctx context.Context, addrs []address.Address) error {
+	return s.Internal.Stop(ctx, addrs)
+}
+
+func (s *MinerStruct) AddAddress(ctx context.Context, mi dtypes.MinerInfo) error {
+	return s.Internal.AddAddress(ctx, mi)
 }
 
 var _ MinerAPI = &MinerStruct{}

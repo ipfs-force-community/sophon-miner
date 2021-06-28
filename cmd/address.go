@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -55,6 +56,7 @@ var addressCmd = &cli.Command{
 		stateCmd,
 		startMiningCmd,
 		stopMiningCmd,
+		addCmd,
 	},
 }
 
@@ -93,6 +95,49 @@ var updateCmd = &cli.Command{
 		fmt.Println(string(formatJson))
 
 		return nil
+	},
+}
+
+var addCmd = &cli.Command{
+	Name:  "add",
+	Usage: "add a miner",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "id",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "name",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		mi := dtypes.MinerInfo{Id: cctx.String("id"), Name: cctx.String("name")}
+
+		addr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return nil
+		}
+		mi.Addr = addr
+
+		postApi, closer, err := lcli.GetMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		err = postApi.AddAddress(cctx.Context, mi)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("add miner success.")
+		return nil
+
 	},
 }
 
@@ -163,7 +208,7 @@ var startMiningCmd = &cli.Command{
 	Name:      "start",
 	Usage:     "start mining for specified miner",
 	Flags:     []cli.Flag{},
-	ArgsUsage: "[address]",
+	ArgsUsage: "[address ...]",
 	Action: func(cctx *cli.Context) error {
 		postApi, closer, err := lcli.GetMinerAPI(cctx)
 		if err != nil {
@@ -172,18 +217,22 @@ var startMiningCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		addrStr := cctx.Args().First()
-		addr, err := address.NewFromString(addrStr)
+		var addrs []address.Address
+		for i, s := range cctx.Args().Slice() {
+			minerAddr, err := address.NewFromString(s)
+			if err != nil {
+				return xerrors.Errorf("parsing %d-th miner: %w", i, err)
+			}
+
+			addrs = append(addrs, minerAddr)
+		}
+
+		err = postApi.Start(ctx, addrs)
 		if err != nil {
 			return err
 		}
 
-		err = postApi.Start(ctx, addr)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("start mining for: ", addr)
+		fmt.Println("start mining success.")
 		return nil
 	},
 }
@@ -192,7 +241,7 @@ var stopMiningCmd = &cli.Command{
 	Name:      "stop",
 	Usage:     "stop mining for specified miner",
 	Flags:     []cli.Flag{},
-	ArgsUsage: "[address]",
+	ArgsUsage: "[address ...]",
 	Action: func(cctx *cli.Context) error {
 		postApi, closer, err := lcli.GetMinerAPI(cctx)
 		if err != nil {
@@ -201,18 +250,22 @@ var stopMiningCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		addrStr := cctx.Args().First()
-		addr, err := address.NewFromString(addrStr)
+		var addrs []address.Address
+		for i, s := range cctx.Args().Slice() {
+			minerAddr, err := address.NewFromString(s)
+			if err != nil {
+				return xerrors.Errorf("parsing %d-th miner: %w", i, err)
+			}
+
+			addrs = append(addrs, minerAddr)
+		}
+
+		err = postApi.Stop(ctx, addrs)
 		if err != nil {
 			return err
 		}
 
-		err = postApi.Stop(ctx, addr)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("stop mining for: ", addr)
+		fmt.Println("stop mining success.")
 		return nil
 	},
 }

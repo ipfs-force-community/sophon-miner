@@ -18,8 +18,8 @@ type MiningAPI interface {
 type IMinerMining interface {
 	Start(context.Context) error
 	Stop(context.Context) error
-	ManualStart(context.Context, address.Address) error
-	ManualStop(context.Context, address.Address) error
+	ManualStart(context.Context, []address.Address) error
+	ManualStop(context.Context, []address.Address) error
 }
 
 type IMinerManager interface {
@@ -27,6 +27,7 @@ type IMinerManager interface {
 	ListAddress(context.Context) ([]dtypes.MinerInfo, error)
 	StatesForMining(context.Context, []address.Address) ([]dtypes.MinerState, error)
 	CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error)
+	AddAddress(ctx context.Context, mi dtypes.MinerInfo) error
 }
 
 type MockMinerMgr struct {
@@ -48,4 +49,8 @@ func (m MockMinerMgr) StatesForMining(context.Context, []address.Address) ([]dty
 
 func (m MockMinerMgr) CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) {
 	return nil, nil
+}
+
+func (m MockMinerMgr) AddAddress(context.Context, dtypes.MinerInfo) error {
+	return nil
 }
