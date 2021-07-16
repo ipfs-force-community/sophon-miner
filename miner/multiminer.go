@@ -407,7 +407,7 @@ minerLoop:
 				b, err := m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
 				if err != nil {
 					log.Errorf("failed to create block: %w", err)
-					return
+					continue
 				}
 				blks = append(blks, b)
 
@@ -443,62 +443,64 @@ minerLoop:
 				})
 			}
 
-			btime := time.Unix(int64(blks[0].Header.Timestamp), 0)
-			now := build.Clock.Now()
-			switch {
-			case btime == now:
-				// block timestamp is perfectly aligned with time.
-			case btime.After(now):
-				if !m.niceSleep(build.Clock.Until(btime)) {
-					log.Warnf("received interrupt while waiting to broadcast block, will shutdown after block is sent out")
-					build.Clock.Sleep(build.Clock.Until(btime))
+			if len(blks) > 0 {
+				btime := time.Unix(int64(blks[0].Header.Timestamp), 0)
+				now := build.Clock.Now()
+				switch {
+				case btime == now:
+					// block timestamp is perfectly aligned with time.
+				case btime.After(now):
+					if !m.niceSleep(build.Clock.Until(btime)) {
+						log.Warnf("received interrupt while waiting to broadcast block, will shutdown after block is sent out")
+						build.Clock.Sleep(build.Clock.Until(btime))
+					}
+				default:
+					log.Warnw("mined block in the past",
+						"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 				}
-			default:
-				log.Warnw("mined block in the past",
-					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
-			}
 
-			// broadcast all blocks
-			for _, b := range blks {
-				go func(bm *types.BlockMsg) {
-					if err := m.sf.MinedBlock(bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
-						log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-						return
-					}
+				// broadcast all blocks
+				for _, b := range blks {
+					go func(bm *types.BlockMsg) {
+						if err := m.sf.MinedBlock(bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+							return
+						}
 
-					has := m.blockRecord.Has(bm.Header.Miner, uint64(bm.Header.Height))
-					if has {
-						log.Warnw("Created a block at the same height as another block we've created", "height", bm.Header.Height, "miner", bm.Header.Miner, "parents", bm.Header.Parents)
-						return
-					}
+						has := m.blockRecord.Has(bm.Header.Miner, uint64(bm.Header.Height))
+						if has {
+							log.Warnw("Created a block at the same height as another block we've created", "height", bm.Header.Height, "miner", bm.Header.Miner, "parents", bm.Header.Parents)
+							return
+						}
 
-					err = m.blockRecord.MarkAsProduced(bm.Header.Miner, uint64(bm.Header.Height))
-					if err != nil {
-						log.Errorf("failed to write db: %s", err)
-					}
+						err = m.blockRecord.MarkAsProduced(bm.Header.Miner, uint64(bm.Header.Height))
+						if err != nil {
+							log.Errorf("failed to write db: %s", err)
+						}
 
-					if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
-						log.Errorf("failed to submit newly mined block: %s", err)
-					}
-				}(b)
-			}
+						if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
+							log.Errorf("failed to submit newly mined block: %s", err)
+						}
+					}(b)
+				}
 
-			// ToDo Under normal circumstances, when the block is created in a cycle,
-			// the block is broadcast at the time of (timestamp),
-			// and the latest block is often not received directly from the next round,
-			// resulting in  lastbase==base staying in the previous cycle,
-			// so that it will be broadcast again. Jump one cycle (L280), miss a cycle and possibly produce blocks.
+				// ToDo Under normal circumstances, when the block is created in a cycle,
+				// the block is broadcast at the time of (timestamp),
+				// and the latest block is often not received directly from the next round,
+				// resulting in  lastbase==base staying in the previous cycle,
+				// so that it will be broadcast again. Jump one cycle (L280), miss a cycle and possibly produce blocks.
 
-			nextRound := time.Unix(int64(blks[0].Header.Timestamp)+int64(build.PropagationDelaySecs), 0)
+				nextRound := time.Unix(int64(blks[0].Header.Timestamp)+int64(build.PropagationDelaySecs), 0)
 
-			select {
-			case <-build.Clock.After(build.Clock.Until(nextRound)):
-			case <-m.stop:
-				stopping := m.stopping
-				m.stop = nil
-				m.stopping = nil
-				close(stopping)
-				return
+				select {
+				case <-build.Clock.After(build.Clock.Until(nextRound)):
+				case <-m.stop:
+					stopping := m.stopping
+					m.stop = nil
+					m.stopping = nil
+					close(stopping)
+					return
+				}
 			}
 		} else {
 			base.NullRounds++
