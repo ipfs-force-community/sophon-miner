@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/venus-miner/api/v0api"
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
+	"github.com/filecoin-project/venus-miner/lib/tracing"
 	"github.com/filecoin-project/venus-miner/metrics"
 	"github.com/filecoin-project/venus-miner/node"
 	"github.com/filecoin-project/venus-miner/node/config"
@@ -181,6 +182,14 @@ var runCmd = &cli.Command{
 
 		log.Infof("Remote version %s", v)
 
+		// setup jaeger tracing
+		jaeger := tracing.SetupJaegerTracing(cfg.Tracing)
+		defer func() {
+			if jaeger != nil {
+				jaeger.Flush()
+			}
+		}()
+
 		return serveRPC(minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
 	},
 }
@@ -197,7 +206,7 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 	}
 
 	rpcServer := jsonrpc.NewServer(serverOptions...)
-	rpcServer.Register("Filecoin", lapi.PermissionedMinerAPI(metrics.MetricedMinerAPI(minerAPI)))
+	rpcServer.Register("Filecoin", lapi.PermissionedMinerAPI(minerAPI))
 	// rpcServer.Register("Filecoin", minerAPI)
 
 	mux := mux.NewRouter()

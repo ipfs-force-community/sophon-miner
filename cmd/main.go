@@ -3,16 +3,13 @@ package main
 import (
 	"fmt"
 
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/urfave/cli/v2"
-	"go.opencensus.io/trace"
-
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
-	"github.com/filecoin-project/venus-miner/lib/tracing"
 	"github.com/filecoin-project/venus-miner/lib/venuslog"
 	"github.com/filecoin-project/venus-miner/node/repo"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
 )
 
 var log = logging.Logger("main")
@@ -34,26 +31,6 @@ func main() {
 		addressCmd,
 		winnerCmd,
 		configCmd,
-	}
-	jaeger := tracing.SetupJaegerTracing("venus-miner")
-	defer func() {
-		if jaeger != nil {
-			jaeger.Flush()
-		}
-	}()
-
-	for _, cmd := range local {
-		cmd := cmd
-		originBefore := cmd.Before
-		cmd.Before = func(cctx *cli.Context) error {
-			trace.UnregisterExporter(jaeger)
-			jaeger = tracing.SetupJaegerTracing("venus-miner/" + cmd.Name)
-
-			if originBefore != nil {
-				return originBefore(cctx)
-			}
-			return nil
-		}
 	}
 
 	app := &cli.App{

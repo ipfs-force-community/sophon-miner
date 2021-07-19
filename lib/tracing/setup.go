@@ -1,25 +1,31 @@
 package tracing
 
 import (
-	"os"
-
 	"contrib.go.opencensus.io/exporter/jaeger"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
+	"os"
+
+	"github.com/filecoin-project/venus-miner/node/config"
 )
 
 var log = logging.Logger("tracing")
 
-func SetupJaegerTracing(serviceName string) *jaeger.Exporter {
-
-	if _, ok := os.LookupEnv("VENUS_MINER_JAEGER"); !ok {
+func SetupJaegerTracing(cfg *config.TraceConfig) *jaeger.Exporter {
+	if !cfg.JaegerTracingEnabled {
 		return nil
 	}
-	agentEndpointURI := os.Getenv("VENUS_MINER_JAEGER")
+
+	agentEndpointURI := cfg.JaegerEndpoint
+	if _, ok := os.LookupEnv("VENUS_MINER_JAEGER"); ok {
+		agentEndpointURI = os.Getenv("VENUS_MINER_JAEGER")
+	}
 
 	je, err := jaeger.NewExporter(jaeger.Options{
 		AgentEndpoint: agentEndpointURI,
-		ServiceName:   serviceName,
+		Process: jaeger.Process{
+			ServiceName: cfg.ServerName,
+		},
 	})
 	if err != nil {
 		log.Errorw("Failed to create the Jaeger exporter", "error", err)
@@ -28,7 +34,10 @@ func SetupJaegerTracing(serviceName string) *jaeger.Exporter {
 
 	trace.RegisterExporter(je)
 	trace.ApplyConfig(trace.Config{
-		DefaultSampler: trace.AlwaysSample(),
+		DefaultSampler: trace.ProbabilitySampler(cfg.ProbabilitySampler),
 	})
+
+	log.Infof("register tracing exporter:%s, service name:%s", cfg.JaegerEndpoint, cfg.ServerName)
+
 	return je
 }

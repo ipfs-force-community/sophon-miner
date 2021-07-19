@@ -87,6 +87,28 @@ func newDefaultMinerDbConfig() *MinerDbConfig {
 	}
 }
 
+// TraceConfig holds all configuration options related to enabling and exporting
+// filecoin node traces.
+type TraceConfig struct {
+	// JaegerTracingEnabled will enable exporting traces to jaeger when true.
+	JaegerTracingEnabled bool `json:"jaegerTracingEnabled"`
+	// JaegerEndpoint is the URL traces are collected on.
+	JaegerEndpoint string `json:"jaegerEndpoint"`
+	// ProbabilitySampler will sample fraction of traces, 1.0 will sample all traces.
+	ProbabilitySampler float64 `json:"probabilitySampler"`
+	// ServerName
+	ServerName string `json:"servername"`
+}
+
+func newDefaultTraceConfig() *TraceConfig {
+	return &TraceConfig{
+		JaegerTracingEnabled: true,
+		JaegerEndpoint:       "localhost:6831",
+		ProbabilitySampler:   1.0,
+		ServerName:           "venus-miner",
+	}
+}
+
 type MinerConfig struct {
 	Common
 
@@ -97,6 +119,8 @@ type MinerConfig struct {
 	Gateway *GatewayNode `json:"gateway"`
 
 	Db *MinerDbConfig `json:"db"`
+
+	Tracing *TraceConfig `json:"tracing"`
 }
 
 func defCommon() Common {
@@ -115,6 +139,7 @@ func DefaultMinerConfig() *MinerConfig {
 		BlockRecord: "cache",
 		Gateway:     newDefaultGatewayNode(),
 		Db:          newDefaultMinerDbConfig(),
+		Tracing:     newDefaultTraceConfig(),
 	}
 
 	minerCfg.Common.API.ListenAddress = "/ip4/0.0.0.0/tcp/12308/http" //change default address
