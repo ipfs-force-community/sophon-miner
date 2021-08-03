@@ -924,13 +924,11 @@ func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([
 func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr address.Address, api chain.SignFunc, epoch abi.ChainEpoch) (*types.ElectionProof, error) {
 	ts, err := m.api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types.EmptyTSK)
 	if err != nil {
-		log.Error("chain get tipset by height error", err)
 		return nil, err
 	}
 
 	mbi, err := m.api.MinerGetBaseInfo(ctx, mAddr, ts.Height()+1, ts.Key())
 	if err != nil {
-		log.Error("miner get base info", err)
 		return nil, err
 	}
 
@@ -947,6 +945,18 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 }
 
 func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+	log.Infof("count winners, addrs: %v, start: %v, end: %v", addrs, start, end)
+
+	ts, err := m.api.ChainHead(ctx)
+	if err != nil {
+		log.Error("get chain head", err)
+		return []dtypes.CountWinners{}, err
+	}
+
+	if start > ts.Height() || end > ts.Height() {
+		return []dtypes.CountWinners{}, xerrors.Errorf("start or end greater than cur tipset height: %v", ts.Height())
+	}
+
 	res := make([]dtypes.CountWinners, 0)
 	wg := sync.WaitGroup{}
 
