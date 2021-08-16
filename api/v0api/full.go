@@ -43,9 +43,9 @@ type FullNode interface {
 
 	// MethodGroup: Sync
 	// The Sync method group contains methods for interacting with and
-	// observing the lotus sync service.
+	// observing the sync service.
 
-	// SyncState returns the current status of the lotus sync system.
+	// SyncState returns the current status of the sync system.
 	SyncState(context.Context) (*api.SyncState, error) //perm:read
 
 	// SyncSubmitBlock can be used to submit a newly created block to the.

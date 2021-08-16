@@ -3,5 +3,5 @@
 package build
 
 import (
-	_ "github.com/whyrusleeping/bencher"
+	_ "github.com/GeertJohan/go.rice/rice"
 )
