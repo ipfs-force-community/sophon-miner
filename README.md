@@ -1,12 +1,12 @@
-<h1 align="center">Project Venus-Miner</h1>
+<h1 align="center">Project venus-miner</h1>
 
 <p align="center">
   <a href="https://circleci.com/gh/filecoin-project/venus-miner"><img src="https://circleci.com/gh/filecoin-project/venus.svg?style=svg"></a>
-  <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.15.5-blue.svg" /></a>
+  <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.16-blue.svg" /></a>
   <br>
 </p>
 
-Lotus is an implementation of the Filecoin Distributed Storage Network. For more details about Filecoin, check out the [Filecoin Spec](https://spec.filecoin.io).
+Venus is an implementation of the Filecoin Distributed Storage Network. For more details about Filecoin, check out the [Filecoin Spec](https://spec.filecoin.io).
 
 ## Building & Documentation
 

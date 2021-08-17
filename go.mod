@@ -1,13 +1,12 @@
 module github.com/filecoin-project/venus-miner
 
-go 1.15
+go 1.16
 
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
 	contrib.go.opencensus.io/exporter/prometheus v0.3.0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/GeertJohan/go.rice v1.0.2
-	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/dgraph-io/ristretto v0.0.4-0.20210122082011-bb5d392ed82d // indirect
 	github.com/docker/go-units v0.4.0
@@ -31,7 +30,6 @@ require (
 	github.com/filecoin-project/specs-actors/v5 v5.0.1
 	github.com/filecoin-project/venus-wallet v1.1.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
-	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/golang/protobuf v1.5.1 // indirect
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
@@ -69,7 +67,6 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
 	go.opencensus.io v0.23.0

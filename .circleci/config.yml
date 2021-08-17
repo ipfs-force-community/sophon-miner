@@ -2,15 +2,16 @@ version: 2.1
 orbs:
   go: gotest/tools@0.0.13
   aws-cli: circleci/aws-cli@1.3.2
+  packer: salaxander/packer@0.0.3
 
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.15.5
+      - image: circleci/golang:1.16.4
     resource_class: 2xlarge
   ubuntu:
     docker:
-      - image: ubuntu:19.10
+      - image: ubuntu:20.04
 
 commands:
   install-deps:
@@ -85,10 +86,10 @@ jobs:
           paths:
             - linux
 
-  test: &test
+  test:
     description: |
       Run tests with gotestsum.
-    parameters: &test-params
+    parameters:
       executor:
         type: executor
         default: golang
@@ -96,20 +97,20 @@ jobs:
         type: string
         default: "-timeout 30m"
         description: Flags passed to go test.
-      packages:
+      target:
         type: string
         default: "./..."
         description: Import paths of packages to be tested.
-      winpost-test:
+      proofs-log-test:
         type: string
         default: "0"
-      test-suite-name:
+      suite:
         type: string
         default: unit
         description: Test suite name to report to CircleCI.
       gotestsum-format:
         type: string
-        default: pkgname-and-test-fails
+        default: standard-verbose
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
@@ -117,7 +118,7 @@ jobs:
         description: Coverage flag. Set to the empty string to disable.
       codecov-upload:
         type: boolean
-        default: false
+        default: true
         description: |
           Upload coverage report to https://codecov.io/. Requires the codecov API token to be
           set as an environment variable for private projects.
@@ -136,21 +137,21 @@ jobs:
           environment:
             SKIP_CONFORMANCE: "1"
           command: |
-            mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
+            mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
             gotestsum \
               --format << parameters.gotestsum-format >> \
-              --junitfile /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml \
-              --jsonfile /tmp/test-artifacts/<< parameters.test-suite-name >>.json \
+              --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
               -- \
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
-              << parameters.packages >>
+              << parameters.target >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
       - store_artifacts:
-          path: /tmp/test-artifacts/<< parameters.test-suite-name >>.json
+          path: /tmp/test-artifacts/<< parameters.suite >>.json
       - when:
           condition: << parameters.codecov-upload >>
           steps:
@@ -161,22 +162,11 @@ jobs:
                 command: |
                   bash <(curl -s https://codecov.io/bash)
 
-  test-chain:
-    <<: *test
-  test-node:
-    <<: *test
-  test-cli:
-    <<: *test
-  test-short:
-    <<: *test
-  test-terminate:
-    <<: *test
-
 
   build-macos:
     description: build darwin venus-miner binary
     macos:
-      xcode: "10.0.0"
+      xcode: "11.4.0"
     working_directory: ~/go/src/github.com/filecoin-project/venus-miner
     steps:
       - prepare:
@@ -185,8 +175,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.15.5.darwin-amd64.pkg && \
-            sudo installer -pkg go1.15.5.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.16.4.darwin-amd64.pkg && \
+            sudo installer -pkg go1.16.4.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -437,49 +427,26 @@ workflows:
       - gofmt
       - cbor-gen-check
       - test:
-          codecov-upload: true
-          test-suite-name: full
-      - test-chain:
-          codecov-upload: true
-          test-suite-name: chain
-          packages: "./chain/..."
-      - test-node:
-          codecov-upload: true
-          test-suite-name: node
-          packages: "./node/..."
-      - test-cli:
-          codecov-upload: true
-          test-suite-name: cli
-          packages: "./cli/... ./cmd/... ./api/..."
-      - test-terminate:
-          codecov-upload: true
-          go-test-flags: "-run=TestTerminate"
-          winpost-test: "1"
-          test-suite-name: terminate
-      - test-short:
-          go-test-flags: "--timeout 10m --short"
-          test-suite-name: short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          name: test-unit-node
+          suite: utest-unit-node
+          target: "./node/..."
+      - test:
+          name: test-unit-cli
+          suite: utest-unit-cli
+          target: "./cli/... ./cmd/... ./api/..."
       - build-all:
-          requires:
-            - test-short
           filters:
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-macos:
-          requires:
-            - test-short
           filters:
             branches:
               ignore:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
@@ -490,7 +457,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-and-push-image:
           dockerfile: Dockerfile.venusminer
           path: .
