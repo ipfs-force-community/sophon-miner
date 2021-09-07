@@ -206,7 +206,7 @@ var stateCmd = &cli.Command{
 
 var startMiningCmd = &cli.Command{
 	Name:      "start",
-	Usage:     "start mining for specified miner",
+	Usage:     "start mining for specified miner, if not specified, it means all",
 	Flags:     []cli.Flag{},
 	ArgsUsage: "[address ...]",
 	Action: func(cctx *cli.Context) error {
@@ -239,7 +239,7 @@ var startMiningCmd = &cli.Command{
 
 var stopMiningCmd = &cli.Command{
 	Name:      "stop",
-	Usage:     "stop mining for specified miner",
+	Usage:     "stop mining for specified miner, if not specified, it means all",
 	Flags:     []cli.Flag{},
 	ArgsUsage: "[address ...]",
 	Action: func(cctx *cli.Context) error {
