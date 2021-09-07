@@ -22,18 +22,25 @@ type GatewayAPI struct {
 }
 
 func NewGatewayRPC(cfg *config.GatewayNode) (*GatewayAPI, jsonrpc.ClientCloser, error) {
-	addr, err := cfg.DialArgs()
+	var err error
+	addrs, err := cfg.DialArgs()
 	if err != nil {
 		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
 	var gatewayAPI = &GatewayAPI{}
-	closer, err := jsonrpc.NewMergeClient(context.Background(), addr, "Gateway",
-		[]interface{}{
-			gatewayAPI,
-		},
-		cfg.AuthHeader(),
-	)
+	var closer jsonrpc.ClientCloser
+	for _, addr := range addrs {
+		closer, err = jsonrpc.NewMergeClient(context.Background(), addr, "Gateway",
+			[]interface{}{
+				gatewayAPI,
+			},
+			cfg.AuthHeader(),
+		)
+		if err == nil {
+			return gatewayAPI, closer, err
+		}
+	}
 
 	return gatewayAPI, closer, err
 }

@@ -102,7 +102,7 @@ type TraceConfig struct {
 
 func newDefaultTraceConfig() *TraceConfig {
 	return &TraceConfig{
-		JaegerTracingEnabled: true,
+		JaegerTracingEnabled: false,
 		JaegerEndpoint:       "localhost:6831",
 		ProbabilitySampler:   1.0,
 		ServerName:           "venus-miner",

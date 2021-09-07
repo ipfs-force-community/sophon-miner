@@ -10,26 +10,35 @@ import (
 )
 
 type GatewayNode struct {
-	ListenAPI string
+	ListenAPI []string
 	Token     string
 }
 
-func (gw *GatewayNode) DialArgs() (string, error) {
-	ma, err := multiaddr.NewMultiaddr(gw.ListenAPI)
-	if err == nil {
-		_, addr, err := manet.DialArgs(ma)
-		if err != nil {
-			return "", err
+func (gw *GatewayNode) DialArgs() ([]string, error) {
+	var mAddrs []string
+
+	for _, apiAddr := range gw.ListenAPI {
+		ma, err := multiaddr.NewMultiaddr(apiAddr)
+		if err == nil {
+			_, addr, err := manet.DialArgs(ma)
+			if err != nil {
+				log.Errorf("dial ma err: %s", err.Error())
+				continue
+			}
+
+			mAddrs = append(mAddrs, "ws://"+addr+"/rpc/v0")
 		}
 
-		return "ws://" + addr + "/rpc/v0", nil
+		_, err = url.Parse(apiAddr)
+		if err != nil {
+			log.Errorf("parse [%s] err: %s", apiAddr, err.Error())
+			continue
+		}
+
+		mAddrs = append(mAddrs, apiAddr+"/rpc/v0")
 	}
 
-	_, err = url.Parse(gw.ListenAPI)
-	if err != nil {
-		return "", err
-	}
-	return gw.ListenAPI + "/rpc/v0", nil
+	return mAddrs, nil
 }
 
 func (gw *GatewayNode) AuthHeader() http.Header {
@@ -44,7 +53,7 @@ func (gw *GatewayNode) AuthHeader() http.Header {
 
 func newDefaultGatewayNode() *GatewayNode {
 	return &GatewayNode{
-		ListenAPI: "",
+		ListenAPI: []string{},
 		Token:     "",
 	}
 }

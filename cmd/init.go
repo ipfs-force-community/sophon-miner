@@ -57,10 +57,9 @@ var initCmd = &cli.Command{
 			Usage: "auth node token",
 			Value: "",
 		},
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:  "gateway-api",
 			Usage: "gateway api",
-			Value: "",
 		},
 		&cli.StringFlag{
 			Name:  "gateway-token",
@@ -180,13 +179,13 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 		cfg := i.(*config.MinerConfig)
 		cfg.FullNode = fn
 
-		if cctx.String("gateway-api") != "" {
+		if cctx.IsSet("gateway-api") {
 			gt := cctx.String("gateway-token")
 			if gt == "" {
 				gt = cctx.String("token")
 			}
 			cfg.Gateway = &config.GatewayNode{
-				ListenAPI: cctx.String("gateway-api"),
+				ListenAPI: cctx.StringSlice("gateway-api"),
 				Token:     gt,
 			}
 		}
