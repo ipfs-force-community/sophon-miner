@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/venus-wallet/core"
 
 	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/chain/actors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
