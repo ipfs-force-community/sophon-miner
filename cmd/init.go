@@ -32,7 +32,7 @@ var initCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:        "nettype",
-			Usage:       "network type, one of: mainnet, nerpanet, debug, 2k, calibnet",
+			Usage:       "network type, one of: mainnet, debug, 2k, calibnet",
 			Value:       "mainnet",
 			DefaultText: "mainnet",
 			Required:    false,
@@ -215,7 +215,7 @@ func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) { //nolint
 		return nil, err
 	}
 
-	kbytes, err := pk.Bytes()
+	kbytes, err := crypto.MarshalPrivateKey(pk)
 	if err != nil {
 		return nil, err
 	}

@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/chain"
-	"github.com/filecoin-project/venus-miner/chain/actors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"

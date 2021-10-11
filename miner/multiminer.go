@@ -96,7 +96,7 @@ func NewMiner(api api.FullNode, gtNode *config.GatewayNode, verifier ffiwrapper.
 	}
 
 	switch build.BuildType {
-	case build.BuildMainnet, build.BuildCalibnet, build.BuildNerpanet: // The time to wait for the latest block is counted in
+	case build.BuildMainnet, build.BuildCalibnet: // The time to wait for the latest block is counted in
 		miner.mineTimeout = 12 * time.Second
 		// miner.mineTimeout = time.Duration(build.BlockDelaySecs-build.PropagationDelaySecs*2) * time.Second
 	default:
