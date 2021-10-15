@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/venus-miner/chain/actors/policy"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 )
 
 func SetAddressNetwork(n address.Network) {
@@ -33,37 +33,6 @@ func InitNetWorkParams(nettype string) error {
 		UpgradeOrangeHeight = 336458
 		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 		PropagationDelaySecs = uint64(12)
-	case "nerpanet":
-		// Minimum block production power is set to 4 TiB
-		// Rationale is to discourage small-scale miners from trying to take over the network
-		// One needs to invest in ~2.3x the compute to break consensus, making it not worth it
-		//
-		// DOWNSIDE: the fake-seals need to be kept alive/protected, otherwise network will seize
-		//
-		policy.SetConsensusMinerMinPower(abi.NewStoragePower(4 << 40))
-
-		policy.SetSupportedProofTypes(
-			abi.RegisteredSealProof_StackedDrg512MiBV1,
-			abi.RegisteredSealProof_StackedDrg32GiBV1,
-			abi.RegisteredSealProof_StackedDrg64GiBV1,
-		)
-
-		SetAddressNetwork(address.Testnet)
-
-		// Lower the most time-consuming parts of PoRep
-		policy.SetPreCommitChallengeDelay(10)
-
-		// TODO - make this a variable
-		//miner.WPoStChallengeLookback = abi.ChainEpoch(2)
-
-		Devnet = false
-
-		BuildType = BuildNerpanet
-
-		UpgradeSmokeHeight = -1
-		UpgradeOrangeHeight = 307500
-		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
-		PropagationDelaySecs = uint64(6)
 	case "debug", "2k":
 		{
 			policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
@@ -80,7 +49,7 @@ func InitNetWorkParams(nettype string) error {
 			}
 
 			UpgradeSmokeHeight = -1
-			UpgradeOrangeHeight = 27
+			UpgradeOrangeHeight = -11
 			BlockDelaySecs = uint64(4)
 			PropagationDelaySecs = uint64(1)
 		}
@@ -99,7 +68,7 @@ func InitNetWorkParams(nettype string) error {
 		BuildType = BuildCalibnet
 
 		UpgradeSmokeHeight = -2
-		UpgradeOrangeHeight = 250666
+		UpgradeOrangeHeight = 300
 		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 		PropagationDelaySecs = uint64(12)
 	default:
