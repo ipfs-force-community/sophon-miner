@@ -936,6 +936,10 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 		return nil, xerrors.Errorf("can't find base info on chain, addr %s should be a new miner or no sector found before chain finality", mAddr.String())
 	}
 
+	if !mbi.EligibleForMining {
+		return nil, xerrors.Errorf("%s slashed or just have no power yet", mAddr.String())
+	}
+
 	rbase := mbi.PrevBeaconEntry
 	if len(mbi.BeaconEntries) > 0 {
 		rbase = mbi.BeaconEntries[len(mbi.BeaconEntries)-1]
