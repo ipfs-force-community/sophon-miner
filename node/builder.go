@@ -167,9 +167,9 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 var (
 	CLIFLAGBlockRecord = &cli.StringFlag{
 		Name:    "block_record",
-		Usage:   "记录已经产生的区块用于防止重复出块的问题 取值（localdb, cache）mysql待完成",
-		EnvVars: []string{"FORCE_Block_Record"},
-		Value:   "localdb",
+		Usage:   "the way to record the blocks that have been generated, optional: local, cache",
+		EnvVars: []string{"BLOCK_RECORD_WAY"},
+		Value:   "",
 	}
 )
 
