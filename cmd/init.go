@@ -66,6 +66,16 @@ var initCmd = &cli.Command{
 			Usage: "gateway token",
 			Value: "",
 		},
+		&cli.StringFlag{
+			Name:     "slash-filter",
+			Usage:    "the type of db type used to store block info required by slash filter, optional: local, mysql",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "mysql-conn",
+			Usage: "mysql conn info, eg. [user]:[password]@tcp([ip]:[port])/[db_name]?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s",
+			Value: "",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing venus miner")
@@ -174,7 +184,12 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 	//}
 
 	// modify config
-	log.Info("modify fullnode of config")
+	log.Info("modify config ...")
+	sfType := cctx.String("slash-filter")
+	if sfType != "local" && sfType != "mysql" {
+		return xerrors.Errorf("wrong slash filter type")
+	}
+
 	if err := lr.SetConfig(func(i interface{}) {
 		cfg := i.(*config.MinerConfig)
 		cfg.FullNode = fn
@@ -196,6 +211,11 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 				ListenAPI: cctx.String("auth-api"),
 				Token:     cctx.String("auth-token"),
 			}
+		}
+
+		cfg.Db.SFType = sfType
+		if cfg.Db.SFType == "mysql" {
+			cfg.Db.MySQL.Conn = cctx.String("mysql-conn")
 		}
 	}); err != nil {
 		return xerrors.Errorf("modify config failed: %w", err)

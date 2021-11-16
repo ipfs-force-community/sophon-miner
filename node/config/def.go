@@ -67,7 +67,7 @@ type MySQLConfig struct {
 	Conn            string        `json:"conn"`
 	MaxOpenConn     int           `json:"maxOpenConn"`     // 100
 	MaxIdleConn     int           `json:"maxIdleConn"`     // 10
-	ConnMaxLifeTime time.Duration `json:"connMaxLifeTime"` // minuter: 60
+	ConnMaxLifeTime time.Duration `json:"connMaxLifeTime"` // 60(s)
 	Debug           bool          `json:"debug"`
 }
 
@@ -81,8 +81,14 @@ type MinerDbConfig struct {
 func newDefaultMinerDbConfig() *MinerDbConfig {
 	return &MinerDbConfig{
 		Type:   "auth",
-		SFType: "local",
-		MySQL:  MySQLConfig{},
+		SFType: "mysql",
+		MySQL:  MySQLConfig{
+			Conn: "",
+			MaxOpenConn: 100,
+			MaxIdleConn: 10,
+			ConnMaxLifeTime: 60,
+			Debug: false,
+		},
 		Auth:   newDefaultAuthConfig(),
 	}
 }
