@@ -157,7 +157,7 @@ func (f *MysqlSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.Cha
 		//if not exit good block
 	}
 
-	return f._db.Save(&MinedBlock{
+	return f._db.Create(&MinedBlock{
 		ParentEpoch: int64(parentEpoch),
 		ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
 		Epoch:       int64(bh.Height),
