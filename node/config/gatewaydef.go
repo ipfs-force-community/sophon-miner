@@ -6,7 +6,6 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/prometheus/common/log"
 )
 
 type GatewayNode struct {

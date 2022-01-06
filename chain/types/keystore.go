@@ -4,8 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/go-state-types/crypto"
 )
+
+var log = logging.Logger("types")
 
 var (
 	ErrKeyInfoNotFound = fmt.Errorf("key info not found")

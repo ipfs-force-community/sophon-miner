@@ -16,8 +16,6 @@ import (
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/journal"
-	_ "github.com/filecoin-project/venus-miner/lib/sigs/bls"
-	_ "github.com/filecoin-project/venus-miner/lib/sigs/secp"
 	"github.com/filecoin-project/venus-miner/miner"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/impl"
@@ -33,6 +31,9 @@ import (
 	"github.com/filecoin-project/venus-miner/node/repo"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/venus-miner/system"
+
+	_ "github.com/filecoin-project/venus-miner/lib/sigs/bls"
+	_ "github.com/filecoin-project/venus-miner/lib/sigs/secp"
 )
 
 //nolint:deadcode,varcheck

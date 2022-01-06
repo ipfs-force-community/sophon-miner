@@ -3,8 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-miner/api/v1api"
-	"github.com/filecoin-project/venus-miner/node/config"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,7 +19,12 @@ import (
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/api/client"
 	cliutil "github.com/filecoin-project/venus-miner/cli/util"
+	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
+
+	"github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	cli2 "github.com/filecoin-project/venus/venus-shared/api/client"
 )
 
 var log = logging.Logger("cli")
@@ -39,13 +42,6 @@ type ErrCmdFailed struct {
 func (e *ErrCmdFailed) Error() string {
 	return e.msg
 }
-
-func NewCliError(s string) error {
-	return &ErrCmdFailed{s}
-}
-
-// ApiConnector returns API instance
-type ApiConnector func() api.FullNode
 
 // The flag passed on the command line with the listen address of the API
 // server (only used by the tests)
@@ -131,34 +127,30 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		log.Errorf("repoType type does not match the type of repo.RepoType")
 	}
 
-	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
-		return tn.(api.FullNode), func() {}, nil
-	}
-
 	addr, headers, err := GetRawAPI(ctx, t, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewCommonRPCV0(ctx.Context, addr, headers)
+	return client.NewCommonRPC(ctx.Context, addr, headers)
 }
 
-func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (v0.FullNode, jsonrpc.ClientCloser, error) {
 	addr, err := fn.DialArgs("v0")
 	if err != nil {
 		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
-	return client.NewFullNodeRPCV0(ctx.Context, addr, fn.AuthHeader())
+	return cli2.NewFullRPCV0(ctx.Context, addr, fn.AuthHeader())
 }
 
-func GetFullNodeAPIV1(ctx *cli.Context, fn config.FullNode) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPIV1(ctx *cli.Context, fn config.FullNode) (v1.FullNode, jsonrpc.ClientCloser, error) {
 	addr, err := fn.DialArgs("v1")
 	if err != nil {
 		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
-	return client.NewFullNodeRPCV1(ctx.Context, addr, fn.AuthHeader())
+	return cli2.NewFullRPCV1(ctx.Context, addr, fn.AuthHeader())
 }
 
 func GetMinerAPI(ctx *cli.Context) (api.MinerAPI, jsonrpc.ClientCloser, error) {
@@ -167,7 +159,7 @@ func GetMinerAPI(ctx *cli.Context) (api.MinerAPI, jsonrpc.ClientCloser, error) {
 		return nil, nil, err
 	}
 
-	return client.NewMinerRPCV0(ctx.Context, addr, headers)
+	return client.NewMinerRPC(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {
