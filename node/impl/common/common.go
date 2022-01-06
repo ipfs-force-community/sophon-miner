@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
+
+	vapi "github.com/filecoin-project/venus/venus-shared/api"
 )
 
 var session = uuid.New()
@@ -47,7 +49,7 @@ func (a *CommonAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byt
 }
 
 func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
-	v, err := api.VersionForType(api.RunningNodeType)
+	v, err := vapi.VersionForType(vapi.RunningNodeType)
 	if err != nil {
 		return api.APIVersion{}, err
 	}

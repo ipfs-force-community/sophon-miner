@@ -18,9 +18,8 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
-	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/lib/sigs"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 //var log = logging.Logger("API")
@@ -86,7 +85,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, account string, worker addre
 }
 
 func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
-	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, sign SignFunc) (*types.ElectionProof, error) {
+	miner address.Address, brand types2.BeaconEntry, mbi *types2.MiningBaseInfo, sign SignFunc) (*types2.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
@@ -114,7 +113,7 @@ func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
 
-	ep := &types.ElectionProof{VRFProof: vrfout}
+	ep := &types2.ElectionProof{VRFProof: vrfout}
 	j := ep.ComputeWinCount(mbi.MinerPower, mbi.NetworkPower)
 	ep.WinCount = j
 	if j < 1 {

@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
+
+	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
 type Common interface {
@@ -39,7 +41,7 @@ type APIVersion struct {
 	// this api
 	//
 	// See APIVersion in build/version.go
-	APIVersion Version
+	APIVersion api.Version
 
 	// TODO: git commit / os / genesis cid?
 

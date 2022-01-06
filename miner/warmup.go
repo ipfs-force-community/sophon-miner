@@ -15,7 +15,7 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
-	"github.com/filecoin-project/venus-miner/chain/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func (m *Miner) winPoStWarmup(ctx context.Context) error {

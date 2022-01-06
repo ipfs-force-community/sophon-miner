@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/venus-miner/lib/blockstore"
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus-miner/chain/types"
+	"github.com/filecoin-project/venus-miner/lib/blockstore"
 )
 
 // BlockstoreDomain represents the domain of a blockstore.

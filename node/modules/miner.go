@@ -5,7 +5,6 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
 	"github.com/filecoin-project/venus-miner/journal"
 	"github.com/filecoin-project/venus-miner/miner"
@@ -13,10 +12,12 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/block_recorder"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
+
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 func NewWiningPoster(lc fx.Lifecycle,
-	api api.FullNode,
+	api v1api.FullNode,
 	gtNode *config.GatewayNode,
 	sfAPI slashfilter.SlashFilterAPI,
 	verifier ffiwrapper.Verifier,
