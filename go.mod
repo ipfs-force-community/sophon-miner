@@ -19,6 +19,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
+	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
 	github.com/filecoin-project/venus v1.1.3-rc1.0.20220113030334-7e5c468d4d43
 	github.com/filecoin-project/venus-wallet v1.3.1-rc1.0.20220110021717-e34356a55566
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
