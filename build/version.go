@@ -9,6 +9,7 @@ const (
 	Build2k       = 0x2
 	BuildDebug    = 0x3
 	BuildCalibnet = 0x4
+	BuildButterflynet = 0x7
 )
 
 func buildType() string {
@@ -23,13 +24,15 @@ func buildType() string {
 		return "+debug"
 	case BuildCalibnet:
 		return "+calibnet"
+	case BuildButterflynet:
+		return "+butterflynet"
 	default:
 		return "+huh?"
 	}
 }
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "1.2.0"
+const BuildVersion = "1.4.0-rc1"
 
 func UserVersion() string {
 	return BuildVersion + buildType() + CurrentCommit

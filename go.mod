@@ -15,12 +15,12 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/go-paramfetch v0.0.2
-	github.com/filecoin-project/go-state-types v0.1.1
+	github.com/filecoin-project/go-paramfetch v0.0.3-0.20220111000201-e42866db1a53
+	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
-	github.com/filecoin-project/venus v1.1.3-rc1.0.20220106064018-c2bed02a513e
-	github.com/filecoin-project/venus-wallet v1.3.1-0.20220106055001-3fd5406fcee6
+	github.com/filecoin-project/venus v1.1.3-rc1.0.20220113030334-7e5c468d4d43
+	github.com/filecoin-project/venus-wallet v1.3.1-rc1.0.20220110021717-e34356a55566
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/google/uuid v1.3.0

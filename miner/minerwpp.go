@@ -2,15 +2,13 @@ package miner
 
 import (
 	"context"
-
 	"time"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
@@ -19,7 +17,7 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -66,7 +64,7 @@ func (wpp *MiningWpp) GenerateCandidates(ctx context.Context, randomness abi.PoS
 	return cds, nil
 }
 
-func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo, rand abi.PoStRandomness) ([]proof2.PoStProof, error) {
+func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, currEpoch abi.ChainEpoch, nv network.Version) ([]builtin.PoStProof, error) {
 	if build.InsecurePoStValidation {
 		return []builtin.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
@@ -82,7 +80,7 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo,
 	}
 	defer closer()
 
-	proofBuf, err := api.ComputeProof(ctx, wpp.minerInfo.Addr, ssi, rand)
+	proofBuf, err := api.ComputeProof(ctx, wpp.minerInfo.Addr, ssi, rand, currEpoch, nv)
 	if err != nil {
 		return nil, err
 	}
