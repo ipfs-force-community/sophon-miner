@@ -46,7 +46,13 @@ const (
 
 var DefaultMaxErrCounts = 20
 
-// returns a callback reporting whether we mined a blocks in this round
+// waitFunc is expected to pace block mining at the configured network rate.
+//
+// baseTime is the timestamp of the mining base, i.e. the timestamp
+// of the tipset we're planning to construct upon.
+//
+// Upon each mining loop iteration, the returned callback is called reporting
+// whether we mined a block in this round or not.
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error)
 
 func randTimeOffset(width time.Duration) time.Duration {
@@ -57,6 +63,8 @@ func randTimeOffset(width time.Duration) time.Duration {
 	return val - (width / 2)
 }
 
+// NewMiner instantiates a miner with a concrete WinningPoStProver and a miner
+// address (which can be different from the worker's address).
 func NewMiner(api v1api.FullNode, gtNode *config.GatewayNode, verifier ffiwrapper.Verifier, minerManager minermanage.MinerManageAPI,
 	sf slashfilter.SlashFilterAPI, j journal.Journal, blockRecord block_recorder.IBlockRecord) *Miner {
 	miner := &Miner{
@@ -120,6 +128,7 @@ type minerWPP struct {
 	err      []string
 }
 
+// Refer to the godocs on mineOne and mine methods for more detail.
 type Miner struct {
 	api v1api.FullNode
 
@@ -179,6 +188,8 @@ func (m *Miner) Start(ctx context.Context) error {
 	return nil
 }
 
+// Stop stops the mining operation. It is not idempotent, and multiple adjacent
+// calls to Stop will fail.
 func (m *Miner) Stop(ctx context.Context) error {
 	m.lk.Lock()
 
@@ -526,11 +537,19 @@ minerLoop:
 	}
 }
 
+// MiningBase is the tipset on top of which we plan to construct our next block.
+// Refer to godocs on GetBestMiningCandidate.
 type MiningBase struct {
 	TipSet     *types2.TipSet
 	NullRounds abi.ChainEpoch
 }
 
+// GetBestMiningCandidate implements the fork choice rule from a miner's
+// perspective.
+//
+// It obtains the current chain head (HEAD), and compares it to the last tipset
+// we selected as our mining base (LAST). If HEAD's weight is larger than
+// LAST's weight, it selects HEAD to build on. Else, it selects LAST.
 func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
@@ -592,14 +611,13 @@ type winPoStRes struct {
 //  1.
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, addr address.Address, epp chain.WinningPoStProver) (<-chan *winPoStRes, error) {
 	log.Infow("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
+	start := build.Clock.Now()
+
+	round := base.TipSet.Height() + base.NullRounds + 1
 
 	out := make(chan *winPoStRes)
 
 	go func() {
-		start := build.Clock.Now()
-
-		round := base.TipSet.Height() + base.NullRounds + 1
-
 		mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
 		if err != nil {
 			log.Errorf("failed to get mining base info: %w, miner: %s", err, addr)
@@ -688,8 +706,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		prand := abi.PoStRandomness(r)
 
 		tSeed := build.Clock.Now()
+		nv, err := m.api.StateNetworkVersion(ctx, base.TipSet.Key())
+		if err != nil {
+			log.Errorf("failed to get network version: %w, miner: %s", err, addr)
+			out <- &winPoStRes{addr: addr, err: err}
+			return
+		}
 
-		postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand)
+		postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
 		if err != nil {
 			log.Errorf("failed to compute winning post proof: %w, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, err: err}

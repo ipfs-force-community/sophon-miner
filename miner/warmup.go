@@ -12,8 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -80,18 +79,27 @@ out:
 		return xerrors.Errorf("getting sector info: %w", err)
 	}
 
-	_, err = epp.ComputeProof(ctx, []proof2.SectorInfo{
+	ts, err := m.api.ChainHead(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting chain head")
+	}
+	nv, err := m.api.StateNetworkVersion(ctx, ts.Key())
+	if err != nil {
+		return xerrors.Errorf("getting network version")
+	}
+
+	_, err = epp.ComputeProof(ctx, []proof7.ExtendedSectorInfo{
 		{
 			SealProof:    si.SealProof,
 			SectorNumber: sector,
 			SealedCID:    si.SealedCID,
 		},
-	}, r)
+	}, r, ts.Height(), nv)
 	if err != nil {
 		return xerrors.Errorf("failed to compute proof: %w", err)
 	}
 
-	log.Infow("winning PoSt warmup successful", "took", time.Since(start))
+	log.Infow("winning PoSt warmup successful", "took", time.Now().Sub(start))
 	return nil
 }
 

@@ -13,12 +13,13 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/venus-wallet/core"
 
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-
 	"github.com/filecoin-project/venus-miner/lib/sigs"
+
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -26,7 +27,7 @@ import (
 
 type WinningPoStProver interface {
 	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
-	ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error)
+	ComputeProof(context.Context, []builtin.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]builtin.PoStProof, error)
 }
 
 type SignFunc func(ctx context.Context, account string, signer address.Address, toSign []byte, meta core.MsgMeta) (*crypto.Signature, error)

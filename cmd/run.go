@@ -43,7 +43,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "nettype",
-			Usage:       "network type, one of: mainnet, debug, 2k, calibnet",
+			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly",
 			Value:       "mainnet",
 			DefaultText: "mainnet",
 			Required:    false,

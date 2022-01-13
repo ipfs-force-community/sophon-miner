@@ -71,6 +71,24 @@ func InitNetWorkParams(nettype string) error {
 		UpgradeOrangeHeight = 300
 		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 		PropagationDelaySecs = uint64(12)
+	case "butterfly":
+		policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
+		policy.SetSupportedProofTypes(
+			abi.RegisteredSealProof_StackedDrg512MiBV1,
+			abi.RegisteredSealProof_StackedDrg32GiBV1,
+			abi.RegisteredSealProof_StackedDrg64GiBV1,
+		)
+
+		SetAddressNetwork(address.Testnet)
+
+		Devnet = true
+
+		BuildType = BuildButterflynet
+
+		UpgradeSmokeHeight = -2
+		UpgradeOrangeHeight = -12
+		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
+		PropagationDelaySecs = uint64(12)
 	default:
 		return fmt.Errorf("unknown nettype %s", nettype)
 	}
