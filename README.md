@@ -6,7 +6,12 @@
   <br>
 </p>
 
-Venus is an implementation of the Filecoin Distributed Storage Network. For more details about Filecoin, check out the [Filecoin Spec](https://spec.filecoin.io).
+The venus-miner is used to mine for multiple miners, the advantage is that：
+1. The miners in the mining pool do not need to deploy their own mining programs. 
+2. It is possible to increase the tps and miner fees for packaging messages.
+3. Miners can package messages for each other to avoid the problem of selfish mining.
+
+Use [Venus Issues](https://github.com/filecoin-project/venus/issues) for reporting issues about this repository.
 
 ## Building & Documentation
 
