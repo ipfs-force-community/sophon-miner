@@ -2,10 +2,8 @@ package config
 
 import (
 	"net/http"
-	"net/url"
 
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 )
 
 type GatewayNode struct {
@@ -17,24 +15,15 @@ func (gw *GatewayNode) DialArgs() ([]string, error) {
 	var mAddrs []string
 
 	for _, apiAddr := range gw.ListenAPI {
-		ma, err := multiaddr.NewMultiaddr(apiAddr)
-		if err == nil {
-			_, addr, err := manet.DialArgs(ma)
-			if err != nil {
-				log.Errorf("dial ma err: %s", err.Error())
-				continue
-			}
-
-			mAddrs = append(mAddrs, "ws://"+addr+"/rpc/v0")
-		}
-
-		_, err = url.Parse(apiAddr)
+		apiInfo := apiinfo.NewAPIInfo(apiAddr, gw.Token)
+		addr, err := apiInfo.DialArgs("v1")
 		if err != nil {
-			log.Errorf("parse [%s] err: %s", apiAddr, err.Error())
+			log.Errorf("dial ma err: %s", err.Error())
 			continue
 		}
 
-		mAddrs = append(mAddrs, apiAddr+"/rpc/v0")
+
+		mAddrs = append(mAddrs, addr)
 	}
 
 	return mAddrs, nil
