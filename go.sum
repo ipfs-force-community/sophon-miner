@@ -349,8 +349,8 @@ github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1/go.mod h1:TA5FwCna+Yi36PO
 github.com/filecoin-project/specs-storage v0.1.1-0.20211228030229-6d460d25a0c9/go.mod h1:Tb88Zq+IBJbvAn3mS89GYj3jdRThBTE/771HCVZdRJU=
 github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
 github.com/filecoin-project/venus v1.2.0-rc1/go.mod h1:bRzCXrdaYKaXbS01EiSbqivGOG51dEXG71vjgFfJqxA=
-github.com/filecoin-project/venus v1.2.0-rc2 h1:jZMCK+UPx13M2H+ozTzq/YtdnyiZNLT8Eau9hpX8f5g=
-github.com/filecoin-project/venus v1.2.0-rc2/go.mod h1:bRzCXrdaYKaXbS01EiSbqivGOG51dEXG71vjgFfJqxA=
+github.com/filecoin-project/venus v1.2.0-rc5 h1:1KHol8qUYTNkflMKG0xwrYopL3bmzYpZm3Ymqwfyvnk=
+github.com/filecoin-project/venus v1.2.0-rc5/go.mod h1:P2i2m4nheAeVXXWjkVLDyezY7l2Bi1sNBt5gno0/Sn0=
 github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578/go.mod h1:/cbLZYvQhinVFUG4TP2Uy1o7LtF+guT21qZIMTmKk0g=
 github.com/filecoin-project/venus-wallet v1.4.0-rc1 h1:pF3937AX2zeXFbvGwYc9bhndEBRHMFWNhjOdaagpolk=
 github.com/filecoin-project/venus-wallet v1.4.0-rc1/go.mod h1:gLcAX0rG3cJigh791dr28rP8P1i+FyyQUP1Sx0TtdJ0=
@@ -366,8 +366,9 @@ github.com/frankban/quicktest v1.14.0/go.mod h1:NeW+ay9A/U67EYXNFA1nPE8e/tnQv/09
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWoS4=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
-github.com/fxamacker/cbor/v2 v2.3.0 h1:aM45YGMctNakddNNAezPxDUpv38j44Abh+hifNuqXik=
 github.com/fxamacker/cbor/v2 v2.3.0/go.mod h1:TA1xS00nchWmaBnEIxPSE5oHLuJBAVvqrtAnWBwBCVo=
+github.com/fxamacker/cbor/v2 v2.4.0 h1:ri0ArlOR+5XunOP8CRUowT0pSJOwhW098ZCUyskZD88=
+github.com/fxamacker/cbor/v2 v2.4.0/go.mod h1:TA1xS00nchWmaBnEIxPSE5oHLuJBAVvqrtAnWBwBCVo=
 github.com/gbrlsnchs/jwt/v3 v3.0.0/go.mod h1:AncDcjXz18xetI3A6STfXq2w+LuTx8pQ8bGEwRN8zVM=
 github.com/gbrlsnchs/jwt/v3 v3.0.1 h1:lbUmgAKpxnClrKloyIwpxm4OuWeDl5wLk52G91ODPw4=
 github.com/gbrlsnchs/jwt/v3 v3.0.1/go.mod h1:AncDcjXz18xetI3A6STfXq2w+LuTx8pQ8bGEwRN8zVM=
