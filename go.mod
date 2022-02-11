@@ -20,7 +20,7 @@ require (
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
-	github.com/filecoin-project/venus v1.2.0-rc2
+	github.com/filecoin-project/venus v1.2.0-rc5
 	github.com/filecoin-project/venus-wallet v1.4.0-rc1
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-resty/resty/v2 v2.4.0
