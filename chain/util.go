@@ -15,12 +15,11 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/venus-wallet/core"
-
 	"github.com/filecoin-project/venus-miner/lib/sigs"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
 //var log = logging.Logger("API")
@@ -30,7 +29,7 @@ type WinningPoStProver interface {
 	ComputeProof(context.Context, []builtin.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]builtin.PoStProof, error)
 }
 
-type SignFunc func(ctx context.Context, account string, signer address.Address, toSign []byte, meta core.MsgMeta) (*crypto.Signature, error)
+type SignFunc func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error)
 
 // type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
@@ -73,7 +72,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 
 func ComputeVRF(ctx context.Context, sign SignFunc, account string, worker address.Address, sigInput []byte) ([]byte, error) {
 	// log.Infof("sigInput: %s", hex.EncodeToString(sigInput))
-	sig, err := sign(ctx, account, worker, sigInput, core.MsgMeta{Type: core.MTDrawRandomParam})
+	sig, err := sign(ctx, account, worker, sigInput, types2.MsgMeta{Type: types2.MTDrawRandomParam})
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +93,7 @@ func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
 	}
 
 	electionRand := new(bytes.Buffer)
-	drp := &core.DrawRandomParams{
+	drp := &wallet.DrawRandomParams{
 		Rbase:   brand.Data,
 		Pers:    crypto.DomainSeparationTag_ElectionProofProduction,
 		Round:   round,

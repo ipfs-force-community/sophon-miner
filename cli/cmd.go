@@ -24,7 +24,6 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	cli2 "github.com/filecoin-project/venus/venus-shared/api/client"
 )
 
 var log = logging.Logger("cli")
@@ -141,7 +140,7 @@ func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (v0.FullNode, jsonrpc.
 		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
-	return cli2.NewFullRPCV0(ctx.Context, addr, fn.AuthHeader())
+	return v0.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
 }
 
 func GetFullNodeAPIV1(ctx *cli.Context, fn config.FullNode) (v1.FullNode, jsonrpc.ClientCloser, error) {
@@ -150,7 +149,7 @@ func GetFullNodeAPIV1(ctx *cli.Context, fn config.FullNode) (v1.FullNode, jsonrp
 		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
-	return cli2.NewFullRPCV1(ctx.Context, addr, fn.AuthHeader())
+	return v1.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
 }
 
 func GetMinerAPI(ctx *cli.Context) (api.MinerAPI, jsonrpc.ClientCloser, error) {

@@ -11,8 +11,6 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
-	"github.com/filecoin-project/venus-wallet/core"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -35,6 +33,7 @@ import (
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
 var log = logging.Logger("miner")
@@ -745,7 +744,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 	}
 
 	input := new(bytes.Buffer)
-	drp := &core.DrawRandomParams{
+	drp := &wallet.DrawRandomParams{
 		Rbase:   brand.Data,
 		Pers:    crypto.DomainSeparationTag_TicketProduction,
 		Round:   round - build.TicketRandomnessLookback,
@@ -832,8 +831,8 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, xerrors.Errorf("failed to get SigningBytes: %v", err)
 		}
 
-		sig, err := sign(ctx, account, waddr, nosigbytes, core.MsgMeta{
-			Type: core.MTBlock,
+		sig, err := sign(ctx, account, waddr, nosigbytes, types2.MsgMeta{
+			Type: types2.MTBlock,
 		})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign new block: %v", err)

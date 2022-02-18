@@ -120,10 +120,6 @@ var runCmd = &cli.Command{
 		}
 		cfg := cfgV.(*config.MinerConfig)
 
-		if err := checkV1ApiSupport(ctx, cctx, cfg.FullNode); err != nil {
-			return err
-		}
-
 		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx, cfg.FullNode)
 		lr.Close() //nolint:errcheck
 		if err != nil {
