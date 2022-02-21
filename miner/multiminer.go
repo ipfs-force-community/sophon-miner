@@ -416,7 +416,12 @@ minerLoop:
 			for idx, res := range winPoSts {
 				tRes := res
 				// TODO: winning post proof
-				b, err := m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
+				var b *types2.BlockMsg
+				if len(msgs) > idx {
+					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
+				}else {
+					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, []*types2.SignedMessage{})
+				}
 				if err != nil {
 					log.Errorf("failed to create block: %w", err)
 					continue
