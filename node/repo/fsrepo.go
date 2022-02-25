@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
-	"github.com/filecoin-project/venus-miner/lib/blockstore"
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
@@ -22,10 +21,10 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/venus-miner/chain/types"
+	"github.com/filecoin-project/venus-miner/lib/blockstore"
 	lblockstore "github.com/filecoin-project/venus-miner/lib/blockstore"
 	badgerbs "github.com/filecoin-project/venus-miner/lib/blockstore/badger"
-
-	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/config"
 )
 

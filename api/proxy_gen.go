@@ -6,14 +6,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/venus-wallet/core"
-
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
 
@@ -34,36 +29,6 @@ type CommonStruct struct {
 		Shutdown func(context.Context) error                    `perm:"admin"`
 		Session  func(context.Context) (uuid.UUID, error)       `perm:"read"`
 		Closing  func(context.Context) (<-chan struct{}, error) `perm:"read"`
-	}
-}
-
-// FullNodeStruct implements API passing calls to user-provided function values.
-type FullNodeStruct struct {
-	CommonStruct
-
-	Internal struct {
-		ChainHead              func(context.Context) (*types.TipSet, error)                                  `perm:"read"`
-		ChainGetTipSetByHeight func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) `perm:"read"`
-		ChainTipSetWeight      func(context.Context, types.TipSetKey) (types.BigInt, error)                  `perm:"read"`
-
-		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
-
-		SyncState func(context.Context) (*SyncState, error) `perm:"read"`
-
-		SyncSubmitBlock func(ctx context.Context, blk *types.BlockMsg) error `perm:"write"`
-
-		MpoolSelect  func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)     `perm:"read"`
-		MpoolSelects func(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error) `perm:"read"`
-
-		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) `perm:"read"`
-		MinerCreateBlock func(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
-
-		WalletSign func(context.Context, address.Address, []byte, core.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
-
-		StateMinerInfo       func(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)                            `perm:"read"`
-		StateMinerDeadlines  func(context.Context, address.Address, types.TipSetKey) ([]Deadline, error)                                 `perm:"read"`
-		StateMinerPartitions func(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error)        `perm:"read"`
-		StateSectorGetInfo   func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error) `perm:"read"`
 	}
 }
 
@@ -102,69 +67,7 @@ func (c *CommonStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
 	return c.Internal.Closing(ctx)
 }
 
-// FullNodeStruct
-func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, bt *BlockTemplate) (*types.BlockMsg, error) {
-	return c.Internal.MinerCreateBlock(ctx, bt)
-}
-
-func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
-	return c.Internal.ChainHead(ctx)
-}
-
-func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	return c.Internal.ChainGetTipSetByHeight(ctx, h, tsk)
-}
-
-func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
-	return c.Internal.ChainTipSetWeight(ctx, tsk)
-}
-
-func (c *FullNodeStruct) WalletSign(ctx context.Context, k address.Address, msg []byte, meta core.MsgMeta) (*crypto.Signature, error) {
-	return c.Internal.WalletSign(ctx, k, msg, meta)
-}
-
-func (c *FullNodeStruct) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
-	return c.Internal.BeaconGetEntry(ctx, epoch)
-}
-
-func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
-	return c.Internal.SyncState(ctx)
-}
-
-func (c *FullNodeStruct) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*MiningBaseInfo, error) {
-	return c.Internal.MinerGetBaseInfo(ctx, maddr, epoch, tsk)
-}
-
-func (c *FullNodeStruct) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	return c.Internal.SyncSubmitBlock(ctx, blk)
-}
-
-func (c *FullNodeStruct) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
-	return c.Internal.StateMinerInfo(ctx, actor, tsk)
-}
-
-func (c *FullNodeStruct) StateMinerDeadlines(ctx context.Context, actor address.Address, tsk types.TipSetKey) ([]Deadline, error) {
-	return c.Internal.StateMinerDeadlines(ctx, actor, tsk)
-}
-
-func (c *FullNodeStruct) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error) {
-	return c.Internal.StateMinerPartitions(ctx, m, dlIdx, tsk)
-}
-
-func (c *FullNodeStruct) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
-	return c.Internal.StateSectorGetInfo(ctx, maddr, n, tsk)
-}
-
-func (c *FullNodeStruct) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
-	return c.Internal.MpoolSelect(ctx, tsk, ticketQuality)
-}
-
-func (c *FullNodeStruct) MpoolSelects(ctx context.Context, tsk types.TipSetKey, ticketQualitys []float64) ([][]*types.SignedMessage, error) {
-	return c.Internal.MpoolSelects(ctx, tsk, ticketQualitys)
-}
-
 var _ Common = &CommonStruct{}
-var _ FullNode = &FullNodeStruct{}
 
 type MinerStruct struct {
 	CommonStruct

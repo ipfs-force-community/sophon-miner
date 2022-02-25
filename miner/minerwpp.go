@@ -8,18 +8,18 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-
-	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/chain"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
+
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type MiningWpp struct {
@@ -31,7 +31,7 @@ type MiningWpp struct {
 	winnRpt  abi.RegisteredPoStProof
 }
 
-func NewWinningPoStProver(api api.FullNode, gatewayNode *config.GatewayNode, minerInfo dtypes.MinerInfo, verifier ffiwrapper.Verifier) (*MiningWpp, error) {
+func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, minerInfo dtypes.MinerInfo, verifier ffiwrapper.Verifier) (*MiningWpp, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), minerInfo.Addr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
@@ -64,7 +64,7 @@ func (wpp *MiningWpp) GenerateCandidates(ctx context.Context, randomness abi.PoS
 	return cds, nil
 }
 
-func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo, rand abi.PoStRandomness) ([]proof2.PoStProof, error) {
+func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, currEpoch abi.ChainEpoch, nv network.Version) ([]builtin.PoStProof, error) {
 	if build.InsecurePoStValidation {
 		return []builtin.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
@@ -80,7 +80,7 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []proof2.SectorInfo,
 	}
 	defer closer()
 
-	proofBuf, err := api.ComputeProof(ctx, wpp.minerInfo.Addr, ssi, rand)
+	proofBuf, err := api.ComputeProof(ctx, wpp.minerInfo.Addr, ssi, rand, currEpoch, nv)
 	if err != nil {
 		return nil, err
 	}

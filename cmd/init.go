@@ -13,12 +13,15 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
-	lapi "github.com/filecoin-project/venus-miner/api"
+	"github.com/filecoin-project/venus/venus-shared/api"
+	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	lcli "github.com/filecoin-project/venus-miner/cli"
@@ -32,7 +35,7 @@ var initCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:        "nettype",
-			Usage:       "network type, one of: mainnet, debug, 2k, calibnet",
+			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly",
 			Value:       "mainnet",
 			DefaultText: "mainnet",
 			Required:    false,
@@ -96,11 +99,7 @@ var initCmd = &cli.Command{
 			fullnode.Token = cctx.String("token")
 		}
 
-		if err := checkV1ApiSupport(ctx, cctx, fullnode); err != nil {
-			return err
-		}
-
-		api, closer, err := lcli.GetFullNodeAPIV1(cctx, fullnode)
+		fullNodeAPI, closer, err := lcli.GetFullNodeAPIV1(cctx, fullnode)
 		if err != nil {
 			return err
 		}
@@ -124,13 +123,13 @@ var initCmd = &cli.Command{
 
 		log.Info("Checking full node version")
 
-		v, err := api.Version(ctx)
+		v, err := fullNodeAPI.Version(ctx)
 		if err != nil {
 			return err
 		}
 
-		if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion1) {
-			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion1, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(api.FullAPIVersion1) {
+			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")
@@ -224,7 +223,7 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 	return nil
 }
 
-func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) { //nolint
+func makeHostKey(ctx context.Context, lr repo.LockedRepo) (crypto.PrivKey, error) { //nolint
 	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err
@@ -250,7 +249,7 @@ func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) { //nolint
 	return pk, nil
 }
 
-func SyncWait(ctx context.Context, napi lapi.FullNode, watch bool) error {
+func SyncWait(ctx context.Context, napi v1.FullNode, watch bool) error {
 	tick := time.Second / 4
 
 	lastLines := 0
@@ -286,10 +285,10 @@ func SyncWait(ctx context.Context, napi lapi.FullNode, watch bool) error {
 		working := -1
 		for i, ss := range state.ActiveSyncs {
 			switch ss.Stage {
-			case lapi.StageSyncComplete:
+			case types2.StageSyncComplete:
 			default:
 				working = i
-			case lapi.StageIdle:
+			case types2.StageIdle:
 				// not complete, not actively working
 			}
 		}
@@ -378,27 +377,6 @@ func fetchingProofParameters(ctx context.Context) error { // nolint
 		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
-	}
-
-	return nil
-}
-
-func checkV1ApiSupport(ctx context.Context, cctx *cli.Context, fn config.FullNode) error {
-	// check v0 api version to make sure it supports v1 api
-	api0, closer, err := lcli.GetFullNodeAPI(cctx, fn)
-	if err != nil {
-		return err
-	}
-
-	v, err := api0.Version(ctx)
-	closer()
-
-	if err != nil {
-		return err
-	}
-
-	if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion0) {
-		return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion0, v.APIVersion)
 	}
 
 	return nil

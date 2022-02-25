@@ -9,7 +9,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus-miner/chain/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // Sign takes in signature type, private key and message. Returns a signature for that message.
@@ -80,7 +80,7 @@ func CheckBlockSignature(ctx context.Context, blk *types.BlockHeader, worker add
 		return xerrors.New("block signature not present")
 	}
 
-	sigb, err := blk.SigningBytes()
+	sigb, err := blk.SignatureData()
 	if err != nil {
 		return xerrors.Errorf("failed to get block signing bytes: %w", err)
 	}

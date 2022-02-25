@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	lapi "github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/api/v0api"
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/lib/tracing"
@@ -29,6 +28,9 @@ import (
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
+
+	"github.com/filecoin-project/venus/venus-shared/api"
+	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 var runCmd = &cli.Command{
@@ -41,7 +43,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "nettype",
-			Usage:       "network type, one of: mainnet, debug, 2k, calibnet",
+			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly",
 			Value:       "mainnet",
 			DefaultText: "mainnet",
 			Required:    false,
@@ -118,10 +120,6 @@ var runCmd = &cli.Command{
 		}
 		cfg := cfgV.(*config.MinerConfig)
 
-		if err := checkV1ApiSupport(ctx, cctx, cfg.FullNode); err != nil {
-			return err
-		}
-
 		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx, cfg.FullNode)
 		lr.Close() //nolint:errcheck
 		if err != nil {
@@ -134,14 +132,14 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if v.APIVersion != lapi.FullAPIVersion1 {
-			return xerrors.Errorf("venus-daemon API version doesn't match: expected: %s", lapi.APIVersion{APIVersion: lapi.FullAPIVersion1})
+		if v.APIVersion != api.FullAPIVersion1 {
+			return xerrors.Errorf("venus-daemon API version doesn't match: expected: %s", lapi.APIVersion{APIVersion: api.FullAPIVersion1})
 		}
 
 		log.Info("Checking full node sync status")
 
 		if !cctx.Bool("nosync") {
-			if err := SyncWait(ctx, &v0api.WrapperV1Full{FullNode: nodeApi}, false); err != nil {
+			if err := SyncWait(ctx, nodeApi, false); err != nil {
 				return xerrors.Errorf("sync wait: %w", err)
 			}
 		}
@@ -159,7 +157,7 @@ var runCmd = &cli.Command{
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/" + cctx.String("miner-api"))
 				})),
-			node.Override(new(lapi.FullNode), nodeApi),
+			node.Override(new(v1.FullNode), nodeApi),
 		)
 		if err != nil {
 			return xerrors.Errorf("creating node: %w", err)

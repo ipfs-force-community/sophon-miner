@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 
-	"github.com/filecoin-project/venus-miner/api"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
+
+	api2 "github.com/filecoin-project/venus/venus-shared/api"
+
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/lib/venuslog"
 	"github.com/filecoin-project/venus-miner/node/repo"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/urfave/cli/v2"
 )
 
 var log = logging.Logger("main")
@@ -20,7 +22,7 @@ const FlagMinerRepo = "miner-repo"
 const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
-	api.RunningNodeType = api.NodeMiner
+	api2.RunningNodeType = api2.NodeMiner
 
 	venuslog.SetupLogLevels()
 

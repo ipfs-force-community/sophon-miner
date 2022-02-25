@@ -6,13 +6,16 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-datastore"
-	"github.com/prometheus/common/log"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
 )
+
+var log = logging.Logger("local_minermgr")
 
 const actorKey = "miner-actors"
 const defaultKey = "default-actor"
@@ -27,7 +30,7 @@ type MinerManager struct {
 }
 
 func NewMinerManger(ds dtypes.MetadataDS) (minermanage.MinerManageAPI, error) {
-	addrBytes, err := ds.Get(datastore.NewKey(actorKey))
+	addrBytes, err := ds.Get(context.TODO(), datastore.NewKey(actorKey))
 	if err != nil && err != datastore.ErrNotFound {
 		return nil, err
 	}
@@ -58,7 +61,7 @@ func (m *MinerManager) Put(ctx context.Context, miner dtypes.MinerInfo) error {
 	if err != nil {
 		return err
 	}
-	err = m.da.Put(datastore.NewKey(actorKey), addrBytes)
+	err = m.da.Put(ctx, datastore.NewKey(actorKey), addrBytes)
 	if err != nil {
 		return err
 	}
@@ -94,7 +97,7 @@ func (m *MinerManager) Set(ctx context.Context, miner dtypes.MinerInfo) error {
 				return err
 			}
 
-			err = m.da.Put(datastore.NewKey(actorKey), addrBytes)
+			err = m.da.Put(ctx, datastore.NewKey(actorKey), addrBytes)
 			if err != nil {
 				return err
 			}
@@ -155,7 +158,7 @@ func (m *MinerManager) Remove(ctx context.Context, rmAddr address.Address) error
 	if err != nil {
 		return err
 	}
-	err = m.da.Put(datastore.NewKey(actorKey), addrBytes)
+	err = m.da.Put(ctx, datastore.NewKey(actorKey), addrBytes)
 	if err != nil {
 		return err
 	}
@@ -172,7 +175,7 @@ func (m *MinerManager) Remove(ctx context.Context, rmAddr address.Address) error
 	}
 
 	if rmAddr == defaultAddr {
-		err := m.rmDefault()
+		err := m.rmDefault(ctx)
 		if err != nil {
 			return err
 		}
@@ -181,16 +184,16 @@ func (m *MinerManager) Remove(ctx context.Context, rmAddr address.Address) error
 	return nil
 }
 
-func (m *MinerManager) rmDefault() error {
-	return m.da.Delete(datastore.NewKey(defaultKey))
+func (m *MinerManager) rmDefault(ctx context.Context) error {
+	return m.da.Delete(ctx, datastore.NewKey(defaultKey))
 }
 
 func (m *MinerManager) SetDefault(ctx context.Context, addr address.Address) error {
-	return m.da.Put(datastore.NewKey(defaultKey), addr.Bytes())
+	return m.da.Put(ctx, datastore.NewKey(defaultKey), addr.Bytes())
 }
 
 func (m *MinerManager) Default(ctx context.Context) (address.Address, error) {
-	bytes, err := m.da.Get(datastore.NewKey(defaultKey))
+	bytes, err := m.da.Get(ctx, datastore.NewKey(defaultKey))
 	if err != nil {
 		// set the address with index 0 as the default address
 		if len(m.miners) == 0 {

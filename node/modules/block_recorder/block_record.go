@@ -1,6 +1,7 @@
 package block_recorder
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -29,14 +30,14 @@ func NewLocalDBRecord(da dtypes.MetadataDS) *LocalDBRecord {
 	return &LocalDBRecord{da: da}
 }
 
-func (l *LocalDBRecord) MarkAsProduced(miner address.Address, height uint64) error {
+func (l *LocalDBRecord) MarkAsProduced(ctx context.Context, miner address.Address, height uint64) error {
 	blkKey := datastore.NewKey(fmt.Sprintf("%s-%d", miner, height))
-	return l.da.Put(blkKey, []byte{1})
+	return l.da.Put(ctx, blkKey, []byte{1})
 }
 
-func (l *LocalDBRecord) Has(miner address.Address, height uint64) bool {
+func (l *LocalDBRecord) Has(ctx context.Context, miner address.Address, height uint64) bool {
 	blkKey := datastore.NewKey(fmt.Sprintf("%s-%d", miner, height))
-	has, err := l.da.Has(blkKey)
+	has, err := l.da.Has(ctx, blkKey)
 	if err != nil {
 		return false
 	}

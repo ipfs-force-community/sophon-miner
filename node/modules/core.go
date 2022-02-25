@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/filecoin-project/venus-miner/api"
 	"io"
 	"io/ioutil"
 	"os"
@@ -21,6 +20,9 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
+
+	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
@@ -44,7 +46,7 @@ var (
 	logWatchdog = logging.Logger("watchdog")
 )
 
-type Genesis func() (*types.BlockHeader, error)
+type Genesis func() (*types2.BlockHeader, error)
 
 // RecordValidator provides namesys compatible routing record validator
 func RecordValidator(ps peerstore.Peerstore) record.Validator {

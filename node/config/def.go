@@ -6,10 +6,12 @@ import (
 	"net/url"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/prometheus/common/log"
 )
+
+var log = logging.Logger("config")
 
 // Common is common config between full node and miner
 type Common struct {

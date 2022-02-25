@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 )
 
 func SetAddressNetwork(n address.Network) {
@@ -69,6 +69,24 @@ func InitNetWorkParams(nettype string) error {
 
 		UpgradeSmokeHeight = -2
 		UpgradeOrangeHeight = 300
+		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
+		PropagationDelaySecs = uint64(12)
+	case "butterfly":
+		policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
+		policy.SetSupportedProofTypes(
+			abi.RegisteredSealProof_StackedDrg512MiBV1,
+			abi.RegisteredSealProof_StackedDrg32GiBV1,
+			abi.RegisteredSealProof_StackedDrg64GiBV1,
+		)
+
+		SetAddressNetwork(address.Testnet)
+
+		Devnet = true
+
+		BuildType = BuildButterflynet
+
+		UpgradeSmokeHeight = -2
+		UpgradeOrangeHeight = -12
 		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 		PropagationDelaySecs = uint64(12)
 	default:

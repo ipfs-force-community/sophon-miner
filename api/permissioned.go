@@ -22,10 +22,3 @@ func PermissionedMinerAPI(a MinerAPI) MinerAPI {
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
 	return &out
 }
-
-func PermissionedFullAPI(a FullNode) FullNode {
-	var out FullNodeStruct
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
-	return &out
-}
