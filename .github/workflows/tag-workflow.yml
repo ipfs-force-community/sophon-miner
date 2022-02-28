@@ -26,7 +26,7 @@ jobs:
         run: |
           export commit=$(git rev-parse HEAD)
           export short=$(git rev-parse --short HEAD)
-          export github_tag=${GITHUB_REF##*/}
+          export github_tag=${{github.ref_name}}
           export git_message=$(git rev-list --format=%s --max-count=1 HEAD | tail +2)
           export repo_name=${GITHUB_REPOSITORY##*/}
           export branch=$(git symbolic-ref --short -q HEAD)
