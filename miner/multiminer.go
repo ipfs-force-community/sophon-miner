@@ -419,7 +419,7 @@ minerLoop:
 				var b *types2.BlockMsg
 				if len(msgs) > idx {
 					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
-				}else {
+				} else {
 					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, []*types2.SignedMessage{})
 				}
 				if err != nil {
@@ -438,11 +438,11 @@ minerLoop:
 
 				if dur > time.Second*time.Duration(build.BlockDelaySecs) {
 					log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
+						"miner", tRes.addr,
 						"tMinerBaseInfo ", tRes.timetable.tMBI.Sub(tRes.timetable.tStart),
-						"tDrand ", tRes.timetable.tDrand.Sub(tRes.timetable.tMBI),
-						"tPowercheck ", tRes.timetable.tPowercheck.Sub(tRes.timetable.tDrand),
-						"tTicket ", tRes.timetable.tTicket.Sub(tRes.timetable.tPowercheck),
-						"tSeed ", tRes.timetable.tSeed.Sub(tRes.timetable.tTicket),
+						"tTicket ", tRes.timetable.tTicket.Sub(tRes.timetable.tMBI),
+						"tIsWinner ", tRes.timetable.tIsWinner.Sub(tRes.timetable.tTicket),
+						"tSeed ", tRes.timetable.tSeed.Sub(tRes.timetable.tIsWinner),
 						"tProof ", tRes.timetable.tProof.Sub(tRes.timetable.tSeed),
 						"tPending ", tPending.Sub(tRes.timetable.tProof),
 						"tCreateBlock ", tCreateBlock.Sub(tPending))
@@ -588,7 +588,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 }
 
 type miningTimetable struct {
-	tStart, tMBI, tDrand, tPowercheck, tTicket, tSeed, tProof time.Time
+	tStart, tMBI, tTicket, tIsWinner, tSeed, tProof time.Time
 }
 
 type winPoStRes struct {
@@ -641,13 +641,10 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		}
 
 		tMBI := build.Clock.Now()
+		log.Infow("mine one", "miner", addr, "get base info", tMBI.Sub(start))
 
 		beaconPrev := mbi.PrevBeaconEntry
-
-		tDrand := build.Clock.Now()
 		bvals := mbi.BeaconEntries
-
-		tPowercheck := build.Clock.Now()
 
 		log.Infof("Time delta between now and our mining base: %ds (nulls: %d), miner: %s", uint64(build.Clock.Now().Unix())-base.TipSet.MinTimestamp(), base.NullRounds, addr)
 
@@ -662,6 +659,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
+
+		tTicket := build.Clock.Now()
+		log.Infow("mine one", "miner", addr, "compute ticket", tTicket.Sub(tMBI))
 
 		var sign chain.SignFunc
 		if _, ok := m.minerWPPMap[addr]; ok {
@@ -691,7 +691,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			return
 		}
 
-		tTicket := build.Clock.Now()
+		tIsWinner := build.Clock.Now()
+		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket))
 
 		buf := new(bytes.Buffer)
 		if err := addr.MarshalCBOR(buf); err != nil {
@@ -710,6 +711,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		prand := abi.PoStRandomness(r)
 
 		tSeed := build.Clock.Now()
+		log.Infow("mine one", "miner", addr, "seed", tSeed.Sub(tIsWinner))
+
 		nv, err := m.api.StateNetworkVersion(ctx, base.TipSet.Key())
 		if err != nil {
 			log.Errorf("failed to get network version: %w, miner: %s", err, addr)
@@ -725,10 +728,11 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		}
 
 		tProof := build.Clock.Now()
+		log.Infow("mine one", "miner", addr, "compute proof", tProof.Sub(tSeed))
 
 		dur := build.Clock.Now().Sub(start)
 		tt := miningTimetable{
-			tStart: start, tMBI: tMBI, tDrand: tDrand, tPowercheck: tPowercheck, tTicket: tTicket, tSeed: tSeed, tProof: tProof,
+			tStart: start, tMBI: tMBI, tTicket: tTicket, tIsWinner: tIsWinner, tSeed: tSeed, tProof: tProof,
 		}
 		out <- &winPoStRes{addr: addr, waddr: mbi.WorkerKey, ticket: ticket, winner: winner, bvals: bvals, postProof: postProof, dur: dur, timetable: tt}
 		log.Infow("mined new block ( -> Proof)", "took", dur, "miner", addr)
