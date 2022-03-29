@@ -20,7 +20,6 @@ type MinerAPI struct {
 }
 
 func (m *MinerAPI) UpdateAddress(ctx context.Context, skip int64, limit int64) ([]dtypes.MinerInfo, error) {
-
 	return m.MiningAPI.UpdateAddress(ctx, skip, limit)
 }
 

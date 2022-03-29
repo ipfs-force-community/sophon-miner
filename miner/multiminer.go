@@ -655,7 +655,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		ticket, err := m.computeTicket(ctx, &rbase, base, mbi, addr)
 		if err != nil {
-			log.Errorf("scratching ticket for %s failed: %w", addr, err)
+			log.Errorf("scratching ticket for %s failed: %s", addr, err.Error())
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
