@@ -1,6 +1,8 @@
 package dtypes
 
 import (
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -22,12 +24,16 @@ type MinerState struct {
 type User struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
-	Miner      string `json:"miner"` // miner address f01234
 	SourceType int    `json:"sourceType"`
 	Comment    string `json:"comment"`
 	State      int    `json:"state"`
 	CreateTime int64  `json:"createTime"`
 	UpdateTime int64  `json:"updateTime"`
+}
+
+type Miner struct {
+	Miner, User          string
+	CreatedAt, UpdatedAt time.Time
 }
 
 type SimpleWinInfo struct {
