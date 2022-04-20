@@ -6,8 +6,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 
-	api2 "github.com/filecoin-project/venus/venus-shared/api"
-
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/lib/venuslog"
@@ -22,8 +20,6 @@ const FlagMinerRepo = "miner-repo"
 const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
-	api2.RunningNodeType = api2.NodeMiner
-
 	venuslog.SetupLogLevels()
 
 	local := []*cli.Command{
