@@ -48,16 +48,12 @@ func (a *CommonAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byt
 	return jwt.Sign(&p, (*jwt.HMACSHA)(a.APISecret))
 }
 
-func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
-	v, err := vapi.VersionForType(vapi.RunningNodeType)
-	if err != nil {
-		return api.APIVersion{}, err
-	}
+var apiVersion = vapi.NewVer(1, 2, 0)
 
+func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
 	return api.APIVersion{
 		Version:    build.UserVersion(),
-		APIVersion: v,
-
+		APIVersion: apiVersion,
 		BlockDelay: build.BlockDelaySecs,
 	}, nil
 }

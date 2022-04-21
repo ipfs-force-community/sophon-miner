@@ -3,7 +3,7 @@ package config
 import (
 	"net/http"
 
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
 type GatewayNode struct {
@@ -15,13 +15,12 @@ func (gw *GatewayNode) DialArgs() ([]string, error) {
 	var mAddrs []string
 
 	for _, apiAddr := range gw.ListenAPI {
-		apiInfo := apiinfo.NewAPIInfo(apiAddr, gw.Token)
+		apiInfo := api.NewAPIInfo(apiAddr, gw.Token)
 		addr, err := apiInfo.DialArgs("v1")
 		if err != nil {
 			log.Errorf("dial ma err: %s", err.Error())
 			continue
 		}
-
 
 		mAddrs = append(mAddrs, addr)
 	}
