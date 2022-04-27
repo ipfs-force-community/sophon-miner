@@ -19,7 +19,7 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus-miner/build"
