@@ -16,11 +16,11 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.1.3
+	github.com/filecoin-project/go-state-types v0.1.4
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.0
-	github.com/filecoin-project/venus v1.2.4
+	github.com/filecoin-project/venus v1.3.0-rc2.0.20220506014242-213284c5c445
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/google/uuid v1.3.0
@@ -52,7 +52,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20220302191723-37c43cae8e14
+	github.com/whyrusleeping/cbor-gen v0.0.0-20220323183124-98fa8256a799
 	go.opencensus.io v0.23.0
 	go.uber.org/dig v1.13.0 // indirect
 	go.uber.org/fx v1.15.0

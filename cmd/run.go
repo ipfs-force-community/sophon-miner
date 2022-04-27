@@ -30,7 +30,7 @@ import (
 	"github.com/filecoin-project/venus-miner/node/repo"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 var runCmd = &cli.Command{
