@@ -1,7 +1,7 @@
 SHELL=/usr/bin/env bash
 
 all: build
-.PHONY: all
+.PHONY: all docker
 
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
 ifeq ($(shell expr $(GOVERSION) \< 15), 1)
@@ -84,3 +84,11 @@ dist-clean:
 
 print-%:
 	@echo $*=$($*)
+
+
+# docker
+.PHONY: docker
+BUILD_DOCKER_PROXY=
+
+docker:
+	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t venus-miner .
