@@ -35,7 +35,7 @@ var initCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:        "nettype",
-			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly",
+			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly, interop",
 			Value:       "mainnet",
 			DefaultText: "mainnet",
 			Required:    false,
