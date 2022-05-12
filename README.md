@@ -23,12 +23,12 @@ Please send an email to security@filecoin.org. See our [security policy](SECURIT
 
 ## Related packages
 
-These repos are independent and reusable modules, but are tightly integrated into Lotus to make up a fully featured Filecoin implementation:
+These repos are independent and reusable modules, but are tightly integrated into Venus to make up a fully featured Filecoin implementation:
 - [specs-actors](https://github.com/filecoin-project/specs-actors) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/actors-5ee6f3aa87591f0016c05685/board)
 
 ## Contribute
 
-Lotus is a universally open project and welcomes contributions of all kinds: code, docs, and more. However, before making a contribution, we ask you to heed these recommendations:
+Venus is a universally open project and welcomes contributions of all kinds: code, docs, and more. However, before making a contribution, we ask you to heed these recommendations:
 
 1. If the proposal entails a protocol change, please first submit a [Filecoin Improvement Proposal](https://github.com/filecoin-project/FIPs).
 2. If the change is complex and requires prior discussion, [open an issue](https://github.com/filecoin-project/venus-miner/issues) to request feedback before you start working on a pull request. This is to avoid disappointment and sunk costs, in case the change is not actually needed or accepted.
