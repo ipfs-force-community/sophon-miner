@@ -20,7 +20,7 @@ require (
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.0
-	github.com/filecoin-project/venus v1.2.4-0.20220420072943-4d565663fa60
+	github.com/filecoin-project/venus v1.2.4
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/google/uuid v1.3.0
@@ -67,5 +67,3 @@ replace github.com/filecoin-project/venus-miner => ./
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
