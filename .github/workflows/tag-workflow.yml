@@ -176,3 +176,15 @@ jobs:
                   --data-urlencode "description=message:${{steps.vars.outputs.git_message}}, branch:${{steps.vars.outputs.branch}}, commit:${{steps.vars.outputs.short}}, tag:${{steps.vars.outputs.github_tag}}" \
                   --data-urlencode "version=${{steps.vars.outputs.short}}"
           set -e
+
+      - name: Build the Docker image 
+        if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
+
+        run: |
+          docker build . --file dockerfile --tag filvenus/venus-miner:latest
+          docker tag filvenus/venus-miner:latest filvenus/venus-miner:${{steps.vars.outputs.github_tag }}
+          docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
+          docker push filvenus/venus-miner:${{steps.vars.outputs.github_tag }}
+          
+
+        
