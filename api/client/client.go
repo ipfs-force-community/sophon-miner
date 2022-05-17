@@ -24,7 +24,7 @@ func NewCommonRPC(ctx context.Context, addr string, requestHeader http.Header) (
 
 // NewMinerRPC creates a new http jsonrpc client for miner
 func NewMinerRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.MinerAPI, jsonrpc.ClientCloser, error) {
-	var res api.MinerStruct
+	var res api.MinerAPIStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.CommonStruct.Internal,

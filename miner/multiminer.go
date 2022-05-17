@@ -24,13 +24,13 @@ import (
 	"github.com/filecoin-project/venus-miner/chain"
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
 	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/journal"
+	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/block_recorder"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
-	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
 
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/wallet"
@@ -665,7 +665,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		var sign chain.SignFunc
 		if _, ok := m.minerWPPMap[addr]; ok {
-			walletAPI, closer, err := client.NewGatewayRPC(m.gatewayNode)
+			walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 			if err != nil {
 				log.Errorf("create wallet RPC failed: %w", err)
 				out <- &winPoStRes{addr: addr, err: err}
@@ -772,7 +772,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 	accout := ""
 	if val, ok := m.minerWPPMap[addr]; ok {
 		accout = val.account
-		walletAPI, closer, err := client.NewGatewayRPC(m.gatewayNode)
+		walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 		if err != nil {
 			log.Errorf("create wallet RPC failed: %w", err)
 			return nil, err
@@ -823,7 +823,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 		account := ""
 		if val, ok := m.minerWPPMap[addr]; ok {
 			account = val.account
-			walletAPI, closer, err := client.NewGatewayRPC(m.gatewayNode)
+			walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 			if err != nil {
 				log.Errorf("create wallet RPC failed: %w", err)
 				return nil, err
@@ -1030,7 +1030,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 				account := ""
 				if val, ok := m.minerWPPMap[tAddr]; ok {
 					account = val.account
-					walletAPI, closer, err := client.NewGatewayRPC(m.gatewayNode)
+					walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 					if err != nil {
 						log.Errorf("[%v] create wallet RPC failed: %w", tAddr, err)
 						res = append(res, dtypes.CountWinners{Msg: err.Error(), Miner: tAddr})

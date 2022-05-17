@@ -2,7 +2,6 @@ package repo
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,9 +21,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/lib/blockstore"
-	lblockstore "github.com/filecoin-project/venus-miner/lib/blockstore"
-	badgerbs "github.com/filecoin-project/venus-miner/lib/blockstore/badger"
 	"github.com/filecoin-project/venus-miner/node/config"
 )
 
@@ -276,10 +272,6 @@ type fsLockedRepo struct {
 	dsErr  error
 	dsOnce sync.Once
 
-	bs     blockstore.Blockstore
-	bsErr  error
-	bsOnce sync.Once
-
 	configLk sync.Mutex
 }
 
@@ -301,51 +293,12 @@ func (fsr *fsLockedRepo) Close() error {
 		}
 	}
 
-	// type assertion will return ok=false if fsr.bs is nil altogether.
-	if c, ok := fsr.bs.(io.Closer); ok && c != nil {
-		if err := c.Close(); err != nil {
-			return fmt.Errorf("could not close blockstore: %w", err)
-		}
-	}
-
 	if fsr.closer != nil {
 		err = fsr.closer.Close()
 		fsr.closer = nil
 	}
 
 	return err
-}
-
-// Blockstore returns a blockstore for the provided data domain.
-func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != BlockstoreChain {
-		return nil, ErrInvalidBlockstoreDomain
-	}
-
-	fsr.bsOnce.Do(func() {
-		path := fsr.join(filepath.Join(fsDatastore, "chain"))
-		readonly := fsr.readonly
-
-		if err := os.MkdirAll(path, 0755); err != nil {
-			fsr.bsErr = err
-			return
-		}
-
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-
-		bs, err := badgerbs.Open(opts)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-		fsr.bs = lblockstore.WrapIDStore(bs)
-	})
-
-	return fsr.bs, fsr.bsErr
 }
 
 // join joins path elements with fsr.path

@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
-	"github.com/filecoin-project/venus-miner/lib/venuslog"
+	"github.com/filecoin-project/venus-miner/lib/logger"
 	"github.com/filecoin-project/venus-miner/node/repo"
 )
 
@@ -20,7 +20,7 @@ const FlagMinerRepo = "miner-repo"
 const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
-	venuslog.SetupLogLevels()
+	logger.SetupLogLevels()
 
 	local := []*cli.Command{
 		initCmd,

@@ -11,12 +11,9 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/minio/blake2b-simd"
-	"go.opencensus.io/trace"
-
-	"github.com/filecoin-project/venus-miner/lib/sigs"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
@@ -27,7 +24,7 @@ type WinningPoStProver interface {
 	ComputeProof(context.Context, []builtin.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]builtin.PoStProof, error)
 }
 
-type SignFunc func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error)
+type SignFunc func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error)
 
 // type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
@@ -52,25 +49,9 @@ func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.Cha
 	return h.Sum(nil), nil
 }
 
-func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []byte) error {
-	_, span := trace.StartSpan(ctx, "VerifyVRF")
-	defer span.End()
-
-	sig := &crypto.Signature{
-		Type: crypto.SigTypeBLS,
-		Data: vrfproof,
-	}
-
-	if err := sigs.Verify(sig, worker, vrfBase); err != nil {
-		return fmt.Errorf("vrf was invalid: %w", err)
-	}
-
-	return nil
-}
-
 func ComputeVRF(ctx context.Context, sign SignFunc, account string, worker address.Address, sigInput []byte) ([]byte, error) {
 	// log.Infof("sigInput: %s", hex.EncodeToString(sigInput))
-	sig, err := sign(ctx, account, worker, sigInput, types2.MsgMeta{Type: types2.MTDrawRandomParam})
+	sig, err := sign(ctx, account, worker, sigInput, types.MsgMeta{Type: types.MTDrawRandomParam})
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +64,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, account string, worker addre
 }
 
 func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
-	miner address.Address, brand types2.BeaconEntry, mbi *types2.MiningBaseInfo, sign SignFunc) (*types2.ElectionProof, error) {
+	miner address.Address, brand types.BeaconEntry, mbi *types.MiningBaseInfo, sign SignFunc) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
@@ -111,7 +92,7 @@ func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
 		return nil, fmt.Errorf("failed to compute VRF: %w", err)
 	}
 
-	ep := &types2.ElectionProof{VRFProof: vrfout}
+	ep := &types.ElectionProof{VRFProof: vrfout}
 	j := ep.ComputeWinCount(mbi.MinerPower, mbi.NetworkPower)
 	ep.WinCount = j
 	if j < 1 {

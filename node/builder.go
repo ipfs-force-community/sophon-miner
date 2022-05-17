@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
 	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/journal"
+	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/miner"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/impl"
@@ -29,11 +29,9 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage/local"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage/mysql"
 	"github.com/filecoin-project/venus-miner/node/repo"
-	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/venus-miner/system"
 
-	_ "github.com/filecoin-project/venus-miner/lib/sigs/bls"
-	_ "github.com/filecoin-project/venus-miner/lib/sigs/secp"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	fwpimpl "github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 )
 
 //nolint:deadcode,varcheck
@@ -87,16 +85,11 @@ func defaults() []Option {
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
 
-		Override(new(system.MemoryConstraints), modules.MemoryConstraints),
-		Override(InitMemoryWatchdog, modules.MemoryWatchdog),
-
 		Override(new(helpers.MetricsCtx), func() context.Context {
 			return metricsi.CtxScope(context.Background(), "venus-miner")
 		}),
 
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
-
-		// Filecoin modules
 	}
 }
 
@@ -129,13 +122,6 @@ func ConfigCommon(cfg *config.Common) Option {
 		}),
 		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e dtypes.APIEndpoint) error {
 			return lr.SetAPIEndpoint(e)
-		}),
-		Override(new(ffiwrapper.URLs), func(e dtypes.APIEndpoint) (ffiwrapper.URLs, error) {
-			ip := cfg.API.RemoteListenAddress
-
-			var urls ffiwrapper.URLs
-			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
-			return urls, nil
 		}),
 	)
 }
@@ -198,7 +184,7 @@ func ConfigPostOptions(cctx *cli.Context, c interface{}) Option {
 		Override(new(*config.MinerConfig), scfg),
 
 		Override(new(api.Common), From(new(common.CommonAPI))),
-		Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
+		Override(new(ffiwrapper.Verifier), fwpimpl.ProofVerifier),
 	)
 
 	opt, err := PostWinningOptions(scfg)
