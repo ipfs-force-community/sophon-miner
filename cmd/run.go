@@ -22,8 +22,8 @@ import (
 	lapi "github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
+	"github.com/filecoin-project/venus-miner/lib/metrics"
 	"github.com/filecoin-project/venus-miner/lib/tracing"
-	"github.com/filecoin-project/venus-miner/metrics"
 	"github.com/filecoin-project/venus-miner/node"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
@@ -205,7 +205,6 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 
 	rpcServer := jsonrpc.NewServer(serverOptions...)
 	rpcServer.Register("Filecoin", lapi.PermissionedMinerAPI(minerAPI))
-	// rpcServer.Register("Filecoin", minerAPI)
 
 	mux := mux.NewRouter()
 	mux.Handle("/rpc/v0", rpcServer)

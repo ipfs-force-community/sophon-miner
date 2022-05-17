@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/venus-miner/chain"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
-	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
 
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -73,7 +73,7 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.ExtendedSe
 	start := build.Clock.Now()
 
 	// todo call gateway api
-	api, closer, err := client.NewGatewayRPC(wpp.gatewayNode)
+	api, closer, err := client.NewGatewayRPC(ctx, wpp.gatewayNode)
 	if err != nil {
 		return nil, err
 	}
