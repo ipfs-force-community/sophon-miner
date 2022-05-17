@@ -16,11 +16,11 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.1.4
-	github.com/filecoin-project/specs-actors v0.9.14
+	github.com/filecoin-project/go-state-types v0.1.7
+	github.com/filecoin-project/specs-actors v0.9.15-0.20220514164640-94e0d5e123bd
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
-	github.com/filecoin-project/specs-actors/v7 v7.0.0
-	github.com/filecoin-project/venus v1.3.0-rc2.0.20220506014242-213284c5c445
+	github.com/filecoin-project/specs-actors/v7 v7.0.1-0.20220511223846-637436c27154
+	github.com/filecoin-project/venus v1.3.0-rc2.0.20220531070929-8e7275c3a358
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/google/uuid v1.3.0
@@ -49,7 +49,7 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.2.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220323183124-98fa8256a799

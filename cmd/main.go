@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	"os"
 
 	"golang.org/x/xerrors"
 
@@ -16,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus-miner/lib/venuslog"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
-	"github.com/filecoin-project/venus/venus-shared/actors"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -48,7 +47,8 @@ func main() {
 					return err
 				}
 			}
-			return loadActorsWithCmdBefore(cctx)
+			// return loadActorsWithCmdBefore(cctx)
+			return nil
 		}
 	}
 
@@ -104,18 +104,16 @@ var loadActorsWithCmdBefore = func(cctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := builtinactors.SetActorsBundle(build.Actorsv7FS, build.Actorsv8FS, nt); err != nil {
+	builtinactors.SetNetworkBundle(nt)
+	if err := os.Setenv(builtinactors.RepoPath, cctx.String(FlagMinerRepo)); err != nil {
 		return err
 	}
 
 	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
 	// go through CI
-	if len(builtinactors.BuiltinActorsV8Bundle()) > 0 {
-		bs := blockstore.NewMemory()
-
-		if err := actors.LoadManifestFromBundle(cctx.Context, bs, actors.Version8, builtinactors.BuiltinActorsV8Bundle()); err != nil {
-			panic(fmt.Errorf("error loading actor manifest: %w", err))
-		}
+	bs := blockstore.NewMemory()
+	if err := builtinactors.FetchAndLoadBundles(cctx.Context, bs, builtinactors.BuiltinActorReleases); err != nil {
+		panic(fmt.Errorf("error loading actor manifest: %w", err))
 	}
 	return nil
 }

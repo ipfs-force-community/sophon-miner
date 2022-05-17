@@ -15,12 +15,11 @@ build/paramfetch.sh
 /bundle
 /darwin
 /linux
-build/builtin-actors/v7
-build/builtin-actors/v8
 
 *-fuzz.zip
 bin/ipget
 bin/tmp/*
 .idea
+.vscode
 scratchpad
 .vscode
