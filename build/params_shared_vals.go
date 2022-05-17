@@ -13,14 +13,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 )
 
-// Blocks (e)
-var BlocksPerEpoch = uint64(builtin2.ExpectedLeadersPerEpoch)
-
 // Epochs
 const Finality = policy.ChainFinality
-
-// /////
-// Mining
 
 // Epochs
 const TicketRandomnessLookback = abi.ChainEpoch(1)
@@ -29,18 +23,6 @@ const TicketRandomnessLookback = abi.ChainEpoch(1)
 // Address
 
 const AddressMainnetEnvVar = "_mainnet_"
-
-// the 'f' prefix doesn't matter
-var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
-
-// /////
-// Devnet settings
-
-var Devnet = true
-
-const FilBase = uint64(2_000_000_000)
-
-const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
 // Build Settings
 var (
@@ -57,8 +39,3 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 }
-
-// ///////
-// Limits
-
-const BlockGasLimit = 10_000_000_000

@@ -24,9 +24,6 @@ func InitNetWorkParams(nettype string) error {
 		if os.Getenv("MINING_USE_TEST_ADDRESSES") != "1" {
 			SetAddressNetwork(address.Mainnet)
 		}
-
-		Devnet = false
-
 		BuildType = BuildMainnet
 
 		UpgradeSmokeHeight = 51000
@@ -62,9 +59,6 @@ func InitNetWorkParams(nettype string) error {
 		)
 
 		SetAddressNetwork(address.Testnet)
-
-		Devnet = true
-
 		BuildType = BuildCalibnet
 
 		UpgradeSmokeHeight = -2
@@ -80,9 +74,6 @@ func InitNetWorkParams(nettype string) error {
 		)
 
 		SetAddressNetwork(address.Testnet)
-
-		Devnet = true
-
 		BuildType = BuildButterflynet
 
 		UpgradeSmokeHeight = -2
@@ -99,9 +90,6 @@ func InitNetWorkParams(nettype string) error {
 		policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 
 		SetAddressNetwork(address.Testnet)
-
-		Devnet = true
-
 		BuildType = BuildInteropnet
 
 		UpgradeSmokeHeight = -2
