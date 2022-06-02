@@ -96,7 +96,7 @@ func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]
 	if err != nil {
 		return nil, err
 	}
-	var mInfos []dtypes.MinerInfo
+	var mInfos = make([]dtypes.MinerInfo, 0)
 
 	for _, u := range users {
 		if u.State != 1 {
@@ -122,7 +122,10 @@ func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]
 			})
 		}
 	}
-	return mInfos, nil
+
+	m.miners = mInfos
+
+	return m.miners, nil
 }
 
 func (m *MinerManagerForAuth) Count(ctx context.Context) int {
