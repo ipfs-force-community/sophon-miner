@@ -2,12 +2,12 @@ package sigs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -33,7 +33,7 @@ func Sign(sigType crypto.SigType, privkey []byte, msg []byte) (*crypto.Signature
 // Verify verifies signatures
 func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 	if sig == nil {
-		return xerrors.Errorf("signature is nil")
+		return fmt.Errorf("signature is nil")
 	}
 
 	if addr.Protocol() == address.ID {
@@ -77,12 +77,12 @@ func CheckBlockSignature(ctx context.Context, blk *types.BlockHeader, worker add
 	}
 
 	if blk.BlockSig == nil {
-		return xerrors.New("block signature not present")
+		return errors.New("block signature not present")
 	}
 
 	sigb, err := blk.SignatureData()
 	if err != nil {
-		return xerrors.Errorf("failed to get block signing bytes: %w", err)
+		return fmt.Errorf("failed to get block signing bytes: %w", err)
 	}
 
 	err = Verify(blk.BlockSig, worker, sigb)

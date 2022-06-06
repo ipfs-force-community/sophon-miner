@@ -2,8 +2,7 @@ package client
 
 import (
 	"context"
-
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
@@ -16,7 +15,7 @@ func NewGatewayRPC(cfg *config.GatewayNode) (gateway.IGateway, jsonrpc.ClientClo
 	var err error
 	addrs, err := cfg.DialArgs()
 	if err != nil {
-		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
+		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)
 	}
 
 	var gatewayAPI gateway.IGateway = nil

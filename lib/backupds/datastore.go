@@ -3,12 +3,12 @@ package backupds
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"sync"
 
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -34,7 +34,7 @@ func (d *Datastore) Backup(ctx context.Context, out io.Writer) error {
 	scratch := make([]byte, 9)
 
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, out, cbg.MajArray, 2); err != nil {
-		return xerrors.Errorf("writing tuple header: %w", err)
+		return fmt.Errorf("writing tuple header: %w", err)
 	}
 
 	hasher := sha256.New()
@@ -44,7 +44,7 @@ func (d *Datastore) Backup(ctx context.Context, out io.Writer) error {
 	{
 		// write indefinite length array header
 		if _, err := hout.Write([]byte{0x9f}); err != nil {
-			return xerrors.Errorf("writing header: %w", err)
+			return fmt.Errorf("writing header: %w", err)
 		}
 
 		d.backupLk.Lock()
@@ -55,7 +55,7 @@ func (d *Datastore) Backup(ctx context.Context, out io.Writer) error {
 
 		qr, err := d.child.Query(ctx, query.Query{})
 		if err != nil {
-			return xerrors.Errorf("query: %w", err)
+			return fmt.Errorf("query: %w", err)
 		}
 		defer func() {
 			if err := qr.Close(); err != nil {
@@ -66,29 +66,29 @@ func (d *Datastore) Backup(ctx context.Context, out io.Writer) error {
 
 		for result := range qr.Next() {
 			if err := cbg.WriteMajorTypeHeaderBuf(scratch, hout, cbg.MajArray, 2); err != nil {
-				return xerrors.Errorf("writing tuple header: %w", err)
+				return fmt.Errorf("writing tuple header: %w", err)
 			}
 
 			if err := cbg.WriteMajorTypeHeaderBuf(scratch, hout, cbg.MajByteString, uint64(len([]byte(result.Key)))); err != nil {
-				return xerrors.Errorf("writing key header: %w", err)
+				return fmt.Errorf("writing key header: %w", err)
 			}
 
 			if _, err := hout.Write([]byte(result.Key)[:]); err != nil {
-				return xerrors.Errorf("writing key: %w", err)
+				return fmt.Errorf("writing key: %w", err)
 			}
 
 			if err := cbg.WriteMajorTypeHeaderBuf(scratch, hout, cbg.MajByteString, uint64(len(result.Value))); err != nil {
-				return xerrors.Errorf("writing value header: %w", err)
+				return fmt.Errorf("writing value header: %w", err)
 			}
 
 			if _, err := hout.Write(result.Value[:]); err != nil {
-				return xerrors.Errorf("writing value: %w", err)
+				return fmt.Errorf("writing value: %w", err)
 			}
 		}
 
 		// array break
 		if _, err := hout.Write([]byte{0xff}); err != nil {
-			return xerrors.Errorf("writing array 'break': %w", err)
+			return fmt.Errorf("writing array 'break': %w", err)
 		}
 	}
 
@@ -97,11 +97,11 @@ func (d *Datastore) Backup(ctx context.Context, out io.Writer) error {
 		sum := hasher.Sum(nil)
 
 		if err := cbg.WriteMajorTypeHeaderBuf(scratch, hout, cbg.MajByteString, uint64(len(sum))); err != nil {
-			return xerrors.Errorf("writing checksum header: %w", err)
+			return fmt.Errorf("writing checksum header: %w", err)
 		}
 
 		if _, err := hout.Write(sum[:]); err != nil {
-			return xerrors.Errorf("writing checksum: %w", err)
+			return fmt.Errorf("writing checksum: %w", err)
 		}
 	}
 

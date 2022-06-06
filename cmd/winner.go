@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/urfave/cli/v2"
 
 	lcli "github.com/filecoin-project/venus-miner/cli"
 )
@@ -46,7 +44,7 @@ var countCmd = &cli.Command{
 		for i, s := range cctx.Args().Slice() {
 			minerAddr, err := address.NewFromString(s)
 			if err != nil {
-				return xerrors.Errorf("parsing %d-th miner: %w", i, err)
+				return fmt.Errorf("parsing %d-th miner: %w", i, err)
 			}
 
 			addrs = append(addrs, minerAddr)

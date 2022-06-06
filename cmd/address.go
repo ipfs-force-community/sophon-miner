@@ -3,10 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,6 +12,7 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	lcli "github.com/filecoin-project/venus-miner/cli"
+	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
 
 func isSupportedSectorSize(ssize abi.SectorSize) bool { // nolint
@@ -183,7 +182,7 @@ var stateCmd = &cli.Command{
 		for i, s := range cctx.Args().Slice() {
 			minerAddr, err := address.NewFromString(s)
 			if err != nil {
-				return xerrors.Errorf("parsing %d-th miner: %w", i, err)
+				return fmt.Errorf("parsing %d-th miner: %w", i, err)
 			}
 
 			addrs = append(addrs, minerAddr)
@@ -221,7 +220,7 @@ var startMiningCmd = &cli.Command{
 		for i, s := range cctx.Args().Slice() {
 			minerAddr, err := address.NewFromString(s)
 			if err != nil {
-				return xerrors.Errorf("parsing %d-th miner: %w", i, err)
+				return fmt.Errorf("parsing %d-th miner: %w", i, err)
 			}
 
 			addrs = append(addrs, minerAddr)
@@ -254,7 +253,7 @@ var stopMiningCmd = &cli.Command{
 		for i, s := range cctx.Args().Slice() {
 			minerAddr, err := address.NewFromString(s)
 			if err != nil {
-				return xerrors.Errorf("parsing %d-th miner: %w", i, err)
+				return fmt.Errorf("parsing %d-th miner: %w", i, err)
 			}
 
 			addrs = append(addrs, minerAddr)

@@ -12,7 +12,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
@@ -77,17 +76,17 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (cliutil.APIInfo, error) {
 
 	p, err := homedir.Expand(ctx.String(repoFlag))
 	if err != nil {
-		return cliutil.APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
+		return cliutil.APIInfo{}, fmt.Errorf("could not expand home dir (%s): %w", repoFlag, err)
 	}
 
 	r, err := repo.NewFS(p)
 	if err != nil {
-		return cliutil.APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+		return cliutil.APIInfo{}, fmt.Errorf("could not open repo at path: %s; %w", p, err)
 	}
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return cliutil.APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+		return cliutil.APIInfo{}, fmt.Errorf("could not get api endpoint: %w", err)
 	}
 
 	token, err := r.APIToken()
@@ -104,12 +103,12 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (cliutil.APIInfo, error) {
 func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
-		return "", nil, xerrors.Errorf("could not get API info: %w", err)
+		return "", nil, fmt.Errorf("could not get API info: %w", err)
 	}
 
 	addr, err := ainfo.DialArgs(version)
 	if err != nil {
-		return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
+		return "", nil, fmt.Errorf("could not get DialArgs: %w", err)
 	}
 
 	return addr, ainfo.AuthHeader(), nil
@@ -137,7 +136,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (v0.FullNode, jsonrpc.ClientCloser, error) {
 	addr, err := fn.DialArgs("v0")
 	if err != nil {
-		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
+		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)
 	}
 
 	return v0.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
@@ -146,7 +145,7 @@ func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (v0.FullNode, jsonrpc.
 func GetFullNodeAPIV1(ctx *cli.Context, fn config.FullNode) (v1.FullNode, jsonrpc.ClientCloser, error) {
 	addr, err := fn.DialArgs("v1")
 	if err != nil {
-		return nil, nil, xerrors.Errorf("could not get DialArgs: %w", err)
+		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)
 	}
 
 	return v1.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())

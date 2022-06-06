@@ -2,11 +2,11 @@ package mysql
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -45,7 +45,7 @@ func NewMinerManger(cfg *config.MySQLConfig) func() (minermanage.MinerManageAPI,
 			//Logger: logger.Default.LogMode(logger.Info),
 		})
 		if err != nil {
-			return nil, xerrors.Errorf("[db connection failed] conn: %s %w", cfg.Conn, err)
+			return nil, fmt.Errorf("[db connection failed] conn: %s %w", cfg.Conn, err)
 		}
 
 		db.Set("gorm:table_options", "CHARSET=utf8mb4")

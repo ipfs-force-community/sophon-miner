@@ -8,7 +8,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/kelseyhightower/envconfig"
-	"golang.org/x/xerrors"
 )
 
 // FromFile loads config from a specified file overriding defaults specified in
@@ -47,7 +46,7 @@ func ConfigComment(t interface{}) ([]byte, error) {
 	_, _ = buf.WriteString("# Default config:\n")
 	e := toml.NewEncoder(buf)
 	if err := e.Encode(t); err != nil {
-		return nil, xerrors.Errorf("encoding config: %w", err)
+		return nil, fmt.Errorf("encoding config: %w", err)
 	}
 	b := buf.Bytes()
 	b = bytes.ReplaceAll(b, []byte("\n"), []byte("\n#"))
