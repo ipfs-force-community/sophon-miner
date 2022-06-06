@@ -7,13 +7,11 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/minio/blake2b-simd"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/minio/blake2b-simd"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/venus-miner/lib/sigs"
 
@@ -36,19 +34,19 @@ type SignFunc func(ctx context.Context, account string, signer address.Address, 
 func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
+		return nil, fmt.Errorf("deriving randomness: %w", err)
 	}
 	VRFDigest := blake2b.Sum256(rbase)
 	_, err := h.Write(VRFDigest[:])
 	if err != nil {
-		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
+		return nil, fmt.Errorf("hashing VRFDigest: %w", err)
 	}
 	if err := binary.Write(h, binary.BigEndian, round); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
+		return nil, fmt.Errorf("deriving randomness: %w", err)
 	}
 	_, err = h.Write(entropy)
 	if err != nil {
-		return nil, xerrors.Errorf("hashing entropy: %w", err)
+		return nil, fmt.Errorf("hashing entropy: %w", err)
 	}
 
 	return h.Sum(nil), nil
@@ -64,7 +62,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 	}
 
 	if err := sigs.Verify(sig, worker, vrfBase); err != nil {
-		return xerrors.Errorf("vrf was invalid: %w", err)
+		return fmt.Errorf("vrf was invalid: %w", err)
 	}
 
 	return nil
@@ -89,7 +87,7 @@ func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
+		return nil, fmt.Errorf("failed to cbor marshal address: %w", err)
 	}
 
 	electionRand := new(bytes.Buffer)
@@ -101,16 +99,16 @@ func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
 	}
 	err := drp.MarshalCBOR(electionRand)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to marshal randomness: %w", err)
+		return nil, fmt.Errorf("failed to marshal randomness: %w", err)
 	}
 	//electionRand, err := DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
 	//if err != nil {
-	//	return nil, xerrors.Errorf("failed to draw randomness: %w", err)
+	//	return nil, fmt.Errorf("failed to draw randomness: %w", err)
 	//}
 
 	vrfout, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, electionRand.Bytes())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
+		return nil, fmt.Errorf("failed to compute VRF: %w", err)
 	}
 
 	ep := &types2.ElectionProof{VRFProof: vrfout}

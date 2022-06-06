@@ -3,16 +3,16 @@ package miner
 import (
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-miner/chain"
+	"fmt"
 	"math"
 	"time"
 
-	"golang.org/x/xerrors"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
+	"github.com/filecoin-project/venus-miner/chain"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -37,7 +37,7 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 func (m *Miner) winPostWarmupForMiner(ctx context.Context, addr address.Address, epp chain.WinningPoStProver) error {
 	deadlines, err := m.api.StateMinerDeadlines(ctx, addr, types.EmptyTSK)
 	if err != nil {
-		return xerrors.Errorf("getting deadlines: %w", err)
+		return fmt.Errorf("getting deadlines: %w", err)
 	}
 
 	var sector abi.SectorNumber = math.MaxUint64
@@ -46,7 +46,7 @@ out:
 	for dlIdx := range deadlines {
 		partitions, err := m.api.StateMinerPartitions(ctx, addr, uint64(dlIdx), types.EmptyTSK)
 		if err != nil {
-			return xerrors.Errorf("getting partitions for deadline %d: %w", dlIdx, err)
+			return fmt.Errorf("getting partitions for deadline %d: %w", dlIdx, err)
 		}
 
 		for _, partition := range partitions {
@@ -76,16 +76,16 @@ out:
 
 	si, err := m.api.StateSectorGetInfo(ctx, addr, sector, types.EmptyTSK)
 	if err != nil {
-		return xerrors.Errorf("getting sector info: %w", err)
+		return fmt.Errorf("getting sector info: %w", err)
 	}
 
 	ts, err := m.api.ChainHead(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting chain head")
+		return fmt.Errorf("getting chain head")
 	}
 	nv, err := m.api.StateNetworkVersion(ctx, ts.Key())
 	if err != nil {
-		return xerrors.Errorf("getting network version")
+		return fmt.Errorf("getting network version")
 	}
 
 	_, err = epp.ComputeProof(ctx, []proof7.ExtendedSectorInfo{
@@ -96,7 +96,7 @@ out:
 		},
 	}, r, ts.Height(), nv)
 	if err != nil {
-		return xerrors.Errorf("failed to compute proof: %w", err)
+		return fmt.Errorf("failed to compute proof: %w", err)
 	}
 
 	log.Infow("winning PoSt warmup successful", "took", time.Since(start))

@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -10,7 +11,6 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
 	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/lib/blockstore"
@@ -280,7 +280,7 @@ func (lmem *lockedMemRepo) Get(name string) (types.KeyInfo, error) {
 
 	key, ok := lmem.mem.keystore[name]
 	if !ok {
-		return types.KeyInfo{}, xerrors.Errorf("getting key '%s': %w", name, types.ErrKeyInfoNotFound)
+		return types.KeyInfo{}, fmt.Errorf("getting key '%s': %w", name, types.ErrKeyInfoNotFound)
 	}
 	return key, nil
 }
@@ -295,7 +295,7 @@ func (lmem *lockedMemRepo) Put(name string, key types.KeyInfo) error {
 
 	_, isThere := lmem.mem.keystore[name]
 	if isThere {
-		return xerrors.Errorf("putting key '%s': %w", name, types.ErrKeyExists)
+		return fmt.Errorf("putting key '%s': %w", name, types.ErrKeyExists)
 	}
 
 	lmem.mem.keystore[name] = key
@@ -311,7 +311,7 @@ func (lmem *lockedMemRepo) Delete(name string) error {
 
 	_, isThere := lmem.mem.keystore[name]
 	if !isThere {
-		return xerrors.Errorf("deleting key '%s': %w", name, types.ErrKeyInfoNotFound)
+		return fmt.Errorf("deleting key '%s': %w", name, types.ErrKeyInfoNotFound)
 	}
 	delete(lmem.mem.keystore, name)
 	return nil
