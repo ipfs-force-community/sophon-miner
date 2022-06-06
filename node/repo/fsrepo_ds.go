@@ -2,12 +2,12 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	dgbadger "github.com/dgraph-io/badger/v2"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -46,7 +46,7 @@ func levelDs(path string, readonly bool) (datastore.Batching, error) {
 
 func (fsr *fsLockedRepo) openDatastores(readonly bool) (map[string]datastore.Batching, error) {
 	if err := os.MkdirAll(fsr.join(fsDatastore), 0755); err != nil {
-		return nil, xerrors.Errorf("mkdir %s: %w", fsr.join(fsDatastore), err)
+		return nil, fmt.Errorf("mkdir %s: %w", fsr.join(fsDatastore), err)
 	}
 
 	out := map[string]datastore.Batching{}
@@ -57,7 +57,7 @@ func (fsr *fsLockedRepo) openDatastores(readonly bool) (map[string]datastore.Bat
 		// TODO: optimization: don't init datastores we don't need
 		ds, err := ctor(fsr.join(filepath.Join(fsDatastore, p)), readonly)
 		if err != nil {
-			return nil, xerrors.Errorf("opening datastore %s: %w", prefix, err)
+			return nil, fmt.Errorf("opening datastore %s: %w", prefix, err)
 		}
 
 		ds = measure.New("fsrepo."+p, ds)
@@ -80,5 +80,5 @@ func (fsr *fsLockedRepo) Datastore(_ context.Context, ns string) (datastore.Batc
 	if ok {
 		return ds, nil
 	}
-	return nil, xerrors.Errorf("no such datastore: %s", ns)
+	return nil, fmt.Errorf("no such datastore: %s", ns)
 }

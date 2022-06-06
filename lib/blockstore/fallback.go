@@ -2,10 +2,9 @@ package blockstore
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
-
-	"golang.org/x/xerrors"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -75,7 +74,7 @@ func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
 	// every few min (to drop any messages we fetched but don't want)
 	// in this case we want to keep this block around
 	if err := fbs.Put(ctx, b); err != nil {
-		return nil, xerrors.Errorf("persisting fallback-fetched block: %w", err)
+		return nil, fmt.Errorf("persisting fallback-fetched block: %w", err)
 	}
 	return b, nil
 }

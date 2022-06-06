@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"golang.org/x/xerrors"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 
@@ -121,7 +119,7 @@ var loadActorsWithCmdBefore = func(cctx *cli.Context) error { //nolint
 func networkNameToNetworkType(networkName types.NetworkName) (types.NetworkType, error) {
 	switch networkName {
 	case "":
-		return types.NetworkDefault, xerrors.Errorf("network name is empty")
+		return types.NetworkDefault, fmt.Errorf("network name is empty")
 	case "mainnet":
 		return types.NetworkMainnet, nil
 	case "calibrationnet", "calibnet":

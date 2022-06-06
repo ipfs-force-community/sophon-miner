@@ -84,14 +84,14 @@ func newDefaultMinerDbConfig() *MinerDbConfig {
 	return &MinerDbConfig{
 		Type:   "auth",
 		SFType: "mysql",
-		MySQL:  MySQLConfig{
-			Conn: "",
-			MaxOpenConn: 100,
-			MaxIdleConn: 10,
+		MySQL: MySQLConfig{
+			Conn:            "",
+			MaxOpenConn:     100,
+			MaxIdleConn:     10,
 			ConnMaxLifeTime: 60,
-			Debug: false,
+			Debug:           false,
 		},
-		Auth:   newDefaultAuthConfig(),
+		Auth: newDefaultAuthConfig(),
 	}
 }
 
