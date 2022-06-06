@@ -233,7 +233,6 @@ jobs:
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet
 
-
   lint: &lint
     description: |
       Run golangci-lint.

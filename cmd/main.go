@@ -78,7 +78,7 @@ func main() {
 	lcli.RunApp(app)
 }
 
-var loadActorsWithCmdBefore = func(cctx *cli.Context) error {
+var loadActorsWithCmdBefore = func(cctx *cli.Context) error { //nolint
 	networkName := types.NetworkName(cctx.String("nettype"))
 	if len(networkName) == 0 && cctx.Command.Name != "init" {
 		defCfg := config.DefaultMinerConfig()
