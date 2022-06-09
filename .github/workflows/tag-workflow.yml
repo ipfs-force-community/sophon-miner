@@ -185,4 +185,3 @@ jobs:
           docker tag filvenus/venus-miner:latest filvenus/venus-miner:${{steps.vars.outputs.github_tag }}
           docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
           docker push filvenus/venus-miner:${{steps.vars.outputs.github_tag }}
-          

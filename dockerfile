@@ -34,6 +34,3 @@ COPY ./docker/script  /script
 
 
 ENTRYPOINT ["/script/init.sh"]
-
-
-
