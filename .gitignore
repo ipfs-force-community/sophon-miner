@@ -21,3 +21,4 @@ bin/ipget
 bin/tmp/*
 .idea
 scratchpad
+.vscode
