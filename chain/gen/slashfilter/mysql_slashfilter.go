@@ -2,11 +2,11 @@ package slashfilter
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -43,7 +43,7 @@ func NewMysqlSlashFilter(cfg *config.MySQLConfig) func() (SlashFilterAPI, error)
 	return func() (SlashFilterAPI, error) {
 		db, err := gorm.Open(mysql.Open(cfg.Conn))
 		if err != nil {
-			return nil, xerrors.Errorf("[db connection failed] Connection : %s %w", cfg.Conn, err)
+			return nil, fmt.Errorf("[db connection failed] Connection : %s %w", cfg.Conn, err)
 		}
 
 		db.Set("gorm:table_options", "CHARSET=utf8mb4")
@@ -91,7 +91,7 @@ func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
 		return nil
 	}
 
-	return xerrors.Errorf("produced block would trigger double-fork mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
+	return fmt.Errorf("produced block would trigger double-fork mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
 
 }
 
@@ -112,7 +112,7 @@ func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 		return nil
 	}
 
-	return xerrors.Errorf("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
+	return fmt.Errorf("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
 
 }
 
@@ -150,7 +150,7 @@ func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 			}
 
 			if !found {
-				return xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
 			}
 		} else if err != gorm.ErrRecordNotFound {
 			//other error except not found

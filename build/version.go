@@ -10,6 +10,7 @@ const (
 	BuildDebug        = 0x3
 	BuildCalibnet     = 0x4
 	BuildButterflynet = 0x7
+	BuildInteropnet   = 0x8
 )
 
 func buildType() string {
@@ -32,7 +33,7 @@ func buildType() string {
 }
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "1.4.1"
+const BuildVersion = "1.6.0-rc1"
 
 func UserVersion() string {
 	return BuildVersion + buildType() + CurrentCommit

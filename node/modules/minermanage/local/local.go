@@ -3,11 +3,11 @@ package local
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
@@ -20,7 +20,7 @@ var log = logging.Logger("local_minermgr")
 const actorKey = "miner-actors"
 const defaultKey = "default-actor"
 
-var ErrNoDefault = xerrors.Errorf("not set default key")
+var ErrNoDefault = fmt.Errorf("not set default key")
 
 type MinerManager struct {
 	miners []dtypes.MinerInfo

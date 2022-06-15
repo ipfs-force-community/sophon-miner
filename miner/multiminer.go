@@ -9,6 +9,10 @@ import (
 	"sync"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
+
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
@@ -26,10 +30,6 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
 	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
-
-	logging "github.com/ipfs/go-log/v2"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
@@ -321,7 +321,7 @@ minerLoop:
 			}
 
 			// just wait for the beacon entry to become available before we select our final mining base
-			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
+			_, err = m.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
 				if !m.niceSleep(time.Second) {
@@ -675,7 +675,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			sign = walletAPI.WalletSign
 		} else {
 			log.Errorf("[%v] not exist", addr)
-			out <- &winPoStRes{addr: addr, err: xerrors.New("miner not exist")}
+			out <- &winPoStRes{addr: addr, err: errors.New("miner not exist")}
 			return
 		}
 		winner, err := chain.IsRoundWinner(ctx, round, account, addr, rbase, mbi, sign)
@@ -744,7 +744,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, base *MiningBase, mbi *types2.MiningBaseInfo, addr address.Address) (*types2.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := addr.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
+		return nil, fmt.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
 	round := base.TipSet.Height() + base.NullRounds + 1
@@ -761,7 +761,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 	}
 	err := drp.MarshalCBOR(input)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to marshal randomness: %w", err)
+		return nil, fmt.Errorf("failed to marshal randomness: %w", err)
 	}
 	//input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
 	//if err != nil {
@@ -781,7 +781,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		sign = walletAPI.WalletSign
 	} else {
 		log.Errorf("[%v] not exist", addr)
-		return nil, xerrors.New("miner not exist")
+		return nil, errors.New("miner not exist")
 	}
 
 	vrfOut, err := chain.ComputeVRF(ctx, sign, accout, mbi.WorkerKey, input.Bytes())
@@ -832,19 +832,19 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			sign = walletAPI.WalletSign
 		} else {
 			log.Errorf("[%v] not exist", addr)
-			return nil, xerrors.New("miner not exist")
+			return nil, errors.New("miner not exist")
 		}
 
 		nosigbytes, err := blockMsg.Header.SignatureData() // TODO 和lotus不一致?
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get SigningBytes: %v", err)
+			return nil, fmt.Errorf("failed to get SigningBytes: %v", err)
 		}
 
 		sig, err := sign(ctx, account, waddr, nosigbytes, types2.MsgMeta{
 			Type: types2.MTBlock,
 		})
 		if err != nil {
-			return nil, xerrors.Errorf("failed to sign new block: %v", err)
+			return nil, fmt.Errorf("failed to sign new block: %v", err)
 		}
 		blockMsg.Header.BlockSig = sig
 	}
@@ -861,7 +861,7 @@ func (m *Miner) ManualStart(ctx context.Context, addrs []address.Address) error 
 			if _, ok := m.minerWPPMap[addr]; ok {
 				m.minerWPPMap[addr].isMining = true
 			} else {
-				return xerrors.Errorf("%s not exist", addr)
+				return fmt.Errorf("%s not exist", addr)
 			}
 		}
 	} else {
@@ -882,7 +882,7 @@ func (m *Miner) ManualStop(ctx context.Context, addrs []address.Address) error {
 			if _, ok := m.minerWPPMap[addr]; ok {
 				m.minerWPPMap[addr].isMining = false
 			} else {
-				return xerrors.Errorf("%s not exist", addr)
+				return fmt.Errorf("%s not exist", addr)
 			}
 		}
 	} else {
@@ -967,11 +967,11 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 	}
 
 	if mbi == nil {
-		return nil, xerrors.Errorf("can't find base info on chain, addr %s should be a new miner or no sector found before chain finality", mAddr.String())
+		return nil, fmt.Errorf("can't find base info on chain, addr %s should be a new miner or no sector found before chain finality", mAddr.String())
 	}
 
 	if !mbi.EligibleForMining {
-		return nil, xerrors.Errorf("%s slashed or just have no power yet", mAddr.String())
+		return nil, fmt.Errorf("%s slashed or just have no power yet", mAddr.String())
 	}
 
 	rbase := mbi.PrevBeaconEntry
@@ -992,7 +992,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 	}
 
 	if start > ts.Height() || end > ts.Height() {
-		return []dtypes.CountWinners{}, xerrors.Errorf("start or end greater than cur tipset height: %v", ts.Height())
+		return []dtypes.CountWinners{}, fmt.Errorf("start or end greater than cur tipset height: %v", ts.Height())
 	}
 
 	res := make([]dtypes.CountWinners, 0)

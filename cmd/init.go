@@ -7,19 +7,17 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-state-types/abi"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus-miner/build"
@@ -35,7 +33,7 @@ var initCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:        "nettype",
-			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly",
+			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly, interop",
 			Value:       "mainnet",
 			DefaultText: "mainnet",
 			Required:    false,
@@ -118,7 +116,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 		if ok {
-			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagMinerRepo))
+			return fmt.Errorf("repo at '%s' is already initialized", cctx.String(FlagMinerRepo))
 		}
 
 		log.Info("Checking full node version")
@@ -129,7 +127,7 @@ var initCmd = &cli.Command{
 		}
 
 		if !v.APIVersion.EqMajorMinor(api.FullAPIVersion1) {
-			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
+			return fmt.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")
@@ -148,7 +146,7 @@ var initCmd = &cli.Command{
 			if err := os.RemoveAll(path); err != nil {
 				log.Errorf("Failed to clean up failed storage repo: %s", err)
 			}
-			return xerrors.Errorf("Storage-miner init failed")
+			return fmt.Errorf("Storage-miner init failed")
 		}
 
 		log.Info("Miner successfully init, you can now start it with 'venus-miner run'")
@@ -168,12 +166,12 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 	//
 	//p2pSk, err := makeHostKey(lr)
 	//if err != nil {
-	//	return xerrors.Errorf("make host key: %w", err)
+	//	return fmt.Errorf("make host key: %w", err)
 	//}
 	//
 	//peerID, err := peer.IDFromPrivateKey(p2pSk)
 	//if err != nil {
-	//	return xerrors.Errorf("peer ID from private key: %w", err)
+	//	return fmt.Errorf("peer ID from private key: %w", err)
 	//}
 	//log.Infow("init new peer: %s", peerID)
 
@@ -186,7 +184,7 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 	log.Info("modify config ...")
 	sfType := cctx.String("slash-filter")
 	if sfType != "local" && sfType != "mysql" {
-		return xerrors.Errorf("wrong slash filter type")
+		return fmt.Errorf("wrong slash filter type")
 	}
 
 	if err := lr.SetConfig(func(i interface{}) {
@@ -217,7 +215,7 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 			cfg.Db.MySQL.Conn = cctx.String("mysql-conn")
 		}
 	}); err != nil {
-		return xerrors.Errorf("modify config failed: %w", err)
+		return fmt.Errorf("modify config failed: %w", err)
 	}
 
 	return nil
@@ -375,7 +373,7 @@ func fetchingProofParameters(ctx context.Context) error { // nolint
 
 	for _, ssize := range ss {
 		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
+			return fmt.Errorf("fetching proof parameters: %w", err)
 		}
 	}
 

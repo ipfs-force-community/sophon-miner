@@ -89,6 +89,25 @@ func InitNetWorkParams(nettype string) error {
 		UpgradeOrangeHeight = -12
 		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 		PropagationDelaySecs = uint64(12)
+	case "interop":
+		policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+		policy.SetSupportedProofTypes(
+			abi.RegisteredSealProof_StackedDrg2KiBV1,
+			abi.RegisteredSealProof_StackedDrg8MiBV1,
+			abi.RegisteredSealProof_StackedDrg512MiBV1,
+		)
+		policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
+
+		SetAddressNetwork(address.Testnet)
+
+		Devnet = true
+
+		BuildType = BuildInteropnet
+
+		UpgradeSmokeHeight = -2
+		UpgradeOrangeHeight = -12
+		BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
+		PropagationDelaySecs = uint64(12)
 	default:
 		return fmt.Errorf("unknown nettype %s", nettype)
 	}

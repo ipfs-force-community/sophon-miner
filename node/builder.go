@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
@@ -187,12 +187,12 @@ func ConfigPostConfig(cctx *cli.Context, cfg *config.MinerConfig) (*config.Miner
 func ConfigPostOptions(cctx *cli.Context, c interface{}) Option {
 	postCfg, ok := c.(*config.MinerConfig)
 	if !ok {
-		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
+		return Error(fmt.Errorf("invalid config from repo, got: %T", c))
 	}
 
 	scfg, err := ConfigPostConfig(cctx, postCfg)
 	if err != nil {
-		return Error(xerrors.Errorf("error to parse config and flag %v", err))
+		return Error(fmt.Errorf("error to parse config and flag %v", err))
 	}
 	shareOps := Options(
 		Override(new(*config.MinerConfig), scfg),
@@ -203,7 +203,7 @@ func ConfigPostOptions(cctx *cli.Context, c interface{}) Option {
 
 	opt, err := PostWinningOptions(scfg)
 	if err != nil {
-		return Error(xerrors.Errorf("error to constructor poster %v", err))
+		return Error(fmt.Errorf("error to constructor poster %v", err))
 	}
 
 	return Options(
@@ -273,7 +273,7 @@ func newMinerManageAPI(dbConfig *config.MinerDbConfig) (Option, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unsupported db type [%s]", dbConfig.Type)
+	return nil, fmt.Errorf("unsupported db type [%s]", dbConfig.Type)
 }
 
 func newSlashFilterAPI(dbConfig *config.MinerDbConfig) (Option, error) {
@@ -286,7 +286,7 @@ func newSlashFilterAPI(dbConfig *config.MinerDbConfig) (Option, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unsupported db type [%s]", dbConfig.SFType)
+	return nil, fmt.Errorf("unsupported db type [%s]", dbConfig.SFType)
 }
 
 func newBlockRecord(t string) (Option, error) {
@@ -295,7 +295,7 @@ func newBlockRecord(t string) (Option, error) {
 	} else if t == block_recorder.Cache {
 		return Override(new(block_recorder.IBlockRecord), block_recorder.NewCacheRecord), nil
 	} else {
-		return nil, xerrors.Errorf("unsupport block record type")
+		return nil, fmt.Errorf("unsupport block record type")
 	}
 }
 
@@ -312,7 +312,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 
 	// apply module options in the right order
 	if err := Options(Options(defaults()...), Options(opts...))(&settings); err != nil {
-		return nil, xerrors.Errorf("applying node options failed: %w", err)
+		return nil, fmt.Errorf("applying node options failed: %w", err)
 	}
 
 	// gather constructors for fx.Options
@@ -340,7 +340,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	//  correctly
 	if err := app.Start(ctx); err != nil {
 		// comment fx.NopLogger few lines above for easier debugging
-		return nil, xerrors.Errorf("starting node: %w", err)
+		return nil, fmt.Errorf("starting node: %w", err)
 	}
 
 	return app.Stop, nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -14,7 +15,6 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/tag"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -30,7 +30,7 @@ import (
 	"github.com/filecoin-project/venus-miner/node/repo"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 var runCmd = &cli.Command{
@@ -101,13 +101,13 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
+			return fmt.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
 		}
 
 		//log.Info("Checking proof parameters")
 		//
 		//if err := fetchingProofParameters(ctx); err != nil {
-		//	return xerrors.Errorf("fetching proof parameters: %w", err)
+		//	return fmt.Errorf("fetching proof parameters: %w", err)
 		//}
 
 		lr, err := r.Lock(repo.Miner)
@@ -123,7 +123,7 @@ var runCmd = &cli.Command{
 		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx, cfg.FullNode)
 		lr.Close() //nolint:errcheck
 		if err != nil {
-			return xerrors.Errorf("getting full node api: %w", err)
+			return fmt.Errorf("getting full node api: %w", err)
 		}
 		defer ncloser()
 
@@ -133,14 +133,14 @@ var runCmd = &cli.Command{
 		}
 
 		if v.APIVersion != api.FullAPIVersion1 {
-			return xerrors.Errorf("venus-daemon API version doesn't match: expected: %s", lapi.APIVersion{APIVersion: api.FullAPIVersion1})
+			return fmt.Errorf("venus-daemon API version doesn't match: expected: %s", lapi.APIVersion{APIVersion: api.FullAPIVersion1})
 		}
 
 		log.Info("Checking full node sync status")
 
 		if !cctx.Bool("nosync") {
 			if err := SyncWait(ctx, nodeApi, false); err != nil {
-				return xerrors.Errorf("sync wait: %w", err)
+				return fmt.Errorf("sync wait: %w", err)
 			}
 		}
 
@@ -160,22 +160,22 @@ var runCmd = &cli.Command{
 			node.Override(new(v1.FullNode), nodeApi),
 		)
 		if err != nil {
-			return xerrors.Errorf("creating node: %w", err)
+			return fmt.Errorf("creating node: %w", err)
 		}
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
-			return xerrors.Errorf("getting API endpoint: %w", err)
+			return fmt.Errorf("getting API endpoint: %w", err)
 		}
 
 		//// Bootstrap with full node
 		//remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
 		//if err != nil {
-		//	return xerrors.Errorf("getting full node libp2p address: %w", err)
+		//	return fmt.Errorf("getting full node libp2p address: %w", err)
 		//}
 		//
 		//if err := minerAPI.NetConnect(ctx, remoteAddrs); err != nil {
-		//	return xerrors.Errorf("connecting to full node (libp2p): %w", err)
+		//	return fmt.Errorf("connecting to full node (libp2p): %w", err)
 		//}
 
 		log.Infof("Remote version %s", v)
@@ -195,7 +195,7 @@ var runCmd = &cli.Command{
 func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64) error {
 	lst, err := manet.Listen(addr)
 	if err != nil {
-		return xerrors.Errorf("could not listen: %w", err)
+		return fmt.Errorf("could not listen: %w", err)
 	}
 
 	serverOptions := make([]jsonrpc.ServerOption, 0)

@@ -1,12 +1,12 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 
 	ufcli "github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 type PrintHelpErr struct {
@@ -39,7 +39,7 @@ func RunApp(app *ufcli.App) {
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n\n", err) // nolint:errcheck
 		}
 		var phe *PrintHelpErr
-		if xerrors.As(err, &phe) {
+		if errors.As(err, &phe) {
 			_ = ufcli.ShowCommandHelp(phe.Ctx, phe.Ctx.Command.Name)
 		}
 		os.Exit(1)
