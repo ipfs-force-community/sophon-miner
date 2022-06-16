@@ -227,9 +227,9 @@ jobs:
       - install-deps
       - prepare
       - run: make deps
-      - run: go install golang.org/x/tools/cmd/goimports
-      - run: make api-gen
       - run: go generate -x ./...
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: make gen
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet
 

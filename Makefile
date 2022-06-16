@@ -81,11 +81,10 @@ dist-clean:
 	git submodule deinit --all -f
 .PHONY: dist-clean
 
-api-gen:
+gen:
 	go run ./gen/api
 	goimports -w api
-	goimports -w api
-.PHONY: api-gen
+.PHONY: gen
 
 print-%:
 	@echo $*=$($*)

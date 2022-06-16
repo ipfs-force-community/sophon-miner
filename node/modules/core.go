@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	types2 "github.com/filecoin-project/venus-miner/types"
 	"io"
 	"io/ioutil"
 
@@ -12,7 +13,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
 )
@@ -30,10 +30,10 @@ type JwtPayload struct {
 	Allow []auth.Permission
 }
 
-func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, error) {
+func APISecret(keystore types2.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, error) {
 	key, err := keystore.Get(JWTSecretName)
 
-	if errors.Is(err, types.ErrKeyInfoNotFound) {
+	if errors.Is(err, types2.ErrKeyInfoNotFound) {
 		log.Warn("Generating new API secret")
 
 		sk, err := ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
@@ -41,7 +41,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 			return nil, err
 		}
 
-		key = types.KeyInfo{
+		key = types2.KeyInfo{
 			Type:       KTJwtHmacSecret,
 			PrivateKey: sk,
 		}

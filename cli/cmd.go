@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
 
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -114,36 +113,8 @@ func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.
 	return addr, ainfo.AuthHeader(), nil
 }
 
-func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
-	ti, ok := ctx.App.Metadata["repoType"]
-	if !ok {
-		log.Errorf("unknown repo type, are you sure you want to use GetAPI?")
-		ti = repo.Miner
-	}
-	t, ok := ti.(repo.RepoType)
-	if !ok {
-		log.Errorf("repoType type does not match the type of repo.RepoType")
-	}
-
-	addr, headers, err := GetRawAPI(ctx, t, "v0")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return client.NewCommonRPC(ctx.Context, addr, headers)
-}
-
-func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (v0.FullNode, jsonrpc.ClientCloser, error) {
-	addr, err := fn.DialArgs("v0")
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)
-	}
-
-	return v0.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
-}
-
-func GetFullNodeAPIV1(ctx *cli.Context, fn config.FullNode) (v1.FullNode, jsonrpc.ClientCloser, error) {
-	addr, err := fn.DialArgs("v1")
+func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode, version string) (v1.FullNode, jsonrpc.ClientCloser, error) {
+	addr, err := fn.DialArgs(version)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)
 	}
@@ -187,15 +158,5 @@ func ReqContext(cctx *cli.Context) context.Context {
 
 var CommonCommands = []*cli.Command{
 	logCmd,
-}
-
-var Commands = []*cli.Command{
-	WithCategory("developer", logCmd),
-
 	VersionCmd,
-}
-
-func WithCategory(cat string, cmd *cli.Command) *cli.Command {
-	cmd.Category = cat
-	return cmd
 }

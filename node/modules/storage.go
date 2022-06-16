@@ -2,10 +2,10 @@ package modules
 
 import (
 	"context"
+	types2 "github.com/filecoin-project/venus-miner/types"
 
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/helpers"
 	"github.com/filecoin-project/venus-miner/node/repo"
@@ -23,7 +23,7 @@ func LockedRepo(lr repo.LockedRepo) func(lc fx.Lifecycle) repo.LockedRepo {
 	}
 }
 
-func KeyStore(lr repo.LockedRepo) (types.KeyStore, error) {
+func KeyStore(lr repo.LockedRepo) (types2.KeyStore, error) {
 	return lr.KeyStore()
 }
 

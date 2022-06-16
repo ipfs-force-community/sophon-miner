@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/node/config"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -117,10 +116,6 @@ func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 }
 
 func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
-	if build.IsNearUpgrade(bh.Height, build.UpgradeOrangeHeight) {
-		return nil
-	}
-
 	if err := f.checkSameHeightFault(bh); err != nil {
 		return err
 	}
