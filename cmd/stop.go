@@ -13,7 +13,7 @@ var stopCmd = &cli.Command{
 	Usage: "Stop a running venus miner",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetAPI(cctx)
+		api, closer, err := lcli.GetMinerAPI(cctx)
 		if err != nil {
 			return err
 		}

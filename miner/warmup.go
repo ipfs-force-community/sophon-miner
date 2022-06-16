@@ -12,8 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/filecoin-project/venus-miner/chain"
-
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -34,7 +32,7 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 	return nil
 }
 
-func (m *Miner) winPostWarmupForMiner(ctx context.Context, addr address.Address, epp chain.WinningPoStProver) error {
+func (m *Miner) winPostWarmupForMiner(ctx context.Context, addr address.Address, epp WinningPoStProver) error {
 	deadlines, err := m.api.StateMinerDeadlines(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return fmt.Errorf("getting deadlines: %w", err)

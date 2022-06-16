@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -36,10 +35,6 @@ func New(dstore ds.Batching) *SlashFilter {
 }
 
 func (f *SlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
-	if build.IsNearUpgrade(bh.Height, build.UpgradeOrangeHeight) {
-		return nil
-	}
-
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{
 		// double-fork mining (2 blocks at one epoch)
