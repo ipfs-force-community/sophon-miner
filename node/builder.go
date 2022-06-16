@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	types2 "github.com/filecoin-project/venus-miner/types"
 
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
@@ -13,10 +14,9 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
-	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/miner"
+	"github.com/filecoin-project/venus-miner/miner/slashfilter"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/impl"
 	"github.com/filecoin-project/venus-miner/node/impl/common"
@@ -142,7 +142,7 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 
-			Override(new(types.KeyStore), modules.KeyStore),
+			Override(new(types2.KeyStore), modules.KeyStore),
 
 			Override(new(*dtypes.APIAlg), modules.APISecret),
 

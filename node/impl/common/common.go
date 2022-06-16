@@ -54,7 +54,6 @@ func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
 	return api.APIVersion{
 		Version:    build.UserVersion(),
 		APIVersion: apiVersion,
-		BlockDelay: build.BlockDelaySecs,
 	}, nil
 }
 

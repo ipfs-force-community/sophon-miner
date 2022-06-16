@@ -7,44 +7,9 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
-
-func isSupportedSectorSize(ssize abi.SectorSize) bool { // nolint
-	for spf := range miner0.SupportedProofTypes {
-		switch spf {
-		case abi.RegisteredSealProof_StackedDrg2KiBV1:
-			if ssize == 2048 {
-				return true
-			}
-		case abi.RegisteredSealProof_StackedDrg8MiBV1:
-			if ssize == 8<<20 {
-				return true
-			}
-		case abi.RegisteredSealProof_StackedDrg512MiBV1:
-			if ssize == 512<<20 {
-				return true
-			}
-		case abi.RegisteredSealProof_StackedDrg32GiBV1:
-			if ssize == 32<<30 {
-				return true
-			}
-		case abi.RegisteredSealProof_StackedDrg64GiBV1:
-			if ssize == 64<<30 {
-				return true
-			}
-		default:
-
-		}
-	}
-
-	return false
-}
 
 var addressCmd = &cli.Command{
 	Name:  "address",

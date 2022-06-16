@@ -11,10 +11,10 @@ import (
 
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/chain"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -36,7 +36,7 @@ func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, mine
 		return nil, fmt.Errorf("getting sector size: %w", err)
 	}
 
-	if build.InsecurePoStValidation {
+	if constants.InsecurePoStValidation {
 		log.Warn("*****************************************************************************")
 		log.Warn(" Generating fake PoSt proof! You should only see this while running tests! ")
 		log.Warn("*****************************************************************************")
@@ -50,7 +50,7 @@ func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, mine
 	return &MiningWpp{gatewayNode: gatewayNode, minerInfo: minerInfo, verifier: verifier, miner: abi.ActorID(minerId), winnRpt: mi.WindowPoStProofType}, nil
 }
 
-var _ chain.WinningPoStProver = (*MiningWpp)(nil)
+var _ WinningPoStProver = (*MiningWpp)(nil)
 
 func (wpp *MiningWpp) GenerateCandidates(ctx context.Context, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	start := build.Clock.Now()
@@ -64,7 +64,7 @@ func (wpp *MiningWpp) GenerateCandidates(ctx context.Context, randomness abi.PoS
 }
 
 func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, currEpoch abi.ChainEpoch, nv network.Version) ([]builtin.PoStProof, error) {
-	if build.InsecurePoStValidation {
+	if constants.InsecurePoStValidation {
 		return []builtin.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
 
@@ -72,7 +72,6 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.ExtendedSe
 
 	start := build.Clock.Now()
 
-	// todo call gateway api
 	api, closer, err := client.NewGatewayRPC(ctx, wpp.gatewayNode)
 	if err != nil {
 		return nil, err
