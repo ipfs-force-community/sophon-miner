@@ -5,11 +5,11 @@ package api
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/venus-miner/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/google/uuid"
 )
 
@@ -42,19 +42,17 @@ type MinerAPIStruct struct {
 	CommonStruct
 
 	Internal struct {
-		AddAddress func(p0 context.Context, p1 dtypes.MinerInfo) error `perm:"admin"`
+		CountWinners func(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]types.CountWinners, error) `perm:"read"`
 
-		CountWinners func(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]dtypes.CountWinners, error) `perm:"read"`
-
-		ListAddress func(p0 context.Context) ([]dtypes.MinerInfo, error) `perm:"read"`
+		ListAddress func(p0 context.Context) ([]types.MinerInfo, error) `perm:"read"`
 
 		Start func(p0 context.Context, p1 []address.Address) error `perm:"admin"`
 
-		StatesForMining func(p0 context.Context, p1 []address.Address) ([]dtypes.MinerState, error) `perm:"read"`
+		StatesForMining func(p0 context.Context, p1 []address.Address) ([]types.MinerState, error) `perm:"read"`
 
 		Stop func(p0 context.Context, p1 []address.Address) error `perm:"admin"`
 
-		UpdateAddress func(p0 context.Context, p1 int64, p2 int64) ([]dtypes.MinerInfo, error) `perm:"write"`
+		UpdateAddress func(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) `perm:"write"`
 	}
 }
 
@@ -150,37 +148,26 @@ func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
 	return *new(APIVersion), ErrNotSupported
 }
 
-func (s *MinerAPIStruct) AddAddress(p0 context.Context, p1 dtypes.MinerInfo) error {
-	if s.Internal.AddAddress == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.AddAddress(p0, p1)
-}
-
-func (s *MinerAPIStub) AddAddress(p0 context.Context, p1 dtypes.MinerInfo) error {
-	return ErrNotSupported
-}
-
-func (s *MinerAPIStruct) CountWinners(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+func (s *MinerAPIStruct) CountWinners(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]types.CountWinners, error) {
 	if s.Internal.CountWinners == nil {
-		return *new([]dtypes.CountWinners), ErrNotSupported
+		return *new([]types.CountWinners), ErrNotSupported
 	}
 	return s.Internal.CountWinners(p0, p1, p2, p3)
 }
 
-func (s *MinerAPIStub) CountWinners(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]dtypes.CountWinners, error) {
-	return *new([]dtypes.CountWinners), ErrNotSupported
+func (s *MinerAPIStub) CountWinners(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]types.CountWinners, error) {
+	return *new([]types.CountWinners), ErrNotSupported
 }
 
-func (s *MinerAPIStruct) ListAddress(p0 context.Context) ([]dtypes.MinerInfo, error) {
+func (s *MinerAPIStruct) ListAddress(p0 context.Context) ([]types.MinerInfo, error) {
 	if s.Internal.ListAddress == nil {
-		return *new([]dtypes.MinerInfo), ErrNotSupported
+		return *new([]types.MinerInfo), ErrNotSupported
 	}
 	return s.Internal.ListAddress(p0)
 }
 
-func (s *MinerAPIStub) ListAddress(p0 context.Context) ([]dtypes.MinerInfo, error) {
-	return *new([]dtypes.MinerInfo), ErrNotSupported
+func (s *MinerAPIStub) ListAddress(p0 context.Context) ([]types.MinerInfo, error) {
+	return *new([]types.MinerInfo), ErrNotSupported
 }
 
 func (s *MinerAPIStruct) Start(p0 context.Context, p1 []address.Address) error {
@@ -194,15 +181,15 @@ func (s *MinerAPIStub) Start(p0 context.Context, p1 []address.Address) error {
 	return ErrNotSupported
 }
 
-func (s *MinerAPIStruct) StatesForMining(p0 context.Context, p1 []address.Address) ([]dtypes.MinerState, error) {
+func (s *MinerAPIStruct) StatesForMining(p0 context.Context, p1 []address.Address) ([]types.MinerState, error) {
 	if s.Internal.StatesForMining == nil {
-		return *new([]dtypes.MinerState), ErrNotSupported
+		return *new([]types.MinerState), ErrNotSupported
 	}
 	return s.Internal.StatesForMining(p0, p1)
 }
 
-func (s *MinerAPIStub) StatesForMining(p0 context.Context, p1 []address.Address) ([]dtypes.MinerState, error) {
-	return *new([]dtypes.MinerState), ErrNotSupported
+func (s *MinerAPIStub) StatesForMining(p0 context.Context, p1 []address.Address) ([]types.MinerState, error) {
+	return *new([]types.MinerState), ErrNotSupported
 }
 
 func (s *MinerAPIStruct) Stop(p0 context.Context, p1 []address.Address) error {
@@ -216,15 +203,15 @@ func (s *MinerAPIStub) Stop(p0 context.Context, p1 []address.Address) error {
 	return ErrNotSupported
 }
 
-func (s *MinerAPIStruct) UpdateAddress(p0 context.Context, p1 int64, p2 int64) ([]dtypes.MinerInfo, error) {
+func (s *MinerAPIStruct) UpdateAddress(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) {
 	if s.Internal.UpdateAddress == nil {
-		return *new([]dtypes.MinerInfo), ErrNotSupported
+		return *new([]types.MinerInfo), ErrNotSupported
 	}
 	return s.Internal.UpdateAddress(p0, p1, p2)
 }
 
-func (s *MinerAPIStub) UpdateAddress(p0 context.Context, p1 int64, p2 int64) ([]dtypes.MinerInfo, error) {
-	return *new([]dtypes.MinerInfo), ErrNotSupported
+func (s *MinerAPIStub) UpdateAddress(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) {
+	return *new([]types.MinerInfo), ErrNotSupported
 }
 
 var _ Common = new(CommonStruct)

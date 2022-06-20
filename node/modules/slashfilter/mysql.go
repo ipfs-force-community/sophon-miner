@@ -19,7 +19,7 @@ import (
 
 var log = logging.Logger("mysql_slashFilter")
 
-type MysqlSlashFilter struct {
+type mysqlSlashFilter struct {
 	_db *gorm.DB
 }
 
@@ -27,18 +27,18 @@ type MinedBlock struct {
 	ParentEpoch int64  `gorm:"column:parent_epoch;type:bigint(20);NOT NULL"`
 	ParentKey   string `gorm:"column:parent_key;type:varchar(256);NOT NULL"`
 
-	Epoch int64  `gorm:"column:epoch;type:bigint(20);NOT NULL"`
-	Miner string `gorm:"column:miner;type:varchar(256);NOT NULL"`
-	Cid   string `gorm:"column:cid;type:varchar(256);NOT NULL"`
+	Epoch int64  `gorm:"column:epoch;type:bigint(20);NOT NULL;primary_key"`
+	Miner string `gorm:"column:miner;type:varchar(256);NOT NULL;primary_key"`
+	Cid   string `gorm:"column:cid;type:varchar(256)"`
 }
 
 func (m *MinedBlock) TableName() string {
 	return "miner_blocks"
 }
 
-var _ SlashFilterAPI = (*MysqlSlashFilter)(nil)
+var _ SlashFilterAPI = (*mysqlSlashFilter)(nil)
 
-func NewMysqlSlashFilter(cfg *config.MySQLConfig) func() (SlashFilterAPI, error) {
+func NewMysql(cfg *config.MySQLConfig) func() (SlashFilterAPI, error) {
 	return func() (SlashFilterAPI, error) {
 		db, err := gorm.Open(mysql.Open(cfg.Conn))
 		if err != nil {
@@ -67,18 +67,21 @@ func NewMysqlSlashFilter(cfg *config.MySQLConfig) func() (SlashFilterAPI, error)
 		sqlDB.SetConnMaxLifetime(time.Second * cfg.ConnMaxLifeTime)
 
 		log.Info("init mysql success for mysqlSlashFilter!")
-		return &MysqlSlashFilter{
+		return &mysqlSlashFilter{
 			_db: db,
 		}, nil
 	}
 }
 
 // double-fork mining (2 blocks at one epoch)
-func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
+func (f *mysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error { // nolint: unused
 	var bk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil
+	}
+	if err != nil {
+		return err
 	}
 
 	other, err := cid.Decode(bk.Cid)
@@ -91,15 +94,17 @@ func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
 	}
 
 	return fmt.Errorf("produced block would trigger double-fork mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
-
 }
 
 // time-offset mining faults (2 blocks with the same parents)
-func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
+func (f *mysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 	var bk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and parent_key=?", bh.Miner.String(), types.NewTipSetKey(bh.Parents...).String()).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil
+	}
+	if err != nil {
+		return err
 	}
 
 	other, err := cid.Decode(bk.Cid)
@@ -112,13 +117,36 @@ func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 	}
 
 	return fmt.Errorf("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
-
 }
 
-func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
-	if err := f.checkSameHeightFault(bh); err != nil {
-		return err
+func (f *mysqlSlashFilter) HasBlock(ctx context.Context, bh *types.BlockHeader) (bool, error) {
+	var bk MinedBlock
+	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
+	if err == gorm.ErrRecordNotFound {
+		return false, nil
 	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+	return f._db.Save(&MinedBlock{
+		ParentEpoch: int64(parentEpoch),
+		ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
+		Epoch:       int64(bh.Height),
+		Miner:       bh.Miner.String(),
+		Cid:         bh.Cid().String(),
+	}).Error
+}
+
+func (f *mysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+	// double-fork mining (2 blocks at one epoch) --> HasBlock
+	//if err := f.checkSameHeightFault(bh); err != nil {
+	//	return err
+	//}
 
 	if err := f.checkSameParentFault(bh); err != nil {
 		return err
@@ -154,11 +182,5 @@ func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 		//if not exit good block
 	}
 
-	return f._db.Create(&MinedBlock{
-		ParentEpoch: int64(parentEpoch),
-		ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
-		Epoch:       int64(bh.Height),
-		Miner:       bh.Miner.String(),
-		Cid:         bh.Cid().String(),
-	}).Error
+	return nil
 }

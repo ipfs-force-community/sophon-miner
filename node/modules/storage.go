@@ -2,11 +2,11 @@ package modules
 
 import (
 	"context"
+
 	types2 "github.com/filecoin-project/venus-miner/types"
 
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/helpers"
 	"github.com/filecoin-project/venus-miner/node/repo"
 )
@@ -27,7 +27,7 @@ func KeyStore(lr repo.LockedRepo) (types2.KeyStore, error) {
 	return lr.KeyStore()
 }
 
-func Datastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.MetadataDS, error) {
+func Datastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (types2.MetadataDS, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	mds, err := r.Datastore(ctx, "/metadata")
 	if err != nil {

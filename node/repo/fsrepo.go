@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	types2 "github.com/filecoin-project/venus-miner/types"
 	"io"
 	"io/ioutil"
 	"os"
@@ -22,6 +21,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/filecoin-project/venus-miner/types"
 )
 
 const (
@@ -32,22 +32,6 @@ const (
 	fsLock      = "repo.lock"
 	fsKeystore  = "keystore"
 )
-
-type RepoType int
-
-const (
-	_              = iota // Default is invalid
-	Miner RepoType = iota
-)
-
-func defConfForType(t RepoType) interface{} {
-	switch t {
-	case Miner:
-		return config.DefaultMinerConfig()
-	default:
-		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
-	}
-}
 
 var log = logging.Logger("repo")
 
@@ -92,7 +76,7 @@ func (fsr *FsRepo) Exists() (bool, error) { //nolint
 	return !notexist, err
 }
 
-func (fsr *FsRepo) Init(t RepoType) error {
+func (fsr *FsRepo) Init() error {
 	exist, err := fsr.Exists()
 	if err != nil {
 		return err
@@ -107,7 +91,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 		return err
 	}
 
-	if err := fsr.initConfig(t); err != nil {
+	if err := fsr.initConfig(); err != nil {
 		return fmt.Errorf("init config: %w", err)
 	}
 
@@ -115,7 +99,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 
 }
 
-func (fsr *FsRepo) initConfig(t RepoType) error {
+func (fsr *FsRepo) initConfig() error {
 	_, err := os.Stat(fsr.configPath)
 	if err == nil {
 		// exists
@@ -129,7 +113,7 @@ func (fsr *FsRepo) initConfig(t RepoType) error {
 		return err
 	}
 
-	comm, err := config.ConfigComment(defConfForType(t))
+	comm, err := config.ConfigComment(config.DefaultMinerConfig())
 	if err != nil {
 		return fmt.Errorf("comment: %w", err)
 	}
@@ -225,11 +209,11 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 }
 
 func (fsr *FsRepo) Config() (interface{}, error) {
-	return config.FromFile(fsr.configPath, defConfForType(Miner))
+	return config.FromFile(fsr.configPath, config.DefaultMinerConfig())
 }
 
 // Lock acquires exclusive lock on this repo
-func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
+func (fsr *FsRepo) Lock() (LockedRepo, error) {
 	locked, err := fslock.Locked(fsr.path, fsLock)
 	if err != nil {
 		return nil, fmt.Errorf("could not check lock status: %w", err)
@@ -245,26 +229,13 @@ func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
 	return &fsLockedRepo{
 		path:       fsr.path,
 		configPath: fsr.configPath,
-		repoType:   repoType,
 		closer:     closer,
 	}, nil
-}
-
-// Like Lock, except datastores will work in read-only mode
-func (fsr *FsRepo) LockRO(repoType RepoType) (LockedRepo, error) {
-	lr, err := fsr.Lock(repoType)
-	if err != nil {
-		return nil, err
-	}
-
-	lr.(*fsLockedRepo).readonly = true
-	return lr, nil
 }
 
 type fsLockedRepo struct {
 	path       string
 	configPath string
-	repoType   RepoType
 	closer     io.Closer
 	readonly   bool
 
@@ -321,7 +292,7 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 }
 
 func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
-	return config.FromFile(fsr.configPath, defConfForType(fsr.repoType))
+	return config.FromFile(fsr.configPath, config.DefaultMinerConfig())
 }
 
 func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
@@ -372,7 +343,7 @@ func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 	return ioutil.WriteFile(fsr.join(fsAPIToken), token, 0600)
 }
 
-func (fsr *fsLockedRepo) KeyStore() (types2.KeyStore, error) {
+func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {
 	if err := fsr.stillValid(); err != nil {
 		return nil, err
 	}
@@ -413,9 +384,9 @@ func (fsr *fsLockedRepo) List() ([]string, error) {
 }
 
 // Get gets a key out of keystore and returns types.KeyInfo coresponding to named key
-func (fsr *fsLockedRepo) Get(name string) (types2.KeyInfo, error) {
+func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	if err := fsr.stillValid(); err != nil {
-		return types2.KeyInfo{}, err
+		return types.KeyInfo{}, err
 	}
 
 	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
@@ -423,37 +394,37 @@ func (fsr *fsLockedRepo) Get(name string) (types2.KeyInfo, error) {
 
 	fstat, err := os.Stat(keyPath)
 	if os.IsNotExist(err) {
-		return types2.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, types2.ErrKeyInfoNotFound)
+		return types.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, types.ErrKeyInfoNotFound)
 	} else if err != nil {
-		return types2.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
+		return types.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
 	}
 
 	if fstat.Mode()&0077 != 0 {
-		return types2.KeyInfo{}, fmt.Errorf(kstrPermissionMsg, name, fstat.Mode())
+		return types.KeyInfo{}, fmt.Errorf(kstrPermissionMsg, name, fstat.Mode())
 	}
 
 	file, err := os.Open(keyPath)
 	if err != nil {
-		return types2.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
+		return types.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
 	}
 	defer file.Close() //nolint: errcheck // read only op
 
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
-		return types2.KeyInfo{}, fmt.Errorf("reading key '%s': %w", name, err)
+		return types.KeyInfo{}, fmt.Errorf("reading key '%s': %w", name, err)
 	}
 
-	var res types2.KeyInfo
+	var res types.KeyInfo
 	err = json.Unmarshal(data, &res)
 	if err != nil {
-		return types2.KeyInfo{}, fmt.Errorf("decoding key '%s': %w", name, err)
+		return types.KeyInfo{}, fmt.Errorf("decoding key '%s': %w", name, err)
 	}
 
 	return res, nil
 }
 
 // Put saves key info under given name
-func (fsr *fsLockedRepo) Put(name string, info types2.KeyInfo) error {
+func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
@@ -463,7 +434,7 @@ func (fsr *fsLockedRepo) Put(name string, info types2.KeyInfo) error {
 
 	_, err := os.Stat(keyPath)
 	if err == nil {
-		return fmt.Errorf("checking key before put '%s': %w", name, types2.ErrKeyExists)
+		return fmt.Errorf("checking key before put '%s': %w", name, types.ErrKeyExists)
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("checking key before put '%s': %w", name, err)
 	}
@@ -490,7 +461,7 @@ func (fsr *fsLockedRepo) Delete(name string) error {
 
 	_, err := os.Stat(keyPath)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("checking key before delete '%s': %w", name, types2.ErrKeyInfoNotFound)
+		return fmt.Errorf("checking key before delete '%s': %w", name, types.ErrKeyInfoNotFound)
 	} else if err != nil {
 		return fmt.Errorf("checking key before delete '%s': %w", name, err)
 	}

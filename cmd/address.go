@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	lcli "github.com/filecoin-project/venus-miner/cli"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
 
 var addressCmd = &cli.Command{
@@ -20,7 +19,6 @@ var addressCmd = &cli.Command{
 		stateCmd,
 		startMiningCmd,
 		stopMiningCmd,
-		addCmd,
 	},
 }
 
@@ -59,49 +57,6 @@ var updateCmd = &cli.Command{
 		fmt.Println(string(formatJson))
 
 		return nil
-	},
-}
-
-var addCmd = &cli.Command{
-	Name:  "add",
-	Usage: "add a miner",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "miner",
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "id",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "name",
-			Required: false,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		mi := dtypes.MinerInfo{Id: cctx.String("id"), Name: cctx.String("name")}
-
-		addr, err := address.NewFromString(cctx.String("miner"))
-		if err != nil {
-			return nil
-		}
-		mi.Addr = addr
-
-		postApi, closer, err := lcli.GetMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		err = postApi.AddAddress(cctx.Context, mi)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("add miner success.")
-		return nil
-
 	},
 }
 

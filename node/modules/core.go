@@ -4,16 +4,16 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	types2 "github.com/filecoin-project/venus-miner/types"
 	"io"
 	"io/ioutil"
+
+	types2 "github.com/filecoin-project/venus-miner/types"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
 )
 
@@ -30,7 +30,7 @@ type JwtPayload struct {
 	Allow []auth.Permission
 }
 
-func APISecret(keystore types2.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, error) {
+func APISecret(keystore types2.KeyStore, lr repo.LockedRepo) (*types2.APIAlg, error) {
 	key, err := keystore.Get(JWTSecretName)
 
 	if errors.Is(err, types2.ErrKeyInfoNotFound) {
@@ -67,5 +67,5 @@ func APISecret(keystore types2.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, er
 		return nil, fmt.Errorf("could not get JWT Token: %w", err)
 	}
 
-	return (*dtypes.APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
+	return (*types2.APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
 }

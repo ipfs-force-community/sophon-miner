@@ -2,8 +2,9 @@ package repo
 
 import (
 	"errors"
-	types2 "github.com/filecoin-project/venus-miner/types"
 	"testing"
+
+	types2 "github.com/filecoin-project/venus-miner/types"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
@@ -18,12 +19,12 @@ func basicTest(t *testing.T, repo Repo) {
 	}
 	assert.Nil(t, apima, "with no api endpoint, return should be nil")
 
-	lrepo, err := repo.Lock(Miner)
+	lrepo, err := repo.Lock()
 	assert.NoError(t, err, "should be able to lock once")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
 	{
-		lrepo2, err := repo.Lock(Miner)
+		lrepo2, err := repo.Lock()
 		if assert.Error(t, err) {
 			assert.Equal(t, ErrRepoAlreadyLocked, err)
 		}
@@ -33,7 +34,7 @@ func basicTest(t *testing.T, repo Repo) {
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to unlock")
 
-	lrepo, err = repo.Lock(Miner)
+	lrepo, err = repo.Lock()
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
@@ -64,7 +65,7 @@ func basicTest(t *testing.T, repo Repo) {
 	k1 := types2.KeyInfo{Type: "foo"}
 	k2 := types2.KeyInfo{Type: "bar"}
 
-	lrepo, err = repo.Lock(Miner)
+	lrepo, err = repo.Lock()
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 

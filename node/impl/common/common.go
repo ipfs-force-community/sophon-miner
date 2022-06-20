@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-miner/types"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/google/uuid"
@@ -13,8 +14,6 @@ import (
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
-
 	vapi "github.com/filecoin-project/venus/venus-shared/api"
 )
 
@@ -23,8 +22,8 @@ var session = uuid.New()
 type CommonAPI struct {
 	fx.In
 
-	APISecret    *dtypes.APIAlg
-	ShutdownChan dtypes.ShutdownChan
+	APISecret    *types.APIAlg
+	ShutdownChan types.ShutdownChan
 }
 
 type jwtPayload struct {
