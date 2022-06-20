@@ -6,11 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	dgbadger "github.com/dgraph-io/badger/v2"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 
 	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger2"
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
 )
@@ -19,20 +17,6 @@ type dsCtor func(path string, readonly bool) (datastore.Batching, error)
 
 var fsDatastores = map[string]dsCtor{
 	"metadata": levelDs,
-
-	// Those need to be fast for large writes... but also need a really good GC :c
-	"staging": badgerDs, // miner specific
-
-	"client": badgerDs, // client specific
-}
-
-func badgerDs(path string, readonly bool) (datastore.Batching, error) {
-	opts := badger.DefaultOptions
-	opts.ReadOnly = readonly
-
-	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
-		WithValueThreshold(1 << 10)
-	return badger.NewDatastore(path, &opts)
 }
 
 func levelDs(path string, readonly bool) (datastore.Batching, error) {

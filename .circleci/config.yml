@@ -118,7 +118,7 @@ jobs:
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
-        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/venus-miner/...
+        default: -coverprofile=coverage.txt -coverpkg=./...
         description: Coverage flag. Set to the empty string to disable.
       codecov-upload:
         type: boolean
@@ -131,7 +131,7 @@ jobs:
       - install-deps
       - prepare
       - run:
-          command: make deps miner
+          command: make deps
           no_output_timeout: 30m
       - run:
           name: go test

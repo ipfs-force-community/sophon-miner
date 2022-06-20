@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-miner/lib/journal"

@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/node/config"
@@ -61,13 +61,13 @@ var initCmd = &cli.Command{
 
 		log.Info("Trying to connect to full node RPC")
 
-		fullnode := config.FullNode{}
+		fullnode := config.APIInfo{}
 		if cctx.String("api") != "" && cctx.String("token") != "" {
-			fullnode.ListenAPI = cctx.String("api")
+			fullnode.Addr = cctx.String("api")
 			fullnode.Token = cctx.String("token")
 		}
 
-		fullNodeAPI, closer, err := lcli.GetFullNodeAPI(cctx, fullnode, "v1")
+		fullNodeAPI, closer, err := lcli.GetFullNodeAPI(cctx, &fullnode, "v1")
 		if err != nil {
 			return err
 		}
@@ -102,11 +102,11 @@ var initCmd = &cli.Command{
 
 		log.Info("Initializing repo")
 
-		if err := r.Init(repo.Miner); err != nil {
+		if err := r.Init(); err != nil {
 			return err
 		}
 
-		if err := storageMinerInit(cctx, r, fullnode); err != nil {
+		if err := storageMinerInit(cctx, r, &fullnode); err != nil {
 			log.Errorf("Failed to initialize venus-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
@@ -125,8 +125,8 @@ var initCmd = &cli.Command{
 	},
 }
 
-func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error {
-	lr, err := r.Lock(repo.Miner)
+func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo) error {
+	lr, err := r.Lock()
 	if err != nil {
 		return err
 	}
@@ -152,17 +152,14 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 		}
 
 		if cctx.String("auth-api") != "" {
-			cfg.Db.Type = "auth"
-			cfg.Db.Auth = &config.AuthConfig{
-				ListenAPI: cctx.String("auth-api"),
-				Token:     gt,
+			cfg.Auth = &config.APIInfo{
+				Addr:  cctx.String("auth-api"),
+				Token: gt,
 			}
 		}
 
-		cfg.Db.SFType = sfType
-		if cfg.Db.SFType == "mysql" {
-			cfg.Db.MySQL.Conn = cctx.String("mysql-conn")
-		}
+		cfg.SlashFilter.Type = sfType
+		cfg.SlashFilter.MySQL.Conn = cctx.String("mysql-conn")
 	}); err != nil {
 		return fmt.Errorf("modify config failed: %w", err)
 	}
@@ -210,10 +207,10 @@ func SyncWait(ctx context.Context, fullNode v1.FullNode, watch bool) error {
 		working := -1
 		for i, ss := range state.ActiveSyncs {
 			switch ss.Stage {
-			case types2.StageSyncComplete:
+			case types.StageSyncComplete:
 			default:
 				working = i
-			case types2.StageIdle:
+			case types.StageIdle:
 				// not complete, not actively working
 			}
 		}

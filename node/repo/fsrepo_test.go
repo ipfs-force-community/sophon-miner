@@ -17,7 +17,7 @@ func genFsRepo(t *testing.T) (*FsRepo, func()) {
 		t.Fatal(err)
 	}
 
-	err = repo.Init(Miner)
+	err = repo.Init()
 	if err != ErrRepoExists && err != nil {
 		t.Fatal(err)
 	}

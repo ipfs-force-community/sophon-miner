@@ -26,8 +26,8 @@ import (
 	"github.com/filecoin-project/venus-miner/lib/tracing"
 	"github.com/filecoin-project/venus-miner/node"
 	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
+	"github.com/filecoin-project/venus-miner/types"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api"
@@ -50,7 +50,6 @@ var runCmd = &cli.Command{
 			Name:  "api-max-req-size",
 			Usage: "maximum API request size accepted by the JSON RPC server",
 		},
-		node.CLIFLAGBlockRecord,
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing build params")
@@ -71,7 +70,7 @@ var runCmd = &cli.Command{
 			return fmt.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
 		}
 
-		lr, err := r.Lock(repo.Miner)
+		lr, err := r.Lock()
 		if err != nil {
 			return err
 		}
@@ -118,12 +117,11 @@ var runCmd = &cli.Command{
 		var minerAPI lapi.MinerAPI
 		stop, err := node.New(ctx,
 			node.MinerAPI(&minerAPI),
-			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Online(),
 			node.Repo(cctx, r),
+			node.Override(new(types.ShutdownChan), shutdownChan),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },
-				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
+				node.Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/" + cctx.String("miner-api"))
 				})),
 			node.Override(new(v1.FullNode), nodeApi),

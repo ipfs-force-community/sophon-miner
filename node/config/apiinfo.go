@@ -1,38 +1,22 @@
-package cliutil
+package config
 
 import (
 	"net/http"
 	"net/url"
-	"regexp"
-	"strings"
 
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 )
 
-var log = logging.Logger("cliutil")
-
-var (
-	infoWithToken = regexp.MustCompile(`^[a-zA-Z0-9\\-_]+?\\.[a-zA-Z0-9\\-_]+?\\.([a-zA-Z0-9\\-_]+)?:.+$`)
-)
-
 type APIInfo struct {
 	Addr  string
-	Token []byte
+	Token string
 }
 
-func ParseApiInfo(s string) APIInfo {
-	var tok []byte
-	if infoWithToken.Match([]byte(s)) {
-		sp := strings.SplitN(s, ":", 2)
-		tok = []byte(sp[0])
-		s = sp[1]
-	}
-
-	return APIInfo{
-		Addr:  s,
-		Token: tok,
+func defaultAPIInfo() *APIInfo {
+	return &APIInfo{
+		Addr: "/ip4/0.0.0.0/tcp/12308/http",
+		Token:     "",
 	}
 }
 
@@ -78,6 +62,6 @@ func (a APIInfo) AuthHeader() http.Header {
 		headers.Add("Authorization", "Bearer "+string(a.Token))
 		return headers
 	}
-	log.Warn("API Token not set and requested, capabilities might be limited.")
+	log.Warn("Sealer API Token not set and requested, capabilities might be limited.")
 	return nil
 }
