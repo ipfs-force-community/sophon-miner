@@ -42,11 +42,6 @@ type APIVersion struct {
 	//
 	// See APIVersion in build/version.go
 	APIVersion api.Version
-
-	// TODO: git commit / os / genesis cid?
-
-	// Seconds
-	BlockDelay uint64
 }
 
 func (v APIVersion) String() string {

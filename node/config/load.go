@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/kelseyhightower/envconfig"
 )
 
 // FromFile loads config from a specified file overriding defaults specified in
@@ -31,11 +30,6 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 	_, err := toml.DecodeReader(reader, cfg)
 	if err != nil {
 		return nil, err
-	}
-
-	err = envconfig.Process("LOTUS", cfg)
-	if err != nil {
-		return nil, fmt.Errorf("processing env vars overrides: %s", err)
 	}
 
 	return cfg, nil

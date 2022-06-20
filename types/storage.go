@@ -1,4 +1,4 @@
-package dtypes
+package types
 
 import (
 	"github.com/ipfs/go-datastore"

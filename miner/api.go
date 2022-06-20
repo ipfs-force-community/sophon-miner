@@ -2,12 +2,11 @@ package miner
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-miner/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 )
 
 type MiningAPI interface {
@@ -23,11 +22,10 @@ type IMinerMining interface {
 }
 
 type IMinerManager interface {
-	UpdateAddress(context.Context, int64, int64) ([]dtypes.MinerInfo, error)
-	ListAddress(context.Context) ([]dtypes.MinerInfo, error)
-	StatesForMining(context.Context, []address.Address) ([]dtypes.MinerState, error)
-	CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error)
-	AddAddress(ctx context.Context, mi dtypes.MinerInfo) error
+	UpdateAddress(context.Context, int64, int64) ([]types.MinerInfo, error)
+	ListAddress(context.Context) ([]types.MinerInfo, error)
+	StatesForMining(context.Context, []address.Address) ([]types.MinerState, error)
+	CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]types.CountWinners, error)
 }
 
 type MockMinerMgr struct {
@@ -35,22 +33,18 @@ type MockMinerMgr struct {
 
 var _ IMinerManager = &MockMinerMgr{}
 
-func (m MockMinerMgr) UpdateAddress(context.Context, int64, int64) ([]dtypes.MinerInfo, error) {
+func (m MockMinerMgr) UpdateAddress(context.Context, int64, int64) ([]types.MinerInfo, error) {
 	return nil, nil
 }
 
-func (m MockMinerMgr) ListAddress(context.Context) ([]dtypes.MinerInfo, error) {
+func (m MockMinerMgr) ListAddress(context.Context) ([]types.MinerInfo, error) {
 	return nil, nil
 }
 
-func (m MockMinerMgr) StatesForMining(context.Context, []address.Address) ([]dtypes.MinerState, error) {
+func (m MockMinerMgr) StatesForMining(context.Context, []address.Address) ([]types.MinerState, error) {
 	return nil, nil
 }
 
-func (m MockMinerMgr) CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+func (m MockMinerMgr) CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]types.CountWinners, error) {
 	return nil, nil
-}
-
-func (m MockMinerMgr) AddAddress(context.Context, dtypes.MinerInfo) error {
-	return nil
 }

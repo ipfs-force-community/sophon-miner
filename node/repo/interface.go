@@ -3,10 +3,11 @@ package repo
 import (
 	"context"
 	"errors"
-	types2 "github.com/filecoin-project/venus-miner/types"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/venus-miner/types"
 )
 
 var (
@@ -22,7 +23,7 @@ type Repo interface {
 	APIToken() ([]byte, error)
 
 	// Lock locks the repo for exclusive use.
-	Lock(RepoType) (LockedRepo, error)
+	Lock() (LockedRepo, error)
 }
 
 type LockedRepo interface {
@@ -47,7 +48,7 @@ type LockedRepo interface {
 	SetAPIToken([]byte) error
 
 	// KeyStore returns store of private keys for Filecoin transactions
-	KeyStore() (types2.KeyStore, error)
+	KeyStore() (types.KeyStore, error)
 
 	// Path returns absolute path of the repo
 	Path() string

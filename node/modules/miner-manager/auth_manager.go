@@ -1,4 +1,4 @@
-package auth
+package miner_manager
 
 import (
 	"context"
@@ -7,30 +7,29 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/go-resty/resty/v2"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
-	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
+	"github.com/filecoin-project/venus-miner/types"
 )
 
 const CoMinersLimit = 200
 
 var log = logging.Logger("auth-miners")
 
-type MinerManagerForAuth struct {
+type MinerManage struct {
 	cli   *resty.Client
 	token string
 
-	miners []dtypes.MinerInfo
+	miners []types.MinerInfo
 	lk     sync.Mutex
 }
 
-func NewMinerManager(url, token string) func() (minermanage.MinerManageAPI, error) {
-	return func() (minermanage.MinerManageAPI, error) {
+func NewMinerManager(url, token string) func() (MinerManageAPI, error) {
+	return func() (MinerManageAPI, error) {
 		cli := resty.New().SetHostURL(url).SetHeader("Accept", "application/json")
-		m := &MinerManagerForAuth{cli: cli, token: token}
+		m := &MinerManage{cli: cli, token: token}
 
 		miners, err := m.Update(context.TODO(), 0, 0)
 		if err != nil {
@@ -42,20 +41,7 @@ func NewMinerManager(url, token string) func() (minermanage.MinerManageAPI, erro
 	}
 }
 
-func (m *MinerManagerForAuth) Put(ctx context.Context, mi dtypes.MinerInfo) error {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-
-	if m.Has(ctx, mi.Addr) {
-		log.Warnf("addr %s has exit", mi.Addr)
-		return nil
-	}
-
-	m.miners = append(m.miners, mi)
-	return nil
-}
-
-func (m *MinerManagerForAuth) Has(ctx context.Context, addr address.Address) bool {
+func (m *MinerManage) Has(ctx context.Context, addr address.Address) bool {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -68,7 +54,7 @@ func (m *MinerManagerForAuth) Has(ctx context.Context, addr address.Address) boo
 	return false
 }
 
-func (m *MinerManagerForAuth) Get(ctx context.Context, addr address.Address) *dtypes.MinerInfo {
+func (m *MinerManage) Get(ctx context.Context, addr address.Address) *types.MinerInfo {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -81,14 +67,14 @@ func (m *MinerManagerForAuth) Get(ctx context.Context, addr address.Address) *dt
 	return nil
 }
 
-func (m *MinerManagerForAuth) List(ctx context.Context) ([]dtypes.MinerInfo, error) {
+func (m *MinerManage) List(ctx context.Context) ([]types.MinerInfo, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
 	return m.miners, nil
 }
 
-func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]dtypes.MinerInfo, error) {
+func (m *MinerManage) Update(ctx context.Context, skip, limit int64) ([]types.MinerInfo, error) {
 	if limit == 0 {
 		limit = CoMinersLimit
 	}
@@ -96,7 +82,7 @@ func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]
 	if err != nil {
 		return nil, err
 	}
-	var mInfos = make([]dtypes.MinerInfo, 0)
+	var mInfos = make([]types.MinerInfo, 0)
 
 	for _, u := range users {
 		if u.State != 1 {
@@ -115,7 +101,7 @@ func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]
 				continue
 
 			}
-			mInfos = append(mInfos, dtypes.MinerInfo{
+			mInfos = append(mInfos, types.MinerInfo{
 				Addr: addr,
 				Id:   u.ID,
 				Name: u.Name,
@@ -128,17 +114,15 @@ func (m *MinerManagerForAuth) Update(ctx context.Context, skip, limit int64) ([]
 	return m.miners, nil
 }
 
-func (m *MinerManagerForAuth) Count(ctx context.Context) int {
+func (m *MinerManage) Count(ctx context.Context) int {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
 	return len(m.miners)
 }
 
-var _ minermanage.MinerManageAPI = &MinerManagerForAuth{}
-
-func (m *MinerManagerForAuth) listUsers(skip, limit int64) ([]*dtypes.User, error) {
-	var users []*dtypes.User
+func (m *MinerManage) listUsers(skip, limit int64) ([]*types.User, error) {
+	var users []*types.User
 	resp, err := m.cli.R().SetQueryParams(map[string]string{
 		"skip":  strconv.FormatInt(skip, 10),
 		"limit": strconv.FormatInt(limit, 10),
@@ -147,20 +131,20 @@ func (m *MinerManagerForAuth) listUsers(skip, limit int64) ([]*dtypes.User, erro
 		return nil, err
 	}
 	if resp.StatusCode() == http.StatusOK {
-		return *(resp.Result().(*[]*dtypes.User)), nil
+		return *(resp.Result().(*[]*types.User)), nil
 	}
 	return nil, resp.Error().(*apiErr).Err()
 }
 
-func (m *MinerManagerForAuth) listMiners(user string) ([]*dtypes.Miner, error) {
-	var res []*dtypes.Miner
+func (m *MinerManage) listMiners(user string) ([]*types.Miner, error) {
+	var res []*types.Miner
 	resp, err := m.cli.R().SetQueryParams(map[string]string{"user": user}).
 		SetResult(&res).SetError(&apiErr{}).Get("/miner/list-by-user")
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode() == http.StatusOK {
-		return *(resp.Result().(*[]*dtypes.Miner)), nil
+		return *(resp.Result().(*[]*types.Miner)), nil
 	}
 	return nil, resp.Error().(*apiErr).Err()
 }
@@ -172,3 +156,5 @@ type apiErr struct {
 func (err *apiErr) Err() error {
 	return fmt.Errorf(err.Error)
 }
+
+var _ MinerManageAPI = &MinerManage{}

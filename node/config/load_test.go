@@ -2,12 +2,10 @@ package config
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDecodeNothing(t *testing.T) {
@@ -31,11 +29,9 @@ func TestDecodeNothing(t *testing.T) {
 func TestParitalConfig(t *testing.T) {
 	assert := assert.New(t)
 	cfgString := ` 
-		[API]
-		Timeout = "10s"
+		[FullNode]
 		`
 	expected := DefaultMinerConfig()
-	expected.API.Timeout = Duration(10 * time.Second)
 
 	{
 		cfg, err := FromReader(bytes.NewReader([]byte(cfgString)), DefaultMinerConfig())

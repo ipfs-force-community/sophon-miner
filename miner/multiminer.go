@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	types3 "github.com/filecoin-project/venus-miner/types"
 	"sync"
 	"time"
 
@@ -23,11 +22,10 @@ import (
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/lib/journal"
-	"github.com/filecoin-project/venus-miner/miner/slashfilter"
 	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/modules/block_recorder"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
-	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
+	"github.com/filecoin-project/venus-miner/node/modules/miner-manager"
+	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
+	"github.com/filecoin-project/venus-miner/types"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -64,11 +62,18 @@ func randTimeOffset(width time.Duration) time.Duration {
 
 // NewMiner instantiates a miner with a concrete WinningPoStProver and a miner
 // address (which can be different from the worker's address).
-func NewMiner(api v1api.FullNode, gtNode *config.GatewayNode, verifier ffiwrapper.Verifier, minerManager minermanage.MinerManageAPI,
-	sf slashfilter.SlashFilterAPI, j journal.Journal, blockRecord block_recorder.IBlockRecord) *Miner {
+func NewMiner(api v1api.FullNode,
+	gtNode *config.GatewayNode,
+	verifier ffiwrapper.Verifier,
+	minerManager miner_manager.MinerManageAPI,
+	sf slashfilter.SlashFilterAPI,
+	j journal.Journal) *Miner {
 	networkParams, err := api.StateGetNetworkParams(context.TODO())
 	if err != nil {
 		return nil
+	}
+	if networkParams.BlockDelaySecs < 30 {
+		build.MinerOnceTimeout = time.Millisecond * 2800
 	}
 
 	miner := &Miner{
@@ -96,8 +101,7 @@ func NewMiner(api v1api.FullNode, gtNode *config.GatewayNode, verifier ffiwrappe
 			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
 
-		sf:          sf,
-		blockRecord: blockRecord,
+		sf: sf,
 
 		evtTypes: [...]journal.EventType{
 			evtTypeBlockMined: j.RegisterEventType("miner", "block_mined"),
@@ -109,11 +113,6 @@ func NewMiner(api v1api.FullNode, gtNode *config.GatewayNode, verifier ffiwrappe
 
 		verifier: verifier,
 	}
-
-	// The time to wait for the latest block is counted in
-	miner.mineTimeout = 12 * time.Second
-	// miner.mineTimeout = time.Duration(build.BlockDelaySecs-build.PropagationDelaySecs*2) * time.Second
-	//miner.mineTimeout = time.Millisecond * 2800 // 0.2S is used to select messages and generate blocks
 
 	return miner
 }
@@ -144,8 +143,7 @@ type Miner struct {
 
 	lastWork *MiningBase
 
-	sf          slashfilter.SlashFilterAPI
-	blockRecord block_recorder.IBlockRecord
+	sf slashfilter.SlashFilterAPI
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
@@ -154,12 +152,9 @@ type Miner struct {
 
 	lkWPP        sync.Mutex
 	minerWPPMap  map[address.Address]*minerWPP
-	minerManager minermanage.MinerManageAPI
+	minerManager miner_manager.MinerManageAPI
 
 	verifier ffiwrapper.Verifier
-
-	mineTimeout time.Duration // the timeout of mining once
-
 }
 
 func (m *Miner) Start(ctx context.Context) error {
@@ -361,7 +356,7 @@ minerLoop:
 					defer wg.Done()
 
 					// set timeout for miner once
-					tCtx, tCtxCancel := context.WithTimeout(ctx, m.mineTimeout)
+					tCtx, tCtxCancel := context.WithTimeout(ctx, build.MinerOnceTimeout)
 					defer tCtxCancel()
 
 					resChan, err := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
@@ -481,24 +476,26 @@ minerLoop:
 				// broadcast all blocks
 				for _, b := range blks {
 					go func(bm *types2.BlockMsg) {
+						if exists, err := m.sf.HasBlock(ctx, bm.Header); err != nil {
+							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+							return
+						} else if exists {
+							log.Error("<!!> SLASH FILTER ERROR: double-fork mining faults")
+							return
+						}
+
 						if err := m.sf.MinedBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
 							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 							return
 						}
 
-						has := m.blockRecord.Has(bm.Header.Miner, uint64(bm.Header.Height))
-						if has {
-							log.Warnw("Created a block at the same height as another block we've created", "height", bm.Header.Height, "miner", bm.Header.Miner, "parents", bm.Header.Parents)
+						if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
+							log.Errorf("failed to submit newly mined block: %s", err)
 							return
 						}
 
-						err = m.blockRecord.MarkAsProduced(bm.Header.Miner, uint64(bm.Header.Height))
-						if err != nil {
-							log.Errorf("failed to write db: %s", err)
-						}
-
-						if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
-							log.Errorf("failed to submit newly mined block: %s", err)
+						if err := m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 						}
 					}(b)
 				}
@@ -616,7 +613,7 @@ type winPoStRes struct {
 //
 //  1.
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, addr address.Address, epp WinningPoStProver) (<-chan *winPoStRes, error) {
-	log.Infow("attempting to mine a block", "tipset", types3.LogCids(base.TipSet.Cids()), "miner", addr)
+	log.Infow("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
 	start := build.Clock.Now()
 
 	round := base.TipSet.Height() + base.NullRounds + 1
@@ -884,7 +881,7 @@ func (m *Miner) ManualStop(ctx context.Context, addrs []address.Address) error {
 	return nil
 }
 
-func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]dtypes.MinerInfo, error) {
+func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]types.MinerInfo, error) {
 	miners, err := m.minerManager.Update(ctx, skip, limit)
 	if err != nil {
 		return nil, err
@@ -907,38 +904,27 @@ func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]dtypes.
 	return miners, nil
 }
 
-func (m *Miner) AddAddress(ctx context.Context, mi dtypes.MinerInfo) error {
-	epp, err := NewWinningPoStProver(m.api, m.gatewayNode, mi, m.verifier)
-	if err != nil {
-		return err
-	}
-
-	m.minerWPPMap[mi.Addr] = &minerWPP{epp: epp, account: mi.Name, isMining: true}
-
-	return m.minerManager.Put(ctx, mi)
-}
-
-func (m *Miner) ListAddress(ctx context.Context) ([]dtypes.MinerInfo, error) {
+func (m *Miner) ListAddress(ctx context.Context) ([]types.MinerInfo, error) {
 	m.lkWPP.Lock()
 	defer m.lkWPP.Unlock()
 
 	return m.minerManager.List(ctx)
 }
 
-func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([]dtypes.MinerState, error) {
+func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([]types.MinerState, error) {
 	m.lkWPP.Lock()
 	defer m.lkWPP.Unlock()
 
-	res := make([]dtypes.MinerState, 0)
+	res := make([]types.MinerState, 0)
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
 			if val, ok := m.minerWPPMap[addr]; ok {
-				res = append(res, dtypes.MinerState{Addr: addr, IsMining: val.isMining, Err: val.err})
+				res = append(res, types.MinerState{Addr: addr, IsMining: val.isMining, Err: val.err})
 			}
 		}
 	} else {
 		for k, v := range m.minerWPPMap {
-			res = append(res, dtypes.MinerState{Addr: k, IsMining: v.isMining, Err: v.err})
+			res = append(res, types.MinerState{Addr: k, IsMining: v.isMining, Err: v.err})
 		}
 	}
 
@@ -972,20 +958,20 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 	return IsRoundWinner(ctx, ts.Height()+1, account, mAddr, rbase, mbi, api)
 }
 
-func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]dtypes.CountWinners, error) {
+func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]types.CountWinners, error) {
 	log.Infof("count winners, addrs: %v, start: %v, end: %v", addrs, start, end)
 
 	ts, err := m.api.ChainHead(ctx)
 	if err != nil {
 		log.Error("get chain head", err)
-		return []dtypes.CountWinners{}, err
+		return []types.CountWinners{}, err
 	}
 
 	if start > ts.Height() || end > ts.Height() {
-		return []dtypes.CountWinners{}, fmt.Errorf("start or end greater than cur tipset height: %v", ts.Height())
+		return []types.CountWinners{}, fmt.Errorf("start or end greater than cur tipset height: %v", ts.Height())
 	}
 
-	res := make([]dtypes.CountWinners, 0)
+	res := make([]types.CountWinners, 0)
 	wg := sync.WaitGroup{}
 
 	mAddrs := make([]address.Address, 0)
@@ -995,7 +981,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 			if _, ok := m.minerWPPMap[addr]; ok {
 				mAddrs = append(mAddrs, addr)
 			} else {
-				res = append(res, dtypes.CountWinners{Msg: "miner not exist", Miner: addr})
+				res = append(res, types.CountWinners{Msg: "miner not exist", Miner: addr})
 			}
 		}
 	} else {
@@ -1013,7 +999,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 			go func() {
 				defer wg.Done()
 
-				winInfo := make([]dtypes.SimpleWinInfo, 0)
+				winInfo := make([]types.SimpleWinInfo, 0)
 				totalWinCount := int64(0)
 
 				var sign SignFunc = nil
@@ -1023,13 +1009,13 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 					if err != nil {
 						log.Errorf("[%v] create wallet RPC failed: %w", tAddr, err)
-						res = append(res, dtypes.CountWinners{Msg: err.Error(), Miner: tAddr})
+						res = append(res, types.CountWinners{Msg: err.Error(), Miner: tAddr})
 						return
 					}
 					defer closer()
 					sign = walletAPI.WalletSign
 				} else {
-					res = append(res, dtypes.CountWinners{Msg: "miner not exist", Miner: tAddr})
+					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
 					return
 				}
 
@@ -1048,12 +1034,12 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 
 						if winner != nil {
 							totalWinCount += winner.WinCount
-							winInfo = append(winInfo, dtypes.SimpleWinInfo{Epoch: epoch + 1, WinCount: winner.WinCount})
+							winInfo = append(winInfo, types.SimpleWinInfo{Epoch: epoch + 1, WinCount: winner.WinCount})
 						}
 					}(epoch)
 				}
 				wgWin.Wait()
-				res = append(res, dtypes.CountWinners{Miner: tAddr, TotalWinCount: totalWinCount, WinEpochList: winInfo})
+				res = append(res, types.CountWinners{Miner: tAddr, TotalWinCount: totalWinCount, WinEpochList: winInfo})
 			}()
 		}
 		wg.Wait()
