@@ -56,11 +56,8 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "should be able to close")
 
 	apima, err = repo.APIEndpoint()
-
-	if assert.Error(t, err) {
-		assert.Equal(t, ErrNoAPIEndpoint, err, "after closing repo, api should be nil")
-	}
-	assert.Nil(t, apima, "with closed repo, apima should be set back to nil")
+	assert.NoError(t, err, "getting multiaddr shouldn't error")
+	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
 
 	k1 := types2.KeyInfo{Type: "foo"}
 	k2 := types2.KeyInfo{Type: "bar"}
