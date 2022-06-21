@@ -13,6 +13,7 @@ import (
 var (
 	ErrNoAPIEndpoint     = errors.New("API not running (no endpoint)")
 	ErrRepoAlreadyLocked = errors.New("repo is already locked")
+	ErrClosedRepo        = errors.New("repo is no longer open")
 )
 
 type Repo interface {

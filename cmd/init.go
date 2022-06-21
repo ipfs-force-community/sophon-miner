@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
@@ -24,6 +26,11 @@ var initCmd = &cli.Command{
 	Name:  "init",
 	Usage: "Initialize a venus miner repo",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "listen",
+			Usage:    "host address and port",
+			Value:    "0.0.0.0:12308",
+		},
 		&cli.StringFlag{
 			Name:     "api",
 			Usage:    "full node api",
@@ -162,6 +169,24 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo) error 
 		cfg.SlashFilter.MySQL.Conn = cctx.String("mysql-conn")
 	}); err != nil {
 		return fmt.Errorf("modify config failed: %w", err)
+	}
+
+	{
+		log.Info("generate API ...")
+		address := cctx.String("listen")
+		a, err := net.ResolveTCPAddr("tcp", address)
+		if err != nil {
+			return fmt.Errorf("parsing address: %w", err)
+		}
+
+		ma, err := manet.FromNetAddr(a)
+		if err != nil {
+			return fmt.Errorf("creating api multiaddress: %w", err)
+		}
+
+		if err := lr.SetAPIEndpoint(ma); err != nil {
+			return fmt.Errorf("setting api endpoint: %w", err)
+		}
 	}
 
 	return nil

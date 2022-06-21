@@ -251,11 +251,6 @@ func (fsr *fsLockedRepo) Path() string {
 }
 
 func (fsr *fsLockedRepo) Close() error {
-	err := os.Remove(fsr.join(fsAPI))
-
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("could not remove API file: %w", err)
-	}
 	if fsr.ds != nil {
 		for _, ds := range fsr.ds {
 			if err := ds.Close(); err != nil {
@@ -264,6 +259,7 @@ func (fsr *fsLockedRepo) Close() error {
 		}
 	}
 
+	var err error
 	if fsr.closer != nil {
 		err = fsr.closer.Close()
 		fsr.closer = nil
@@ -278,9 +274,9 @@ func (fsr *fsLockedRepo) join(paths ...string) string {
 }
 
 func (fsr *fsLockedRepo) stillValid() error {
-	//if fsr.closer == nil {
-	//	return ErrClosedRepo
-	//}
+	if fsr.closer == nil {
+		return ErrClosedRepo
+	}
 	return nil
 }
 

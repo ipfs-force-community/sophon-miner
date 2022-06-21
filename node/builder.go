@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/venus-miner/node/modules/miner-manager"
-
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
@@ -90,14 +89,14 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 		}
 
 		return Options(
-			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
-
+			Override(new(repo.LockedRepo), modules.LockedRepo(lr)),
 			Override(new(types.MetadataDS), modules.Datastore),
-
 			Override(new(types.KeyStore), modules.KeyStore),
-
 			Override(new(*types.APIAlg), modules.APISecret),
 
+			Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
+				return r.APIEndpoint()
+			}),
 			ConfigMinerOptions(cctx, c),
 		)(settings)
 	}
