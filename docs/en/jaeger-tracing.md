@@ -1,10 +1,10 @@
 # Jaeger Tracing
 
-Venus-Miner has tracing built into many of its internals. To view the traces, first download [Jaeger](https://www.jaegertracing.io/download/) (Choose the 'all-in-one' binary). Then run it somewhere, start up the venus-miner daemon, and open up localhost:16686 in your browser.
+`venus-miner` has tracing built into many of its internals. To view the traces, first download [Jaeger](https://www.jaegertracing.io/download/) (Choose the 'all-in-one' binary). Then run it somewhere, start up the venus-miner daemon, and open up localhost:16686 in your browser.
 
 ## Open Census
 
-Venus-Miner uses [OpenCensus](https://opencensus.io/) for tracing application flow. This generates spans through the execution of annotated code paths.
+`venus-miner` uses [OpenCensus](https://opencensus.io/) for tracing application flow. This generates spans through the execution of annotated code paths.
 
 Currently it is set up to use Jaeger, though other tracing backends should be fairly easy to swap in.
 
