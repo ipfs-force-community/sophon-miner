@@ -111,9 +111,9 @@ func (f *fsJournal) rollJournalFile() error {
 	if f.fi != nil {
 		_ = f.fi.Close()
 	}
-	current := filepath.Join(f.dir, "lotus-journal.ndjson")
+	current := filepath.Join(f.dir, "venus-miner-journal.ndjson")
 	rolled := filepath.Join(f.dir, fmt.Sprintf(
-		"lotus-journal-%s.ndjson",
+		"venus-miner-journal-%s.ndjson",
 		build.Clock.Now().Format(RFC3339nocolon),
 	))
 
