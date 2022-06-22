@@ -57,6 +57,7 @@ require (
 	go.opencensus.io v0.23.0
 	go.uber.org/fx v1.15.0
 	go.uber.org/zap v1.21.0
+	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.10
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
