@@ -3,8 +3,9 @@ package miner
 import (
 	"context"
 	"fmt"
-	types2 "github.com/filecoin-project/venus-miner/types"
 	"time"
+
+	types2 "github.com/filecoin-project/venus-miner/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

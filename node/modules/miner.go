@@ -2,7 +2,8 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-miner/node/modules/miner-manager"
+
+	miner_manager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 
 	"go.uber.org/fx"
 
