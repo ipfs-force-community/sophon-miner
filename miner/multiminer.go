@@ -822,7 +822,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, errors.New("miner not exist")
 		}
 
-		nosigbytes, err := blockMsg.Header.SignatureData() // TODO 和lotus不一致?
+		nosigbytes, err := blockMsg.Header.SignatureData()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get SigningBytes: %v", err)
 		}
