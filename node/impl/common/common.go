@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/venus-miner/types"
 
 	"github.com/gbrlsnchs/jwt/v3"

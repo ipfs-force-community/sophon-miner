@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus-miner/node/modules/miner-manager"
+
+	miner_manager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
@@ -119,8 +120,8 @@ func ConfigMinerOptions(cctx *cli.Context, c interface{}) Option {
 	)
 
 	minerOps := Options(
-		If(cfg.SlashFilter.Type==string(slashfilter.Local), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal)),
-		If(cfg.SlashFilter.Type==string(slashfilter.MySQL), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewMysql)),
+		If(cfg.SlashFilter.Type == string(slashfilter.Local), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal)),
+		If(cfg.SlashFilter.Type == string(slashfilter.MySQL), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewMysql)),
 
 		Override(new(*config.GatewayNode), cfg.Gateway),
 

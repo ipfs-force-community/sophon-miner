@@ -51,7 +51,7 @@ func GetAPIInfo(ctx *cli.Context) (config.APIInfo, error) {
 
 	return config.APIInfo{
 		Addr:  ma.String(),
-		Token:string(token),
+		Token: string(token),
 	}, nil
 }
 

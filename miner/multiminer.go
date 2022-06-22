@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/modules/miner-manager"
+	miner_manager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 	"github.com/filecoin-project/venus-miner/types"
 

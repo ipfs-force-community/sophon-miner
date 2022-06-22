@@ -15,8 +15,8 @@ type APIInfo struct {
 
 func defaultAPIInfo() *APIInfo {
 	return &APIInfo{
-		Addr: "/ip4/0.0.0.0/tcp/12308/http",
-		Token:     "",
+		Addr:  "/ip4/0.0.0.0/tcp/12308/http",
+		Token: "",
 	}
 }
 

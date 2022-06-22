@@ -27,9 +27,9 @@ var initCmd = &cli.Command{
 	Usage: "Initialize a venus miner repo",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "listen",
-			Usage:    "host address and port",
-			Value:    "0.0.0.0:12308",
+			Name:  "listen",
+			Usage: "host address and port",
+			Value: "0.0.0.0:12308",
 		},
 		&cli.StringFlag{
 			Name:     "api",
