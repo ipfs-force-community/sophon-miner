@@ -67,6 +67,11 @@ miner: $(BUILD_DEPS)
 .PHONY: miner
 BINS+=venus-miner
 
+docsgen:
+	go build $(GOFLAGS) -o docgen-md ./api/docgen
+	./docgen-md > ./docs/en/api-v0-methods-miner.md
+	rm docgen-md
+
 # MISC
 
 buildall: $(BINS)
