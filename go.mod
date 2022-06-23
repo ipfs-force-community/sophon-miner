@@ -37,6 +37,7 @@ require (
 	go.opencensus.io v0.23.0
 	go.uber.org/fx v1.15.0
 	go.uber.org/zap v1.21.0
+	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.10
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
@@ -176,7 +177,6 @@ require (
 	golang.org/x/net v0.0.0-20220418201149-a630d4f3e7a2 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
-	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	google.golang.org/api v0.43.0 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
