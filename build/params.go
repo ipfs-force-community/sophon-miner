@@ -6,5 +6,5 @@ import (
 
 var (
 	PropagationDelaySecs = uint64(12)
-	MinerOnceTimeout     = time.Second * 12
+	MinerOnceTimeout     = time.Second * 15
 )
