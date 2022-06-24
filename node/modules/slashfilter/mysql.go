@@ -25,7 +25,7 @@ type mysqlSlashFilter struct {
 
 type MinedBlock struct {
 	ParentEpoch int64  `gorm:"column:parent_epoch;type:bigint(20);NOT NULL"`
-	ParentKey   string `gorm:"column:parent_key;type:varchar(256);NOT NULL"`
+	ParentKey   string `gorm:"column:parent_key;type:varchar(1000);NOT NULL"`
 
 	Epoch int64  `gorm:"column:epoch;type:bigint(20);NOT NULL;primary_key"`
 	Miner string `gorm:"column:miner;type:varchar(256);NOT NULL;primary_key"`
