@@ -4,14 +4,25 @@
 
 初始化 `Repo`
 
+`< v1.7.0` 版本:
 ```shell script
 $ ./venus-miner init
 # For nettype, choose from mainnet, debug, 2k, calibnet
---nettype calibnet \
+--nettype=calibnet \
+--auth-api=<http://VENUS_AUTH_IP:PORT> \
+--token=<SHARED_ADMIN_AUTH_TOKEN> \
+--gateway-api=/ip4/<VENUS_GATEWAY_IP>/tcp/PORT \
+--api=/ip4/<VENUS_DAEMON_IP>/tcp/PORT \
+--slash-filter local
+```
+
+`>= v1.7.0` 版本:
+```shell script
+$ ./venus-miner init
+--api=/ip4/<VENUS_DAEMON_IP>/tcp/PORT \
+--gateway-api=/ip4/<VENUS_GATEWAY_IP>/tcp/PORT \
 --auth-api <http://VENUS_AUTH_IP:PORT> \
 --token <SHARED_ADMIN_AUTH_TOKEN> \
---gateway-api /ip4/<VENUS_GATEWAY_IP>/tcp/PORT \
---api /ip4/<VENUS_DAEMON_IP>/tcp/PORT \
 --slash-filter local
 ```
 
