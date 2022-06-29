@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 	"github.com/filecoin-project/venus-miner/types"
 
-	"github.com/filecoin-project/venus/pkg/chain"git
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
