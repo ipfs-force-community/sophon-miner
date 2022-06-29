@@ -29,9 +29,9 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
 var log = logging.Logger("miner")
@@ -64,7 +64,6 @@ func randTimeOffset(width time.Duration) time.Duration {
 // address (which can be different from the worker's address).
 func NewMiner(api v1api.FullNode,
 	gtNode *config.GatewayNode,
-	verifier ffiwrapper.Verifier,
 	minerManager miner_manager.MinerManageAPI,
 	sf slashfilter.SlashFilterAPI,
 	j journal.Journal) *Miner {
@@ -110,8 +109,6 @@ func NewMiner(api v1api.FullNode,
 
 		minerManager: minerManager,
 		minerWPPMap:  make(map[address.Address]*minerWPP),
-
-		verifier: verifier,
 	}
 
 	return miner
@@ -153,8 +150,6 @@ type Miner struct {
 	lkWPP        sync.Mutex
 	minerWPPMap  map[address.Address]*minerWPP
 	minerManager miner_manager.MinerManageAPI
-
-	verifier ffiwrapper.Verifier
 }
 
 func (m *Miner) Start(ctx context.Context) error {
@@ -170,7 +165,7 @@ func (m *Miner) Start(ctx context.Context) error {
 		return err
 	}
 	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
 		if err != nil {
 			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
@@ -700,9 +695,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			return
 		}
 
-		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
+		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
-			log.Errorf("failed to draw randomness: %w, miner: %s", err, addr)
+			log.Errorf("failed to get randomness for winning post: %w, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
@@ -750,10 +745,21 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		buf.Write(base.TipSet.MinTicket().VRFProof)
 	}
 
-	input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
-	if err != nil {
-		return nil, err
+	input := new(bytes.Buffer)
+	drp := &wallet.DrawRandomParams{
+		Rbase:   brand.Data,
+		Pers:    crypto.DomainSeparationTag_TicketProduction,
+		Round:   round - constants.TicketRandomnessLookback,
+		Entropy: buf.Bytes(),
 	}
+	err := drp.MarshalCBOR(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal randomness: %w", err)
+	}
+	//input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	var sign SignFunc
 	account := ""
@@ -771,7 +777,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		return nil, errors.New("miner not exist")
 	}
 
-	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input)
+	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -891,7 +897,7 @@ func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]types.M
 	m.lkWPP.Lock()
 	m.minerWPPMap = make(map[address.Address]*minerWPP)
 	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
 		if err != nil {
 			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
