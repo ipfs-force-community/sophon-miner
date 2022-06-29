@@ -4,10 +4,11 @@ import (
 	"errors"
 	"testing"
 
+	types2 "github.com/filecoin-project/venus-miner/types"
+
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus-miner/chain/types"
 	"github.com/filecoin-project/venus-miner/node/config"
 )
 
@@ -18,12 +19,12 @@ func basicTest(t *testing.T, repo Repo) {
 	}
 	assert.Nil(t, apima, "with no api endpoint, return should be nil")
 
-	lrepo, err := repo.Lock(Miner)
+	lrepo, err := repo.Lock()
 	assert.NoError(t, err, "should be able to lock once")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
 	{
-		lrepo2, err := repo.Lock(Miner)
+		lrepo2, err := repo.Lock()
 		if assert.Error(t, err) {
 			assert.Equal(t, ErrRepoAlreadyLocked, err)
 		}
@@ -33,7 +34,7 @@ func basicTest(t *testing.T, repo Repo) {
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to unlock")
 
-	lrepo, err = repo.Lock(Miner)
+	lrepo, err = repo.Lock()
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
@@ -55,16 +56,13 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "should be able to close")
 
 	apima, err = repo.APIEndpoint()
+	assert.NoError(t, err, "getting multiaddr shouldn't error")
+	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
 
-	if assert.Error(t, err) {
-		assert.Equal(t, ErrNoAPIEndpoint, err, "after closing repo, api should be nil")
-	}
-	assert.Nil(t, apima, "with closed repo, apima should be set back to nil")
+	k1 := types2.KeyInfo{Type: "foo"}
+	k2 := types2.KeyInfo{Type: "bar"}
 
-	k1 := types.KeyInfo{Type: "foo"}
-	k2 := types.KeyInfo{Type: "bar"}
-
-	lrepo, err = repo.Lock(Miner)
+	lrepo, err = repo.Lock()
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
@@ -81,7 +79,7 @@ func basicTest(t *testing.T, repo Repo) {
 
 	err = kstr.Put("k1", k1)
 	if assert.Error(t, err, "putting key under the same name should error") {
-		assert.True(t, errors.Is(err, types.ErrKeyExists), "returned error is ErrKeyExists")
+		assert.True(t, errors.Is(err, types2.ErrKeyExists), "returned error is ErrKeyExists")
 	}
 
 	k1prim, err := kstr.Get("k1")
@@ -90,7 +88,7 @@ func basicTest(t *testing.T, repo Repo) {
 
 	k2prim, err := kstr.Get("k2")
 	if assert.Error(t, err, "should not be able to get k2") {
-		assert.True(t, errors.Is(err, types.ErrKeyInfoNotFound), "returned error is ErrKeyNotFound")
+		assert.True(t, errors.Is(err, types2.ErrKeyInfoNotFound), "returned error is ErrKeyNotFound")
 	}
 	assert.Empty(t, k2prim, "there should be no output for k2")
 
@@ -110,6 +108,6 @@ func basicTest(t *testing.T, repo Repo) {
 
 	err = kstr.Delete("k2")
 	if assert.Error(t, err) {
-		assert.True(t, errors.Is(err, types.ErrKeyInfoNotFound), "returned errror is ErrKeyNotFound")
+		assert.True(t, errors.Is(err, types2.ErrKeyInfoNotFound), "returned errror is ErrKeyNotFound")
 	}
 }

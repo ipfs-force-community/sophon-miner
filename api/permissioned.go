@@ -17,7 +17,7 @@ var AllPermissions = []auth.Permission{PermRead, PermWrite, PermSign, PermAdmin}
 var DefaultPerms = []auth.Permission{PermRead}
 
 func PermissionedMinerAPI(a MinerAPI) MinerAPI {
-	var out MinerStruct
+	var out MinerAPIStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
 	return &out
