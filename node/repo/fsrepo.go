@@ -2,7 +2,6 @@ package repo
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,11 +20,8 @@ import (
 	"github.com/multiformats/go-base32"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/lib/blockstore"
-	lblockstore "github.com/filecoin-project/venus-miner/lib/blockstore"
-	badgerbs "github.com/filecoin-project/venus-miner/lib/blockstore/badger"
 	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/filecoin-project/venus-miner/types"
 )
 
 const (
@@ -36,22 +32,6 @@ const (
 	fsLock      = "repo.lock"
 	fsKeystore  = "keystore"
 )
-
-type RepoType int
-
-const (
-	_              = iota // Default is invalid
-	Miner RepoType = iota
-)
-
-func defConfForType(t RepoType) interface{} {
-	switch t {
-	case Miner:
-		return config.DefaultMinerConfig()
-	default:
-		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
-	}
-}
 
 var log = logging.Logger("repo")
 
@@ -96,7 +76,7 @@ func (fsr *FsRepo) Exists() (bool, error) { //nolint
 	return !notexist, err
 }
 
-func (fsr *FsRepo) Init(t RepoType) error {
+func (fsr *FsRepo) Init() error {
 	exist, err := fsr.Exists()
 	if err != nil {
 		return err
@@ -111,7 +91,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 		return err
 	}
 
-	if err := fsr.initConfig(t); err != nil {
+	if err := fsr.initConfig(); err != nil {
 		return fmt.Errorf("init config: %w", err)
 	}
 
@@ -119,7 +99,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 
 }
 
-func (fsr *FsRepo) initConfig(t RepoType) error {
+func (fsr *FsRepo) initConfig() error {
 	_, err := os.Stat(fsr.configPath)
 	if err == nil {
 		// exists
@@ -133,7 +113,7 @@ func (fsr *FsRepo) initConfig(t RepoType) error {
 		return err
 	}
 
-	comm, err := config.ConfigComment(defConfForType(t))
+	comm, err := config.ConfigComment(config.DefaultMinerConfig())
 	if err != nil {
 		return fmt.Errorf("comment: %w", err)
 	}
@@ -229,11 +209,11 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 }
 
 func (fsr *FsRepo) Config() (interface{}, error) {
-	return config.FromFile(fsr.configPath, defConfForType(Miner))
+	return config.FromFile(fsr.configPath, config.DefaultMinerConfig())
 }
 
 // Lock acquires exclusive lock on this repo
-func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
+func (fsr *FsRepo) Lock() (LockedRepo, error) {
 	locked, err := fslock.Locked(fsr.path, fsLock)
 	if err != nil {
 		return nil, fmt.Errorf("could not check lock status: %w", err)
@@ -249,36 +229,19 @@ func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
 	return &fsLockedRepo{
 		path:       fsr.path,
 		configPath: fsr.configPath,
-		repoType:   repoType,
 		closer:     closer,
 	}, nil
-}
-
-// Like Lock, except datastores will work in read-only mode
-func (fsr *FsRepo) LockRO(repoType RepoType) (LockedRepo, error) {
-	lr, err := fsr.Lock(repoType)
-	if err != nil {
-		return nil, err
-	}
-
-	lr.(*fsLockedRepo).readonly = true
-	return lr, nil
 }
 
 type fsLockedRepo struct {
 	path       string
 	configPath string
-	repoType   RepoType
 	closer     io.Closer
 	readonly   bool
 
 	ds     map[string]datastore.Batching
 	dsErr  error
 	dsOnce sync.Once
-
-	bs     blockstore.Blockstore
-	bsErr  error
-	bsOnce sync.Once
 
 	configLk sync.Mutex
 }
@@ -288,11 +251,6 @@ func (fsr *fsLockedRepo) Path() string {
 }
 
 func (fsr *fsLockedRepo) Close() error {
-	err := os.Remove(fsr.join(fsAPI))
-
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("could not remove API file: %w", err)
-	}
 	if fsr.ds != nil {
 		for _, ds := range fsr.ds {
 			if err := ds.Close(); err != nil {
@@ -301,13 +259,7 @@ func (fsr *fsLockedRepo) Close() error {
 		}
 	}
 
-	// type assertion will return ok=false if fsr.bs is nil altogether.
-	if c, ok := fsr.bs.(io.Closer); ok && c != nil {
-		if err := c.Close(); err != nil {
-			return fmt.Errorf("could not close blockstore: %w", err)
-		}
-	}
-
+	var err error
 	if fsr.closer != nil {
 		err = fsr.closer.Close()
 		fsr.closer = nil
@@ -316,47 +268,15 @@ func (fsr *fsLockedRepo) Close() error {
 	return err
 }
 
-// Blockstore returns a blockstore for the provided data domain.
-func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != BlockstoreChain {
-		return nil, ErrInvalidBlockstoreDomain
-	}
-
-	fsr.bsOnce.Do(func() {
-		path := fsr.join(filepath.Join(fsDatastore, "chain"))
-		readonly := fsr.readonly
-
-		if err := os.MkdirAll(path, 0755); err != nil {
-			fsr.bsErr = err
-			return
-		}
-
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-
-		bs, err := badgerbs.Open(opts)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-		fsr.bs = lblockstore.WrapIDStore(bs)
-	})
-
-	return fsr.bs, fsr.bsErr
-}
-
 // join joins path elements with fsr.path
 func (fsr *fsLockedRepo) join(paths ...string) string {
 	return filepath.Join(append([]string{fsr.path}, paths...)...)
 }
 
 func (fsr *fsLockedRepo) stillValid() error {
-	//if fsr.closer == nil {
-	//	return ErrClosedRepo
-	//}
+	if fsr.closer == nil {
+		return ErrClosedRepo
+	}
 	return nil
 }
 
@@ -368,7 +288,7 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 }
 
 func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
-	return config.FromFile(fsr.configPath, defConfForType(fsr.repoType))
+	return config.FromFile(fsr.configPath, config.DefaultMinerConfig())
 }
 
 func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
