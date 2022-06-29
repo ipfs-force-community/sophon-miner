@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -25,12 +24,11 @@ type MiningWpp struct {
 	minerInfo   types2.MinerInfo
 	gatewayNode *config.GatewayNode
 
-	verifier ffiwrapper.Verifier
-	miner    abi.ActorID
-	winnRpt  abi.RegisteredPoStProof
+	miner   abi.ActorID
+	winnRpt abi.RegisteredPoStProof
 }
 
-func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, minerInfo types2.MinerInfo, verifier ffiwrapper.Verifier) (*MiningWpp, error) {
+func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, minerInfo types2.MinerInfo) (*MiningWpp, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), minerInfo.Addr, types.EmptyTSK)
 	if err != nil {
 		return nil, fmt.Errorf("getting sector size: %w", err)
@@ -47,20 +45,13 @@ func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, mine
 		return nil, err
 	}
 
-	return &MiningWpp{gatewayNode: gatewayNode, minerInfo: minerInfo, verifier: verifier, miner: abi.ActorID(minerId), winnRpt: mi.WindowPoStProofType}, nil
+	return &MiningWpp{gatewayNode: gatewayNode, minerInfo: minerInfo, miner: abi.ActorID(minerId), winnRpt: mi.WindowPoStProofType}, nil
 }
 
 var _ WinningPoStProver = (*MiningWpp)(nil)
 
 func (wpp *MiningWpp) GenerateCandidates(ctx context.Context, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
-	start := build.Clock.Now()
-
-	cds, err := wpp.verifier.GenerateWinningPoStSectorChallenge(ctx, wpp.winnRpt, wpp.miner, randomness, eligibleSectorCount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate candidates: %w", err)
-	}
-	log.Infof("Generate candidates took %s (C: %+v)", time.Since(start), cds)
-	return cds, nil
+	panic("should not be called")
 }
 
 func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, currEpoch abi.ChainEpoch, nv network.Version) ([]builtin.PoStProof, error) {

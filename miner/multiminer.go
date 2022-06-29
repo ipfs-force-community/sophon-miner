@@ -29,7 +29,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -64,7 +63,6 @@ func randTimeOffset(width time.Duration) time.Duration {
 // address (which can be different from the worker's address).
 func NewMiner(api v1api.FullNode,
 	gtNode *config.GatewayNode,
-	verifier ffiwrapper.Verifier,
 	minerManager miner_manager.MinerManageAPI,
 	sf slashfilter.SlashFilterAPI,
 	j journal.Journal) *Miner {
@@ -110,8 +108,6 @@ func NewMiner(api v1api.FullNode,
 
 		minerManager: minerManager,
 		minerWPPMap:  make(map[address.Address]*minerWPP),
-
-		verifier: verifier,
 	}
 
 	return miner
@@ -153,8 +149,6 @@ type Miner struct {
 	lkWPP        sync.Mutex
 	minerWPPMap  map[address.Address]*minerWPP
 	minerManager miner_manager.MinerManageAPI
-
-	verifier ffiwrapper.Verifier
 }
 
 func (m *Miner) Start(ctx context.Context) error {
@@ -170,7 +164,7 @@ func (m *Miner) Start(ctx context.Context) error {
 		return err
 	}
 	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
 		if err != nil {
 			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
@@ -891,7 +885,7 @@ func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]types.M
 	m.lkWPP.Lock()
 	m.minerWPPMap = make(map[address.Address]*minerWPP)
 	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
 		if err != nil {
 			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
