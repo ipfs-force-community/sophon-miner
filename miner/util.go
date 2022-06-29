@@ -10,9 +10,9 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
 type WinningPoStProver interface {
@@ -43,12 +43,23 @@ func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
 		return nil, fmt.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	electionRand, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
-	if err != nil {
-		return nil, fmt.Errorf("failed to draw randomness: %w", err)
+	electionRand := new(bytes.Buffer)
+	drp := &wallet.DrawRandomParams{
+		Rbase:   brand.Data,
+		Pers:    crypto.DomainSeparationTag_ElectionProofProduction,
+		Round:   round,
+		Entropy: buf.Bytes(),
 	}
+	err := drp.MarshalCBOR(electionRand)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal randomness: %w", err)
+	}
+	//electionRand, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to draw randomness: %w", err)
+	//}
 
-	vrfout, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, electionRand)
+	vrfout, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, electionRand.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute VRF: %w", err)
 	}

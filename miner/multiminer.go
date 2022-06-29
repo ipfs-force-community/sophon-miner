@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
 var log = logging.Logger("miner")
@@ -694,9 +695,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			return
 		}
 
-		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
+		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
-			log.Errorf("failed to draw randomness: %w, miner: %s", err, addr)
+			log.Errorf("failed to get randomness for winning post: %w, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
@@ -744,10 +745,21 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		buf.Write(base.TipSet.MinTicket().VRFProof)
 	}
 
-	input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
-	if err != nil {
-		return nil, err
+	input := new(bytes.Buffer)
+	drp := &wallet.DrawRandomParams{
+		Rbase:   brand.Data,
+		Pers:    crypto.DomainSeparationTag_TicketProduction,
+		Round:   round - constants.TicketRandomnessLookback,
+		Entropy: buf.Bytes(),
 	}
+	err := drp.MarshalCBOR(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal randomness: %w", err)
+	}
+	//input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	var sign SignFunc
 	account := ""
@@ -765,7 +777,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		return nil, errors.New("miner not exist")
 	}
 
-	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input)
+	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input.Bytes())
 	if err != nil {
 		return nil, err
 	}
