@@ -6,8 +6,6 @@
   * [Start](#Start)
   * [Stop](#Stop)
   * [Version](#Version)
-* [Add](#Add)
-  * [AddAddress](#AddAddress)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
@@ -95,31 +93,9 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 0,
-  "BlockDelay": 0
+  "APIVersion": 0
 }
 ```
-
-## Add
-
-
-### AddAddress
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  {
-    "Addr": "t01234",
-    "Id": "string value",
-    "Name": "string value"
-  }
-]
-```
-
-Response: `{}`
 
 ## Auth
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/venus-miner/types"
+
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
@@ -13,8 +15,6 @@ import (
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
-
 	vapi "github.com/filecoin-project/venus/venus-shared/api"
 )
 
@@ -23,8 +23,8 @@ var session = uuid.New()
 type CommonAPI struct {
 	fx.In
 
-	APISecret    *dtypes.APIAlg
-	ShutdownChan dtypes.ShutdownChan
+	APISecret    *types.APIAlg
+	ShutdownChan types.ShutdownChan
 }
 
 type jwtPayload struct {
@@ -54,7 +54,6 @@ func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
 	return api.APIVersion{
 		Version:    build.UserVersion(),
 		APIVersion: apiVersion,
-		BlockDelay: build.BlockDelaySecs,
 	}, nil
 }
 

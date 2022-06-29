@@ -118,7 +118,7 @@ jobs:
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
-        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/venus-miner/...
+        default: -coverprofile=coverage.txt -coverpkg=./...
         description: Coverage flag. Set to the empty string to disable.
       codecov-upload:
         type: boolean
@@ -131,7 +131,7 @@ jobs:
       - install-deps
       - prepare
       - run:
-          command: make deps miner
+          command: make deps
           no_output_timeout: 30m
       - run:
           name: go test
@@ -175,7 +175,7 @@ jobs:
           name: Install go
           command: |
             curl -O https://dl.google.com/go/go1.17.9.darwin-amd64.pkg && \
-            sudo installer -pkg go1.16.4.darwin-amd64.pkg -target /
+            sudo installer -pkg go1.17.9.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -196,7 +196,6 @@ jobs:
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/venus-miner/go.sum" }}
-      - install-deps
       - run:
           command: make miner
           no_output_timeout: 30m
@@ -228,8 +227,9 @@ jobs:
       - install-deps
       - prepare
       - run: make deps
-      - run: go install golang.org/x/tools/cmd/goimports
       - run: go generate -x ./...
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: make gen
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet
 

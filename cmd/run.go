@@ -16,19 +16,20 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/tag"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	lapi "github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
+	"github.com/filecoin-project/venus-miner/lib/metrics"
 	"github.com/filecoin-project/venus-miner/lib/tracing"
-	"github.com/filecoin-project/venus-miner/metrics"
 	"github.com/filecoin-project/venus-miner/node"
 	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/repo"
+	"github.com/filecoin-project/venus-miner/types"
 
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
@@ -41,18 +42,6 @@ var runCmd = &cli.Command{
 			Name:  "miner-api",
 			Usage: "12308",
 		},
-		&cli.StringFlag{
-			Name:        "nettype",
-			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly",
-			Value:       "mainnet",
-			DefaultText: "mainnet",
-			Required:    false,
-		},
-		&cli.BoolFlag{
-			Name:  "enable-gpu-proving",
-			Usage: "enable use of GPU for mining operations",
-			Value: true,
-		},
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
@@ -61,34 +50,11 @@ var runCmd = &cli.Command{
 			Name:  "api-max-req-size",
 			Usage: "maximum API request size accepted by the JSON RPC server",
 		},
-		node.CLIFLAGBlockRecord,
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing build params")
 
 		ctx := lcli.ReqContext(cctx)
-
-		if err := build.InitNetWorkParams(cctx.String("nettype")); err != nil {
-			return err
-		}
-
-		// default enlarge max os threads to 20000
-		//maxOSThreads := 20000
-		//if fMaxOSThreads := os.Getenv("FORCE_MAX_OS_THREADS"); fMaxOSThreads != "" {
-		//	var err error
-		//	maxOSThreads, err = strconv.Atoi(fMaxOSThreads)
-		//	if err != nil {
-		//		return err
-		//	}
-		//}
-		//debug.SetMaxThreads(maxOSThreads)
-
-		if !cctx.Bool("enable-gpu-proving") {
-			err := os.Setenv("BELLMAN_NO_GPU", "true")
-			if err != nil {
-				return err
-			}
-		}
 
 		minerRepoPath := cctx.String(FlagMinerRepo)
 		r, err := repo.NewFS(minerRepoPath)
@@ -104,13 +70,7 @@ var runCmd = &cli.Command{
 			return fmt.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
 		}
 
-		//log.Info("Checking proof parameters")
-		//
-		//if err := fetchingProofParameters(ctx); err != nil {
-		//	return fmt.Errorf("fetching proof parameters: %w", err)
-		//}
-
-		lr, err := r.Lock(repo.Miner)
+		lr, err := r.Lock()
 		if err != nil {
 			return err
 		}
@@ -120,12 +80,20 @@ var runCmd = &cli.Command{
 		}
 		cfg := cfgV.(*config.MinerConfig)
 
-		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx, cfg.FullNode)
+		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx, cfg.FullNode, "v1")
 		lr.Close() //nolint:errcheck
 		if err != nil {
 			return fmt.Errorf("getting full node api: %w", err)
 		}
 		defer ncloser()
+
+		netName, err := nodeApi.StateNetworkName(ctx)
+		if err != nil {
+			return err
+		}
+		if netName == "mainnet" {
+			constants.SetAddressNetwork(address.Mainnet)
+		}
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
@@ -149,12 +117,11 @@ var runCmd = &cli.Command{
 		var minerAPI lapi.MinerAPI
 		stop, err := node.New(ctx,
 			node.MinerAPI(&minerAPI),
-			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Online(),
 			node.Repo(cctx, r),
+			node.Override(new(types.ShutdownChan), shutdownChan),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },
-				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
+				node.Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/" + cctx.String("miner-api"))
 				})),
 			node.Override(new(v1.FullNode), nodeApi),
@@ -167,16 +134,6 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("getting API endpoint: %w", err)
 		}
-
-		//// Bootstrap with full node
-		//remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
-		//if err != nil {
-		//	return fmt.Errorf("getting full node libp2p address: %w", err)
-		//}
-		//
-		//if err := minerAPI.NetConnect(ctx, remoteAddrs); err != nil {
-		//	return fmt.Errorf("connecting to full node (libp2p): %w", err)
-		//}
 
 		log.Infof("Remote version %s", v)
 
@@ -205,7 +162,6 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 
 	rpcServer := jsonrpc.NewServer(serverOptions...)
 	rpcServer.Register("Filecoin", lapi.PermissionedMinerAPI(minerAPI))
-	// rpcServer.Register("Filecoin", minerAPI)
 
 	mux := mux.NewRouter()
 	mux.Handle("/rpc/v0", rpcServer)

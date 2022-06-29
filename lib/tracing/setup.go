@@ -1,10 +1,11 @@
 package tracing
 
 import (
+	"os"
+
 	"contrib.go.opencensus.io/exporter/jaeger"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
-	"os"
 
 	"github.com/filecoin-project/venus-miner/node/config"
 )
