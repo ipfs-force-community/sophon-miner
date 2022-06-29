@@ -12,7 +12,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.1.8
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.6.0-rc1
+	github.com/filecoin-project/venus v1.6.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/golang/mock v1.6.0
@@ -78,7 +78,7 @@ require (
 	github.com/filecoin-project/specs-actors/v4 v4.0.2 // indirect
 	github.com/filecoin-project/specs-actors/v5 v5.0.6 // indirect
 	github.com/filecoin-project/specs-actors/v6 v6.0.2 // indirect
-	github.com/filecoin-project/specs-actors/v8 v8.0.0 // indirect
+	github.com/filecoin-project/specs-actors/v8 v8.0.1 // indirect
 	github.com/filecoin-project/specs-storage v0.4.1 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
@@ -192,5 +192,3 @@ replace github.com/filecoin-project/venus-miner => ./
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc
