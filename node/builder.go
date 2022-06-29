@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	miner_manager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
@@ -19,12 +18,10 @@ import (
 	"github.com/filecoin-project/venus-miner/node/impl/common"
 	"github.com/filecoin-project/venus-miner/node/modules"
 	"github.com/filecoin-project/venus-miner/node/modules/helpers"
+	minermanager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 	"github.com/filecoin-project/venus-miner/node/repo"
 	"github.com/filecoin-project/venus-miner/types"
-
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	fwpimpl "github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 )
 
 //nolint:deadcode,varcheck
@@ -116,7 +113,6 @@ func ConfigMinerOptions(cctx *cli.Context, c interface{}) Option {
 		Override(new(*config.MinerConfig), cfg),
 
 		Override(new(api.Common), From(new(common.CommonAPI))),
-		Override(new(ffiwrapper.Verifier), fwpimpl.ProofVerifier),
 	)
 
 	minerOps := Options(
@@ -125,7 +121,7 @@ func ConfigMinerOptions(cctx *cli.Context, c interface{}) Option {
 
 		Override(new(*config.GatewayNode), cfg.Gateway),
 
-		Override(new(miner_manager.MinerManageAPI), miner_manager.NewMinerManager(cfg.Auth.Addr, cfg.Auth.Token)),
+		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager(cfg.Auth.Addr, cfg.Auth.Token)),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
 	)
 

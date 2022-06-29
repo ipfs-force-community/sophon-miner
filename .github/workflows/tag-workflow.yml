@@ -96,13 +96,11 @@ jobs:
         with:
           version: latest
           platform: x64
-      - name: Setup Rust
-        run: (sudo apt-get update && sudo apt-get install -y clang libssl-dev && which cargo && which rustc) || (curl https://sh.rustup.rs -sSf | sh -s -- -y)
       - name: install deps
-        run: sudo apt-get install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
+        run: sudo apt-get install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
       - name: Build
         run: |
-          go clean --modcache && make deps && make
+          go clean --modcache && make
           mkdir ./release && mv ./venus-miner ./release
       - name: Zip Release
         uses: TheDoctor0/zip-release@0.6.0
@@ -177,11 +175,11 @@ jobs:
                   --data-urlencode "version=${{steps.vars.outputs.short}}"
           set -e
 
-      - name: Build the Docker image 
+      - name: Build the Docker image
         if: ${{ github.ref_type == 'tag' && github.event_name == 'create' }}
 
         run: |
           docker build . --file dockerfile --tag filvenus/venus-miner:latest
           docker tag filvenus/venus-miner:latest filvenus/venus-miner:${{steps.vars.outputs.github_tag }}
-          docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
+          docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }}
           docker push filvenus/venus-miner:${{steps.vars.outputs.github_tag }}
