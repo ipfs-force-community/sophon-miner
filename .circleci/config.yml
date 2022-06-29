@@ -131,9 +131,6 @@ jobs:
       - install-deps
       - prepare
       - run:
-          command: make deps
-          no_output_timeout: 30m
-      - run:
           name: go test
           environment:
             SKIP_CONFORMANCE: "1"
@@ -181,10 +178,6 @@ jobs:
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
       - run: go version
       - run:
-          name: Install Rust
-          command: |
-            curl https://sh.rustup.rs -sSf | sh -s -- -y
-      - run:
           name: Install hwloc
           command: |
             mkdir ~/hwloc
@@ -193,9 +186,6 @@ jobs:
             tar -xvzpf hwloc-2.4.1.tar.gz
             cd hwloc-2.4.1
             ./configure && make && sudo make install
-      - restore_cache:
-          name: restore cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/venus-miner/go.sum" }}
       - run:
           command: make miner
           no_output_timeout: 30m
@@ -206,12 +196,6 @@ jobs:
           root: "."
           paths:
             - darwin
-      - save_cache:
-          name: save cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/venus-miner/go.sum" }}
-          paths:
-            - "~/.rustup"
-            - "~/.cargo"
 
   gofmt:
     executor: golang
@@ -226,7 +210,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - run: make deps
       - run: go generate -x ./...
       - run: go install golang.org/x/tools/cmd/goimports
       - run: make gen
@@ -255,9 +238,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - run:
-          command: make deps
-          no_output_timeout: 30m
       - run:
           name: Lint
           command: |
