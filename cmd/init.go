@@ -2,26 +2,21 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/mitchellh/go-homedir"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
-
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/chain/types"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
@@ -32,11 +27,9 @@ var initCmd = &cli.Command{
 	Usage: "Initialize a venus miner repo",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:        "nettype",
-			Usage:       "network type, one of: mainnet, debug, 2k, calibnet, butterfly, interop",
-			Value:       "mainnet",
-			DefaultText: "mainnet",
-			Required:    false,
+			Name:  "listen",
+			Usage: "host address and port",
+			Value: "0.0.0.0:12308",
 		},
 		&cli.StringFlag{
 			Name:     "api",
@@ -44,28 +37,18 @@ var initCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:     "token",
-			Usage:    "full node token",
-			Required: true,
-		},
-		&cli.StringFlag{
 			Name:     "auth-api",
 			Usage:    "auth node api",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:  "auth-token",
-			Usage: "auth node token",
-			Value: "",
 		},
 		&cli.StringSliceFlag{
 			Name:  "gateway-api",
 			Usage: "gateway api",
 		},
 		&cli.StringFlag{
-			Name:  "gateway-token",
-			Usage: "gateway token",
-			Value: "",
+			Name:     "token",
+			Usage:    "full node token",
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "slash-filter",
@@ -83,21 +66,15 @@ var initCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		log.Info("Initializing build params")
-
-		if err := build.InitNetWorkParams(cctx.String("nettype")); err != nil {
-			return err
-		}
-
 		log.Info("Trying to connect to full node RPC")
 
-		fullnode := config.FullNode{}
+		fullnode := config.APIInfo{}
 		if cctx.String("api") != "" && cctx.String("token") != "" {
-			fullnode.ListenAPI = cctx.String("api")
+			fullnode.Addr = cctx.String("api")
 			fullnode.Token = cctx.String("token")
 		}
 
-		fullNodeAPI, closer, err := lcli.GetFullNodeAPIV1(cctx, fullnode)
+		fullNodeAPI, closer, err := lcli.GetFullNodeAPI(cctx, &fullnode, "v1")
 		if err != nil {
 			return err
 		}
@@ -127,16 +104,16 @@ var initCmd = &cli.Command{
 		}
 
 		if !v.APIVersion.EqMajorMinor(api.FullAPIVersion1) {
-			return fmt.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
+			return fmt.Errorf("RemoteAPI version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")
 
-		if err := r.Init(repo.Miner); err != nil {
+		if err := r.Init(); err != nil {
 			return err
 		}
 
-		if err := storageMinerInit(cctx, r, fullnode); err != nil {
+		if err := storageMinerInit(cctx, r, &fullnode); err != nil {
 			log.Errorf("Failed to initialize venus-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
@@ -146,7 +123,7 @@ var initCmd = &cli.Command{
 			if err := os.RemoveAll(path); err != nil {
 				log.Errorf("Failed to clean up failed storage repo: %s", err)
 			}
-			return fmt.Errorf("Storage-miner init failed")
+			return fmt.Errorf("init failed")
 		}
 
 		log.Info("Miner successfully init, you can now start it with 'venus-miner run'")
@@ -155,30 +132,12 @@ var initCmd = &cli.Command{
 	},
 }
 
-func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error {
-	lr, err := r.Lock(repo.Miner)
+func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo) error {
+	lr, err := r.Lock()
 	if err != nil {
 		return err
 	}
 	defer lr.Close() //nolint:errcheck
-
-	//log.Info("Initializing libp2p identity")
-	//
-	//p2pSk, err := makeHostKey(lr)
-	//if err != nil {
-	//	return fmt.Errorf("make host key: %w", err)
-	//}
-	//
-	//peerID, err := peer.IDFromPrivateKey(p2pSk)
-	//if err != nil {
-	//	return fmt.Errorf("peer ID from private key: %w", err)
-	//}
-	//log.Infow("init new peer: %s", peerID)
-
-	//mds, err := lr.Datastore(context.TODO(), "/metadata")
-	//if err != nil {
-	//	return err
-	//}
 
 	// modify config
 	log.Info("modify config ...")
@@ -191,11 +150,8 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 		cfg := i.(*config.MinerConfig)
 		cfg.FullNode = fn
 
+		gt := cctx.String("token")
 		if cctx.IsSet("gateway-api") {
-			gt := cctx.String("gateway-token")
-			if gt == "" {
-				gt = cctx.String("token")
-			}
 			cfg.Gateway = &config.GatewayNode{
 				ListenAPI: cctx.StringSlice("gateway-api"),
 				Token:     gt,
@@ -203,52 +159,45 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn config.FullNode) error 
 		}
 
 		if cctx.String("auth-api") != "" {
-			cfg.Db.Type = "auth"
-			cfg.Db.Auth = &config.AuthConfig{
-				ListenAPI: cctx.String("auth-api"),
-				Token:     cctx.String("auth-token"),
+			cfg.Auth = &config.APIInfo{
+				Addr:  cctx.String("auth-api"),
+				Token: gt,
 			}
 		}
 
-		cfg.Db.SFType = sfType
-		if cfg.Db.SFType == "mysql" {
-			cfg.Db.MySQL.Conn = cctx.String("mysql-conn")
-		}
+		cfg.SlashFilter.Type = sfType
+		cfg.SlashFilter.MySQL.Conn = cctx.String("mysql-conn")
 	}); err != nil {
 		return fmt.Errorf("modify config failed: %w", err)
+	}
+
+	{
+		log.Info("generate API ...")
+		address := cctx.String("listen")
+		a, err := net.ResolveTCPAddr("tcp", address)
+		if err != nil {
+			return fmt.Errorf("parsing address: %w", err)
+		}
+
+		ma, err := manet.FromNetAddr(a)
+		if err != nil {
+			return fmt.Errorf("creating api multiaddress: %w", err)
+		}
+
+		if err := lr.SetAPIEndpoint(ma); err != nil {
+			return fmt.Errorf("setting api endpoint: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func makeHostKey(ctx context.Context, lr repo.LockedRepo) (crypto.PrivKey, error) { //nolint
-	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-
-	ks, err := lr.KeyStore()
-	if err != nil {
-		return nil, err
-	}
-
-	kbytes, err := crypto.MarshalPrivateKey(pk)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := ks.Put("libp2p-host", types.KeyInfo{
-		Type:       "libp2p-host",
-		PrivateKey: kbytes,
-	}); err != nil {
-		return nil, err
-	}
-
-	return pk, nil
-}
-
-func SyncWait(ctx context.Context, napi v1.FullNode, watch bool) error {
+func SyncWait(ctx context.Context, fullNode v1.FullNode, watch bool) error {
 	tick := time.Second / 4
+	netParams, err := fullNode.StateGetNetworkParams(ctx)
+	if err != nil {
+		return err
+	}
 
 	lastLines := 0
 	ticker := time.NewTicker(tick)
@@ -258,14 +207,14 @@ func SyncWait(ctx context.Context, napi v1.FullNode, watch bool) error {
 	i := 0
 	var firstApp, app, lastApp uint64
 
-	state, err := napi.SyncState(ctx)
+	state, err := fullNode.SyncState(ctx)
 	if err != nil {
 		return err
 	}
 	firstApp = state.VMApplied
 
 	for {
-		state, err := napi.SyncState(ctx)
+		state, err := fullNode.SyncState(ctx)
 		if err != nil {
 			return err
 		}
@@ -275,7 +224,7 @@ func SyncWait(ctx context.Context, napi v1.FullNode, watch bool) error {
 			continue
 		}
 
-		head, err := napi.ChainHead(ctx)
+		head, err := fullNode.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
@@ -283,10 +232,10 @@ func SyncWait(ctx context.Context, napi v1.FullNode, watch bool) error {
 		working := -1
 		for i, ss := range state.ActiveSyncs {
 			switch ss.Stage {
-			case types2.StageSyncComplete:
+			case types.StageSyncComplete:
 			default:
 				working = i
-			case types2.StageIdle:
+			case types.StageIdle:
 				// not complete, not actively working
 			}
 		}
@@ -334,7 +283,7 @@ func SyncWait(ctx context.Context, napi v1.FullNode, watch bool) error {
 
 		_ = target // todo: maybe print? (creates a bunch of line wrapping issues with most tipsets)
 
-		if !watch && time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
+		if !watch && time.Now().Unix()-int64(head.MinTimestamp()) < int64(netParams.BlockDelaySecs) {
 			fmt.Println("\nDone!")
 			return nil
 		}
@@ -348,34 +297,4 @@ func SyncWait(ctx context.Context, napi v1.FullNode, watch bool) error {
 
 		i++
 	}
-}
-
-func fetchingProofParameters(ctx context.Context) error { // nolint
-	ss := make([]uint64, 0)
-
-	log.Info("SupportedProofTypes: ", miner0.SupportedProofTypes)
-	for spf := range miner0.SupportedProofTypes {
-		switch spf {
-		case abi.RegisteredSealProof_StackedDrg2KiBV1:
-			ss = append(ss, 2048)
-		case abi.RegisteredSealProof_StackedDrg8MiBV1:
-			ss = append(ss, 8<<20)
-		case abi.RegisteredSealProof_StackedDrg512MiBV1:
-			ss = append(ss, 512<<20)
-		case abi.RegisteredSealProof_StackedDrg32GiBV1:
-			ss = append(ss, 32<<30)
-		case abi.RegisteredSealProof_StackedDrg64GiBV1:
-			ss = append(ss, 64<<30)
-		default:
-
-		}
-	}
-
-	for _, ssize := range ss {
-		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
-			return fmt.Errorf("fetching proof parameters: %w", err)
-		}
-	}
-
-	return nil
 }

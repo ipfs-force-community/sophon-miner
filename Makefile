@@ -4,9 +4,9 @@ all: build
 .PHONY: all docker
 
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
-ifeq ($(shell expr $(GOVERSION) \< 15), 1)
+ifeq ($(shell expr $(GOVERSION) \< 17), 1)
 $(warning Your Golang version is go 1.$(GOVERSION))
-$(error Update Golang to version to at least 1.15.5)
+$(error Update Golang to version to at least 1.17.9)
 endif
 
 # git modules that need to be loaded
@@ -63,7 +63,6 @@ deps: $(BUILD_DEPS)
 miner: $(BUILD_DEPS)
 	rm -f venus-miner
 	go build $(GOFLAGS) -o venus-miner ./cmd/
-	go run github.com/GeertJohan/go.rice/rice append --exec venus-miner -i ./build
 
 .PHONY: miner
 BINS+=venus-miner
@@ -86,6 +85,11 @@ dist-clean:
 	git clean -xdff
 	git submodule deinit --all -f
 .PHONY: dist-clean
+
+gen:
+	go run ./gen/api
+	goimports -w api
+.PHONY: gen
 
 print-%:
 	@echo $*=$($*)

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -17,12 +16,10 @@ import (
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/api/client"
-	cliutil "github.com/filecoin-project/venus-miner/cli/util"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
 
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v0"
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 var log = logging.Logger("cli")
@@ -31,62 +28,20 @@ const (
 	metadataTraceContext = "traceContext"
 )
 
-// custom CLI error
-
-type ErrCmdFailed struct {
-	msg string
-}
-
-func (e *ErrCmdFailed) Error() string {
-	return e.msg
-}
-
-// The flag passed on the command line with the listen address of the API
-// server (only used by the tests)
-func flagForAPI(t repo.RepoType) string {
-	switch t {
-	case repo.Miner:
-		return "miner-api-url"
-	default:
-		panic(fmt.Sprintf("Unknown repo type: %v", t))
-	}
-}
-
-func flagForRepo(t repo.RepoType) string {
-	switch t {
-	case repo.Miner:
-		return "miner-repo"
-	default:
-		panic(fmt.Sprintf("Unknown repo type: %v", t))
-	}
-}
-
-func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (cliutil.APIInfo, error) {
-	// Check if there was a flag passed with the listen address of the API
-	// server (only used by the tests)
-	apiFlag := flagForAPI(t)
-	if ctx.IsSet(apiFlag) {
-		strma := ctx.String(apiFlag)
-		strma = strings.TrimSpace(strma)
-
-		return cliutil.APIInfo{Addr: strma}, nil
-	}
-
-	repoFlag := flagForRepo(t)
-
-	p, err := homedir.Expand(ctx.String(repoFlag))
+func GetAPIInfo(ctx *cli.Context) (config.APIInfo, error) {
+	p, err := homedir.Expand(ctx.String("miner-repo"))
 	if err != nil {
-		return cliutil.APIInfo{}, fmt.Errorf("could not expand home dir (%s): %w", repoFlag, err)
+		return config.APIInfo{}, fmt.Errorf("could not expand home dir: %w", err)
 	}
 
 	r, err := repo.NewFS(p)
 	if err != nil {
-		return cliutil.APIInfo{}, fmt.Errorf("could not open repo at path: %s; %w", p, err)
+		return config.APIInfo{}, fmt.Errorf("could not open repo at path: %s; %w", p, err)
 	}
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return cliutil.APIInfo{}, fmt.Errorf("could not get api endpoint: %w", err)
+		return config.APIInfo{}, fmt.Errorf("could not get api endpoint: %w", err)
 	}
 
 	token, err := r.APIToken()
@@ -94,14 +49,14 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (cliutil.APIInfo, error) {
 		log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
 	}
 
-	return cliutil.APIInfo{
+	return config.APIInfo{
 		Addr:  ma.String(),
-		Token: token,
+		Token: string(token),
 	}, nil
 }
 
-func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
-	ainfo, err := GetAPIInfo(ctx, t)
+func GetRawAPI(ctx *cli.Context, version string) (string, http.Header, error) {
+	ainfo, err := GetAPIInfo(ctx)
 	if err != nil {
 		return "", nil, fmt.Errorf("could not get API info: %w", err)
 	}
@@ -114,50 +69,22 @@ func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.
 	return addr, ainfo.AuthHeader(), nil
 }
 
-func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
-	ti, ok := ctx.App.Metadata["repoType"]
-	if !ok {
-		log.Errorf("unknown repo type, are you sure you want to use GetAPI?")
-		ti = repo.Miner
-	}
-	t, ok := ti.(repo.RepoType)
-	if !ok {
-		log.Errorf("repoType type does not match the type of repo.RepoType")
-	}
-
-	addr, headers, err := GetRawAPI(ctx, t, "v0")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return client.NewCommonRPC(ctx.Context, addr, headers)
-}
-
-func GetFullNodeAPI(ctx *cli.Context, fn config.FullNode) (v0.FullNode, jsonrpc.ClientCloser, error) {
-	addr, err := fn.DialArgs("v0")
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)
-	}
-
-	return v0.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
-}
-
-func GetFullNodeAPIV1(ctx *cli.Context, fn config.FullNode) (v1.FullNode, jsonrpc.ClientCloser, error) {
-	addr, err := fn.DialArgs("v1")
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)
-	}
-
-	return v1.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
-}
-
 func GetMinerAPI(ctx *cli.Context) (api.MinerAPI, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.Miner, "v0")
+	addr, headers, err := GetRawAPI(ctx, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return client.NewMinerRPC(ctx.Context, addr, headers)
+}
+
+func GetFullNodeAPI(ctx *cli.Context, fn *config.APIInfo, version string) (v1.FullNode, jsonrpc.ClientCloser, error) {
+	addr, err := fn.DialArgs(version)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)
+	}
+
+	return v1.NewFullNodeRPC(ctx.Context, addr, fn.AuthHeader())
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {
@@ -187,15 +114,5 @@ func ReqContext(cctx *cli.Context) context.Context {
 
 var CommonCommands = []*cli.Command{
 	logCmd,
-}
-
-var Commands = []*cli.Command{
-	WithCategory("developer", logCmd),
-
 	VersionCmd,
-}
-
-func WithCategory(cat string, cmd *cli.Command) *cli.Command {
-	cmd.Category = cat
-	return cmd
 }
