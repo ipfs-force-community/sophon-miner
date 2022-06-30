@@ -387,9 +387,32 @@ minerLoop:
 		m.lkWPP.Unlock()
 
 		log.Infow("mining compute end", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
-		lastBase = *base
 
-		if len(winPoSts) > 0 { // the size of winPoSts indicates the number of blocks
+		if len(winPoSts) > 0 {
+			// get the base again in order to get all the blocks in the previous round as much as possible
+			tbase, err := m.GetBestMiningCandidate(ctx)
+			if err == nil {
+				// rule:
+				//
+				//  1.  tbase contains base.TipSet.At(0), [0]BlockHeader is used to calculate IsRoundWinner
+				//  2.  tbase include more blocks
+				isContain := false
+				for _, blk := range tbase.TipSet.Blocks() {
+					if blk.Equals(base.TipSet.At(0)) {
+						isContain = true
+						break
+					}
+				}
+
+				if isContain && tbase.TipSet.Height() == base.TipSet.Height() &&
+					tbase.TipSet.Len() > base.TipSet.Len() {
+					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", base)
+					base = tbase
+				}
+			}
+
+			lastBase = *base
+
 			// get pending messages early,
 			ticketQualitys := make([]float64, len(winPoSts))
 			for idx, res := range winPoSts {
@@ -514,6 +537,8 @@ minerLoop:
 				}
 			}
 		} else {
+			lastBase = *base
+
 			base.NullRounds++
 			log.Info("no block and increase nullround")
 			// Wait until the next epoch, plus the propagation delay, so a new tipset
@@ -536,7 +561,6 @@ minerLoop:
 }
 
 // MiningBase is the tipset on top of which we plan to construct our next block.
-// Refer to godocs on GetBestMiningCandidate.
 type MiningBase struct {
 	TipSet     *types2.TipSet
 	NullRounds abi.ChainEpoch
