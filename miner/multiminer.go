@@ -394,23 +394,20 @@ minerLoop:
 			if err == nil {
 				// rule:
 				//
-				//  1.  tbase contains base.TipSet.At(0), [0]BlockHeader is used to calculate IsRoundWinner
-				//  2.  tbase include more blocks
-				isContain := false
-				for _, blk := range tbase.TipSet.Blocks() {
-					if blk.Equals(base.TipSet.At(0)) {
-						isContain = true
-						break
+				//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain revert)
+				//  2.  tbase contains base.TipSet.At(0), [0]BlockHeader is used to calculate IsRoundWinner
+				if !tbase.TipSet.Equals(base.TipSet) {
+					log.Infow("bases has changed", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+
+					for _, blk := range tbase.TipSet.Blocks() {
+						if blk.Equals(base.TipSet.At(0)) {
+							log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+							base = tbase
+							break
+						}
 					}
 				}
-
-				if isContain && tbase.TipSet.Height() == base.TipSet.Height() &&
-					tbase.TipSet.Len() > base.TipSet.Len() {
-					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
-					base = tbase
-				}
 			}
-
 			lastBase = *base
 
 			// get pending messages early,
