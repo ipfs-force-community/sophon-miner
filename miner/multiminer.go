@@ -395,16 +395,13 @@ minerLoop:
 				// rule:
 				//
 				//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain revert)
-				//  2.  tbase contains base.TipSet.At(0), [0]BlockHeader is used to calculate IsRoundWinner
+				//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
 				if !tbase.TipSet.Equals(base.TipSet) {
-					log.Infow("bases has changed", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
-
-					for _, blk := range tbase.TipSet.Blocks() {
-						if blk.Equals(base.TipSet.At(0)) {
-							log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
-							base = tbase
-							break
-						}
+					if tbase.TipSet.At(0).Equals(base.TipSet.At(0)) {
+						log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+						base = tbase
+					} else {
+						log.Warnw("bases is invalid", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 					}
 				}
 			}
