@@ -406,7 +406,7 @@ minerLoop:
 
 				if isContain && tbase.TipSet.Height() == base.TipSet.Height() &&
 					tbase.TipSet.Len() > base.TipSet.Len() {
-					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", base)
+					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 					base = tbase
 				}
 			}
