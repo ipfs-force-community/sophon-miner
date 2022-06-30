@@ -388,25 +388,30 @@ minerLoop:
 
 		log.Infow("mining compute end", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
 
-		if len(winPoSts) > 0 {
-			// get the base again in order to get all the blocks in the previous round as much as possible
-			tbase, err := m.GetBestMiningCandidate(ctx)
-			if err == nil {
-				// rule:
-				//
-				//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain revert)
-				//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
-				if !tbase.TipSet.Equals(base.TipSet) {
-					if tbase.TipSet.At(0).Equals(base.TipSet.At(0)) {
-						log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
-						base = tbase
-					} else {
-						log.Warnw("bases is invalid", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
-					}
+		// get the base again in order to get all the blocks in the previous round as much as possible
+		tbase, err := m.GetBestMiningCandidate(ctx)
+		isChainForked := false
+		if err == nil {
+			// rule:
+			//
+			//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain forked)
+			//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
+			if !tbase.TipSet.Equals(base.TipSet) {
+				if tbase.TipSet.At(0).Equals(base.TipSet.At(0)) {
+					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+					base = tbase
+				} else {
+					isChainForked = true
+					log.Warnw("chain has been forked", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 				}
 			}
-			lastBase = *base
+		}
+		lastBase = *base
 
+		// After the chain is forked, the blocks based on the old bases will be invalidated,
+		// if continue to generate wrong blocks, it will affect the accuracy of slashfilter,
+		// also, the fork-based block generation is meaningless.
+		if !isChainForked && len(winPoSts) > 0 {
 			// get pending messages early,
 			ticketQualitys := make([]float64, len(winPoSts))
 			for idx, res := range winPoSts {
@@ -531,8 +536,6 @@ minerLoop:
 				}
 			}
 		} else {
-			lastBase = *base
-
 			base.NullRounds++
 			log.Info("no block and increase nullround")
 			// Wait until the next epoch, plus the propagation delay, so a new tipset
