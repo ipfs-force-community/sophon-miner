@@ -29,7 +29,11 @@ type MinedBlock struct {
 
 	Epoch int64  `gorm:"column:epoch;type:bigint(20);NOT NULL;primary_key"`
 	Miner string `gorm:"column:miner;type:varchar(256);NOT NULL;primary_key"`
-	Cid   string `gorm:"column:cid;type:varchar(256)"`
+	Cid   string `gorm:"column:cid;type:varchar(256);default:''"`
+
+	WinningAt time.Time   `gorm:"column:winning_at;type:datetime;NOT NULL"`
+	MineState StateMining `gorm:"column:mine_state;type:tinyint(4);default:0;COMMIT:'0-mining,1-success,2-timeout,3-chain forked,4-error';NOT NULL"`
+	Consuming int64       `gorm:"column:consuming;type:bigint(10);NOT NULL"`
 }
 
 func (m *MinedBlock) TableName() string {
@@ -120,8 +124,8 @@ func (f *mysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 }
 
 func (f *mysqlSlashFilter) HasBlock(ctx context.Context, bh *types.BlockHeader) (bool, error) {
-	var bk MinedBlock
-	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
+	var blk MinedBlock
+	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
 	if err == gorm.ErrRecordNotFound {
 		return false, nil
 	}
@@ -129,17 +133,33 @@ func (f *mysqlSlashFilter) HasBlock(ctx context.Context, bh *types.BlockHeader) 
 		return false, err
 	}
 
-	return true, nil
+	return len(blk.Cid) > 0, nil
 }
 
-func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
-	return f._db.Save(&MinedBlock{
+func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch, t time.Time, state StateMining) error {
+	has, _ := f.HasBlock(ctx, bh)
+	if Timeout == state && !has {
+		return nil
+	}
+
+	mblk := &MinedBlock{
 		ParentEpoch: int64(parentEpoch),
 		ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
 		Epoch:       int64(bh.Height),
 		Miner:       bh.Miner.String(),
-		Cid:         bh.Cid().String(),
-	}).Error
+
+		MineState: state,
+	}
+
+	if bh.Ticket != nil {
+		mblk.Cid = bh.Cid().String()
+	}
+
+	if !t.IsZero() {
+		mblk.WinningAt = t
+	}
+
+	return f._db.Save(mblk).Error
 }
 
 func (f *mysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {

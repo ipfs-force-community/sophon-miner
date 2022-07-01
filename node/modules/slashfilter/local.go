@@ -3,6 +3,7 @@ package slashfilter
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -33,7 +34,12 @@ func (f *localSlashFilter) HasBlock(ctx context.Context, bh *vtypes.BlockHeader)
 	return f.byEpoch.Has(ctx, epochKey)
 }
 
-func (f *localSlashFilter) PutBlock(ctx context.Context, bh *vtypes.BlockHeader, parentEpoch abi.ChainEpoch) error {
+func (f *localSlashFilter) PutBlock(ctx context.Context, bh *vtypes.BlockHeader, parentEpoch abi.ChainEpoch, t time.Time, state StateMining) error {
+	// It is not recorded locally when win round
+	if bh.Ticket == nil {
+		return nil
+	}
+
 	parentsKey := datastore.NewKey(fmt.Sprintf("/%s/%x", bh.Miner, vtypes.NewTipSetKey(bh.Parents...).Bytes()))
 	if err := f.byParents.Put(ctx, parentsKey, bh.Cid().Bytes()); err != nil {
 		return fmt.Errorf("putting byEpoch entry: %w", err)

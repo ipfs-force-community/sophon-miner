@@ -111,6 +111,7 @@ func ConfigMinerOptions(cctx *cli.Context, c interface{}) Option {
 
 	shareOps := Options(
 		Override(new(*config.MinerConfig), cfg),
+		Override(new(*config.MySQLConfig), &cfg.SlashFilter.MySQL),
 
 		Override(new(api.Common), From(new(common.CommonAPI))),
 	)
