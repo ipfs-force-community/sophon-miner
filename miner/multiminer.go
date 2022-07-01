@@ -29,9 +29,9 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
 var log = logging.Logger("miner")
@@ -64,7 +64,6 @@ func randTimeOffset(width time.Duration) time.Duration {
 // address (which can be different from the worker's address).
 func NewMiner(api v1api.FullNode,
 	gtNode *config.GatewayNode,
-	verifier ffiwrapper.Verifier,
 	minerManager miner_manager.MinerManageAPI,
 	sf slashfilter.SlashFilterAPI,
 	j journal.Journal) *Miner {
@@ -110,8 +109,6 @@ func NewMiner(api v1api.FullNode,
 
 		minerManager: minerManager,
 		minerWPPMap:  make(map[address.Address]*minerWPP),
-
-		verifier: verifier,
 	}
 
 	return miner
@@ -153,8 +150,6 @@ type Miner struct {
 	lkWPP        sync.Mutex
 	minerWPPMap  map[address.Address]*minerWPP
 	minerManager miner_manager.MinerManageAPI
-
-	verifier ffiwrapper.Verifier
 }
 
 func (m *Miner) Start(ctx context.Context) error {
@@ -170,7 +165,7 @@ func (m *Miner) Start(ctx context.Context) error {
 		return err
 	}
 	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
 		if err != nil {
 			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
@@ -392,9 +387,26 @@ minerLoop:
 		m.lkWPP.Unlock()
 
 		log.Infow("mining compute end", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
-		lastBase = *base
 
-		if len(winPoSts) > 0 { // the size of winPoSts indicates the number of blocks
+		if len(winPoSts) > 0 {
+			// get the base again in order to get all the blocks in the previous round as much as possible
+			tbase, err := m.GetBestMiningCandidate(ctx)
+			if err == nil {
+				// rule:
+				//
+				//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain revert)
+				//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
+				if !tbase.TipSet.Equals(base.TipSet) {
+					if tbase.TipSet.At(0).Equals(base.TipSet.At(0)) {
+						log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+						base = tbase
+					} else {
+						log.Warnw("bases is invalid", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+					}
+				}
+			}
+			lastBase = *base
+
 			// get pending messages early,
 			ticketQualitys := make([]float64, len(winPoSts))
 			for idx, res := range winPoSts {
@@ -403,7 +415,7 @@ minerLoop:
 			log.Infow("select message", "tickets", len(ticketQualitys))
 			msgs, err := m.api.MpoolSelects(context.TODO(), base.TipSet.Key(), ticketQualitys)
 			if err != nil {
-				log.Errorf("failed to select messages for block: %w", err)
+				log.Errorf("failed to select messages for block: %s", err)
 				return
 			}
 			tPending := build.Clock.Now()
@@ -420,7 +432,7 @@ minerLoop:
 					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, []*types2.SignedMessage{})
 				}
 				if err != nil {
-					log.Errorf("failed to create block: %w", err)
+					log.Errorf("failed to create block: %s", err)
 					continue
 				}
 				blks = append(blks, b)
@@ -519,6 +531,8 @@ minerLoop:
 				}
 			}
 		} else {
+			lastBase = *base
+
 			base.NullRounds++
 			log.Info("no block and increase nullround")
 			// Wait until the next epoch, plus the propagation delay, so a new tipset
@@ -541,7 +555,6 @@ minerLoop:
 }
 
 // MiningBase is the tipset on top of which we plan to construct our next block.
-// Refer to godocs on GetBestMiningCandidate.
 type MiningBase struct {
 	TipSet     *types2.TipSet
 	NullRounds abi.ChainEpoch
@@ -623,7 +636,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 	go func() {
 		mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
 		if err != nil {
-			log.Errorf("failed to get mining base info: %w, miner: %s", err, addr)
+			log.Errorf("failed to get mining base info: %s, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
@@ -666,7 +679,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		if _, ok := m.minerWPPMap[addr]; ok {
 			walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 			if err != nil {
-				log.Errorf("create wallet RPC failed: %w", err)
+				log.Errorf("create wallet RPC failed: %s", err)
 				out <- &winPoStRes{addr: addr, err: err}
 				return
 			}
@@ -679,7 +692,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		}
 		winner, err := IsRoundWinner(ctx, round, account, addr, rbase, mbi, sign)
 		if err != nil {
-			log.Errorf("failed to check for %s if we win next round: %w", addr, err)
+			log.Errorf("failed to check for %s if we win next round: %s", addr, err)
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
@@ -695,14 +708,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		buf := new(bytes.Buffer)
 		if err := addr.MarshalCBOR(buf); err != nil {
-			log.Errorf("failed to marshal miner address: %w", err)
+			log.Errorf("failed to marshal miner address: %s", err)
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
 
-		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
+		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
-			log.Errorf("failed to draw randomness: %w, miner: %s", err, addr)
+			log.Errorf("failed to get randomness for winning post: %s, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
@@ -713,14 +726,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		nv, err := m.api.StateNetworkVersion(ctx, base.TipSet.Key())
 		if err != nil {
-			log.Errorf("failed to get network version: %w, miner: %s", err, addr)
+			log.Errorf("failed to get network version: %s, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
 
 		postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
 		if err != nil {
-			log.Errorf("failed to compute winning post proof: %w, miner: %s", err, addr)
+			log.Errorf("failed to compute winning post proof: %s, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, err: err}
 			return
 		}
@@ -750,10 +763,21 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		buf.Write(base.TipSet.MinTicket().VRFProof)
 	}
 
-	input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
-	if err != nil {
-		return nil, err
+	input := new(bytes.Buffer)
+	drp := &wallet.DrawRandomParams{
+		Rbase:   brand.Data,
+		Pers:    crypto.DomainSeparationTag_TicketProduction,
+		Round:   round - constants.TicketRandomnessLookback,
+		Entropy: buf.Bytes(),
 	}
+	err := drp.MarshalCBOR(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal randomness: %w", err)
+	}
+	//input, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-constants.TicketRandomnessLookback, buf.Bytes())
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	var sign SignFunc
 	account := ""
@@ -761,7 +785,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		account = val.account
 		walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 		if err != nil {
-			log.Errorf("create wallet RPC failed: %w", err)
+			log.Errorf("create wallet RPC failed: %s", err)
 			return nil, err
 		}
 		defer closer()
@@ -771,7 +795,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		return nil, errors.New("miner not exist")
 	}
 
-	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input)
+	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -812,7 +836,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			account = val.account
 			walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 			if err != nil {
-				log.Errorf("create wallet RPC failed: %w", err)
+				log.Errorf("create wallet RPC failed: %s", err)
 				return nil, err
 			}
 			defer closer()
@@ -891,7 +915,7 @@ func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]types.M
 	m.lkWPP.Lock()
 	m.minerWPPMap = make(map[address.Address]*minerWPP)
 	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo, m.verifier)
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
 		if err != nil {
 			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
@@ -1008,7 +1032,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					account = val.account
 					walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
 					if err != nil {
-						log.Errorf("[%v] create wallet RPC failed: %w", tAddr, err)
+						log.Errorf("[%v] create wallet RPC failed: %s", tAddr, err)
 						res = append(res, types.CountWinners{Msg: err.Error(), Miner: tAddr})
 						return
 					}
@@ -1028,7 +1052,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 
 						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
 						if err != nil {
-							log.Errorf("generate winner met error %w", err)
+							log.Errorf("generate winner met error %s", err)
 							return
 						}
 

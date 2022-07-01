@@ -45,6 +45,7 @@ require (
 
 require (
 	github.com/DataDog/zstd v1.4.1 // indirect
+	github.com/ahmetb/go-linq/v3 v3.2.0 // indirect
 	github.com/awnumar/memcall v0.0.0-20191004114545-73db50fd9f80 // indirect
 	github.com/awnumar/memguard v0.22.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -54,7 +55,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.3 // indirect
 	github.com/dgraph-io/ristretto v0.0.4-0.20210122082011-bb5d392ed82d // indirect
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
@@ -62,13 +62,11 @@ require (
 	github.com/drand/kyber v1.1.7 // indirect
 	github.com/drand/kyber-bls12381 v0.2.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f // indirect
+	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20220623181130-943e33574dca // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v4 v4.0.0 // indirect
 	github.com/filecoin-project/go-cbor-util v0.0.1 // indirect
-	github.com/filecoin-project/go-commp-utils v0.1.3 // indirect
-	github.com/filecoin-project/go-fil-commcid v0.1.0 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0 // indirect
@@ -80,6 +78,7 @@ require (
 	github.com/filecoin-project/specs-actors/v6 v6.0.2 // indirect
 	github.com/filecoin-project/specs-actors/v8 v8.0.1 // indirect
 	github.com/filecoin-project/specs-storage v0.4.1 // indirect
+	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
@@ -166,6 +165,7 @@ require (
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/dig v1.12.0 // indirect
 	go.uber.org/goleak v1.1.12 // indirect
@@ -190,5 +190,3 @@ require (
 replace github.com/filecoin-project/venus-miner => ./
 
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
-
-replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
