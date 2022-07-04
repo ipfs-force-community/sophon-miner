@@ -54,9 +54,9 @@ func init() {
 }
 
 func GetAPIType() (i interface{}, t reflect.Type, permStruct []reflect.Type) {
-	i = &api.MinerStruct{}
+	i = &api.MinerAPIStruct{}
 	t = reflect.TypeOf(new(struct{ api.MinerAPI })).Elem()
-	permStruct = append(permStruct, reflect.TypeOf(api.MinerStruct{}.Internal))
+	permStruct = append(permStruct, reflect.TypeOf(api.MinerAPIStruct{}.Internal))
 	permStruct = append(permStruct, reflect.TypeOf(api.CommonStruct{}.Internal))
 
 	return
@@ -172,7 +172,7 @@ func ParseApiASTInfo() (comments map[string]string, groupDocs map[string]string)
 		fmt.Println("filepath absolute error: ", err)
 		return
 	}
-	apiFile, err := filepath.Abs("api/api_poster.go")
+	apiFile, err := filepath.Abs("api/api_miner.go")
 	if err != nil {
 		fmt.Println("filepath absolute error: ", err, "file:", apiFile)
 		return

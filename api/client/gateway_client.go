@@ -11,7 +11,7 @@ import (
 	gateway "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
 )
 
-func NewGatewayRPC(cfg *config.GatewayNode) (gateway.IGateway, jsonrpc.ClientCloser, error) {
+func NewGatewayRPC(ctx context.Context, cfg *config.GatewayNode) (gateway.IGateway, jsonrpc.ClientCloser, error) {
 	var err error
 	addrs, err := cfg.DialArgs()
 	if err != nil {
@@ -21,7 +21,7 @@ func NewGatewayRPC(cfg *config.GatewayNode) (gateway.IGateway, jsonrpc.ClientClo
 	var gatewayAPI gateway.IGateway = nil
 	var closer jsonrpc.ClientCloser
 	for _, addr := range addrs {
-		gatewayAPI, closer, err = gateway.NewIGatewayRPC(context.Background(), addr, cfg.AuthHeader())
+		gatewayAPI, closer, err = gateway.NewIGatewayRPC(ctx, addr, cfg.AuthHeader())
 		if err == nil {
 			return gatewayAPI, closer, err
 		}

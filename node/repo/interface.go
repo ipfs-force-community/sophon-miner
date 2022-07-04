@@ -7,30 +7,13 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/lib/blockstore"
-)
-
-// BlockstoreDomain represents the domain of a blockstore.
-type BlockstoreDomain string
-
-const (
-	// BlockstoreChain represents the blockstore domain for chain data.
-	// Right now, this includes chain objects (tipsets, blocks, messages), as
-	// well as state. In the future, they may get segregated into different
-	// domains.
-	BlockstoreChain = BlockstoreDomain("chain")
+	"github.com/filecoin-project/venus-miner/types"
 )
 
 var (
 	ErrNoAPIEndpoint     = errors.New("API not running (no endpoint)")
-	ErrNoAPIToken        = errors.New("API token not set")
 	ErrRepoAlreadyLocked = errors.New("repo is already locked")
 	ErrClosedRepo        = errors.New("repo is no longer open")
-
-	// ErrInvalidBlockstoreDomain is returned by LockedRepo#Blockstore() when
-	// an unrecognized domain is requested.
-	ErrInvalidBlockstoreDomain = errors.New("invalid blockstore domain")
 )
 
 type Repo interface {
@@ -41,7 +24,7 @@ type Repo interface {
 	APIToken() ([]byte, error)
 
 	// Lock locks the repo for exclusive use.
-	Lock(RepoType) (LockedRepo, error)
+	Lock() (LockedRepo, error)
 }
 
 type LockedRepo interface {
@@ -53,12 +36,6 @@ type LockedRepo interface {
 	// The implementation should not retain the context for usage throughout
 	// the lifecycle.
 	Datastore(ctx context.Context, namespace string) (datastore.Batching, error)
-
-	// Blockstore returns an IPLD blockstore for the requested domain.
-	// The supplied context must only be used to initialize the blockstore.
-	// The implementation should not retain the context for usage throughout
-	// the lifecycle.
-	Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error)
 
 	// Returns config in this repo
 	Config() (interface{}, error)

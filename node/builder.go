@@ -3,37 +3,25 @@ package node
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/chain/gen/slashfilter"
-	"github.com/filecoin-project/venus-miner/chain/types"
-	"github.com/filecoin-project/venus-miner/journal"
+	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/miner"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/impl"
 	"github.com/filecoin-project/venus-miner/node/impl/common"
 	"github.com/filecoin-project/venus-miner/node/modules"
-	"github.com/filecoin-project/venus-miner/node/modules/block_recorder"
-	"github.com/filecoin-project/venus-miner/node/modules/dtypes"
 	"github.com/filecoin-project/venus-miner/node/modules/helpers"
-	"github.com/filecoin-project/venus-miner/node/modules/minermanage"
-	"github.com/filecoin-project/venus-miner/node/modules/minermanage/auth"
-	"github.com/filecoin-project/venus-miner/node/modules/minermanage/local"
-	"github.com/filecoin-project/venus-miner/node/modules/minermanage/mysql"
+	minermanager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
+	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 	"github.com/filecoin-project/venus-miner/node/repo"
-	"github.com/filecoin-project/venus-miner/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/venus-miner/system"
-
-	_ "github.com/filecoin-project/venus-miner/lib/sigs/bls"
-	_ "github.com/filecoin-project/venus-miner/lib/sigs/secp"
+	"github.com/filecoin-project/venus-miner/types"
 )
 
 //nolint:deadcode,varcheck
@@ -51,9 +39,6 @@ const (
 	// InitJournal at position 0 initializes the journal global var as soon as
 	// the system starts, so that it's available for all other components.
 	InitJournalKey = invoke(iota)
-
-	// System processes.
-	InitMemoryWatchdog
 
 	// daemon
 	ExtractApiKey
@@ -74,11 +59,6 @@ type Settings struct {
 	// invokes are separate from modules as they can't be referenced by return
 	// type, and must be applied in correct order
 	invokes []fx.Option
-
-	nodeType repo.RepoType
-
-	Online bool // Online option applied
-	Config bool // Config option applied
 }
 
 func defaults() []Option {
@@ -87,62 +67,17 @@ func defaults() []Option {
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
 
-		Override(new(system.MemoryConstraints), modules.MemoryConstraints),
-		Override(InitMemoryWatchdog, modules.MemoryWatchdog),
-
 		Override(new(helpers.MetricsCtx), func() context.Context {
 			return metricsi.CtxScope(context.Background(), "venus-miner")
 		}),
 
-		Override(new(dtypes.ShutdownChan), make(chan struct{})),
-
-		// Filecoin modules
+		Override(new(types.ShutdownChan), make(chan struct{})),
 	}
-}
-
-func isType(t repo.RepoType) func(s *Settings) bool {
-	return func(s *Settings) bool { return s.nodeType == t }
-}
-
-// Online sets up basic libp2p node
-func Online() Option {
-
-	return Options(
-		// make sure that online is applied before Config.
-		// This is important because Config overrides some of Online units
-		func(s *Settings) error { s.Online = true; return nil },
-		ApplyIf(func(s *Settings) bool { return s.Config },
-			Error(errors.New("the Online option must be set before Config option")),
-		),
-
-		// miner
-		ApplyIf(isType(repo.Miner)),
-	)
-}
-
-// Config sets up constructors based on the provided Config
-func ConfigCommon(cfg *config.Common) Option {
-	return Options(
-		func(s *Settings) error { s.Config = true; return nil },
-		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
-			return multiaddr.NewMultiaddr(cfg.API.ListenAddress)
-		}),
-		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e dtypes.APIEndpoint) error {
-			return lr.SetAPIEndpoint(e)
-		}),
-		Override(new(ffiwrapper.URLs), func(e dtypes.APIEndpoint) (ffiwrapper.URLs, error) {
-			ip := cfg.API.RemoteListenAddress
-
-			var urls ffiwrapper.URLs
-			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
-			return urls, nil
-		}),
-	)
 }
 
 func Repo(cctx *cli.Context, r repo.Repo) Option {
 	return func(settings *Settings) error {
-		lr, err := r.Lock(settings.nodeType)
+		lr, err := r.Lock()
 		if err != nil {
 			return err
 		}
@@ -152,106 +87,55 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 		}
 
 		return Options(
-			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
-
-			Override(new(dtypes.MetadataDS), modules.Datastore),
-
+			Override(new(repo.LockedRepo), modules.LockedRepo(lr)),
+			Override(new(types.MetadataDS), modules.Datastore),
 			Override(new(types.KeyStore), modules.KeyStore),
+			Override(new(*types.APIAlg), modules.APISecret),
 
-			Override(new(*dtypes.APIAlg), modules.APISecret),
-
-			ApplyIf(isType(repo.Miner), ConfigPostOptions(cctx, c)),
+			Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
+				return r.APIEndpoint()
+			}),
+			ConfigMinerOptions(cctx, c),
 		)(settings)
 	}
 }
 
-var (
-	CLIFLAGBlockRecord = &cli.StringFlag{
-		Name:    "block_record",
-		Usage:   "the way to record the blocks that have been generated, optional: local, cache",
-		EnvVars: []string{"BLOCK_RECORD_WAY"},
-		Value:   "",
-	}
-)
-
-func ConfigPostConfig(cctx *cli.Context, cfg *config.MinerConfig) (*config.MinerConfig, error) {
-	if cctx.IsSet(CLIFLAGBlockRecord.Name) {
-		cfg.BlockRecord = cctx.String(CLIFLAGBlockRecord.Name)
-	}
-
-	configStr, _ := json.MarshalIndent(cfg, "", "\t")
-	log.Warnf("final config: \n%v", string(configStr))
-	return cfg, nil
-}
-
-func ConfigPostOptions(cctx *cli.Context, c interface{}) Option {
-	postCfg, ok := c.(*config.MinerConfig)
+func ConfigMinerOptions(cctx *cli.Context, c interface{}) Option {
+	cfg, ok := c.(*config.MinerConfig)
 	if !ok {
 		return Error(fmt.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	scfg, err := ConfigPostConfig(cctx, postCfg)
-	if err != nil {
-		return Error(fmt.Errorf("error to parse config and flag %v", err))
-	}
+	configStr, _ := json.MarshalIndent(cfg, "", "\t")
+	log.Infof("final config: \n%v", string(configStr))
+
 	shareOps := Options(
-		Override(new(*config.MinerConfig), scfg),
+		Override(new(*config.MinerConfig), cfg),
 
 		Override(new(api.Common), From(new(common.CommonAPI))),
-		Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 	)
 
-	opt, err := PostWinningOptions(scfg)
-	if err != nil {
-		return Error(fmt.Errorf("error to constructor poster %v", err))
-	}
+	minerOps := Options(
+		If(cfg.SlashFilter.Type == string(slashfilter.Local), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal)),
+		If(cfg.SlashFilter.Type == string(slashfilter.MySQL), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewMysql)),
+
+		Override(new(*config.GatewayNode), cfg.Gateway),
+
+		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager(cfg.Auth.Addr, cfg.Auth.Token)),
+		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
+	)
 
 	return Options(
-		ConfigCommon(&postCfg.Common),
 		shareOps,
-		opt,
+		minerOps,
+		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e types.APIEndpoint) error {
+			return lr.SetAPIEndpoint(e)
+		}),
 	)
-}
-
-func PostWinningOptions(postCfg *config.MinerConfig) (Option, error) {
-	blockRecordOp, err := newBlockRecord(postCfg.BlockRecord)
-	if err != nil {
-		return nil, err
-	}
-
-	minerManageAPIOp, err := newMinerManageAPI(postCfg.Db)
-	if err != nil {
-		return nil, err
-	}
-
-	slashFilterAPIOp, err := newSlashFilterAPI(postCfg.Db)
-	if err != nil {
-		return nil, err
-	}
-
-	return Options(
-		blockRecordOp,
-		minerManageAPIOp,
-		slashFilterAPIOp,
-		Override(new(*config.GatewayNode), postCfg.Gateway),
-		Override(new(miner.MiningAPI), modules.NewWiningPoster),
-	), nil
 }
 
 func MinerAPI(out *api.MinerAPI) Option {
 	return Options(
-		ApplyIf(func(s *Settings) bool { return s.Config },
-			Error(errors.New("the Poster option must be set before Config option")),
-		),
-		ApplyIf(func(s *Settings) bool { return s.Online },
-			Error(errors.New("the Poster option must be set before Online option")),
-		),
-
-		func(s *Settings) error {
-			s.nodeType = repo.Miner
-			return nil
-		},
-
 		func(s *Settings) error {
 			resAPI := &impl.MinerAPI{}
 			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
@@ -259,44 +143,6 @@ func MinerAPI(out *api.MinerAPI) Option {
 			return nil
 		},
 	)
-}
-
-func newMinerManageAPI(dbConfig *config.MinerDbConfig) (Option, error) {
-	switch dbConfig.Type {
-	case minermanage.Local:
-		return Override(new(minermanage.MinerManageAPI), local.NewMinerManger), nil
-	case minermanage.MySQL:
-		return Override(new(minermanage.MinerManageAPI), mysql.NewMinerManger(&dbConfig.MySQL)), nil
-	case minermanage.Auth:
-		return Override(new(minermanage.MinerManageAPI), auth.NewMinerManager(dbConfig.Auth.ListenAPI, dbConfig.Auth.Token)), nil
-	default:
-
-	}
-
-	return nil, fmt.Errorf("unsupported db type [%s]", dbConfig.Type)
-}
-
-func newSlashFilterAPI(dbConfig *config.MinerDbConfig) (Option, error) {
-	switch dbConfig.SFType {
-	case minermanage.Local:
-		return Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal), nil
-	case minermanage.MySQL:
-		return Override(new(slashfilter.SlashFilterAPI), slashfilter.NewMysqlSlashFilter(&dbConfig.MySQL)), nil
-	default:
-
-	}
-
-	return nil, fmt.Errorf("unsupported db type [%s]", dbConfig.SFType)
-}
-
-func newBlockRecord(t string) (Option, error) {
-	if t == block_recorder.Local {
-		return Override(new(block_recorder.IBlockRecord), block_recorder.NewLocalDBRecord), nil
-	} else if t == block_recorder.Cache {
-		return Override(new(block_recorder.IBlockRecord), block_recorder.NewCacheRecord), nil
-	} else {
-		return nil, fmt.Errorf("unsupport block record type")
-	}
 }
 
 type FullOption = Option
