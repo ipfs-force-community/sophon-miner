@@ -95,12 +95,12 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 			Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
 				return r.APIEndpoint()
 			}),
-			ConfigMinerOptions(cctx, c),
+			ConfigMinerOptions(c),
 		)(settings)
 	}
 }
 
-func ConfigMinerOptions(cctx *cli.Context, c interface{}) Option {
+func ConfigMinerOptions(c interface{}) Option {
 	cfg, ok := c.(*config.MinerConfig)
 	if !ok {
 		return Error(fmt.Errorf("invalid config from repo, got: %T", c))

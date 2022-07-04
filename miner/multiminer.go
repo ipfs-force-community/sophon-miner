@@ -498,7 +498,7 @@ func (m *Miner) getLatestBase(ctx context.Context) (*MiningBase, time.Duration, 
 
 func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStRes {
 	m.lkWPP.Lock()
-	defer m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
 
 	var (
 		winPoSts []*winPoStRes
@@ -531,7 +531,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 
 					if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
 						Height: base.TipSet.Height() + base.NullRounds + 1,
-						Miner:  addr,
+						Miner:  tAddr,
 					}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Timeout); err != nil {
 						log.Errorf("failed to record mining timeout: %s", err)
 					}
@@ -542,13 +542,24 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 					tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
 					return
 				case res := <-resChan:
-					if res != nil && res.winner != nil {
-						winPoSts = append(winPoSts, res) //nolint:staticcheck
-					} else if res.err != nil {
-						if len(tMining.err) > DefaultMaxErrCounts {
-							tMining.err = tMining.err[:DefaultMaxErrCounts-2]
+					if res != nil {
+						if res.err != nil {
+							if res.winner != nil {
+								// record to db only use mysql
+								if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+									Height: base.TipSet.Height() + base.NullRounds + 1,
+									Miner:  tAddr,
+								}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+									log.Errorf("failed to record winner: %s", err)
+								}
+							}
+							if len(tMining.err) > DefaultMaxErrCounts {
+								tMining.err = tMining.err[:DefaultMaxErrCounts-2]
+							}
+							tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
+						} else if res.winner != nil {
+							winPoSts = append(winPoSts, res) //nolint:staticcheck
 						}
-						tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
 					}
 				}
 			}()
@@ -737,14 +748,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		buf := new(bytes.Buffer)
 		if err := addr.MarshalCBOR(buf); err != nil {
 			log.Errorf("failed to marshal miner address: %s", err)
-			out <- &winPoStRes{addr: addr, err: err}
+			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
 
 		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
 			log.Errorf("failed to get randomness for winning post: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, err: err}
+			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
 		prand := abi.PoStRandomness(r)
@@ -755,14 +766,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		nv, err := m.api.StateNetworkVersion(ctx, base.TipSet.Key())
 		if err != nil {
 			log.Errorf("failed to get network version: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, err: err}
+			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
 
 		postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
 		if err != nil {
 			log.Errorf("failed to compute winning post proof: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, err: err}
+			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
 
