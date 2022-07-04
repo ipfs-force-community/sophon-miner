@@ -18,7 +18,7 @@ COPY --from=buildenv  /go/venus-miner/venus-miner /app/venus-miner
 
 # Copy ddl
 COPY --from=buildenv   /lib/x86_64-linux-gnu/libpthread.so.0 \
-    /usr/lib/x86_64-linux-gnu/libhwloc.so.5 \
+    /usr/lib/x86_64-linux-gnu/libhwloc.so.15 \
     /usr/lib/x86_64-linux-gnu/libOpenCL.so.1 \
     /lib/x86_64-linux-gnu/libgcc_s.so.1 \
     /lib/x86_64-linux-gnu/libutil.so.1 \
