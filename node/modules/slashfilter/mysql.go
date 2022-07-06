@@ -77,8 +77,8 @@ func NewMysql(cfg *config.MySQLConfig) (SlashFilterAPI, error) {
 
 // double-fork mining (2 blocks at one epoch)
 func (f *mysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error { // nolint: unused
-	var bk MinedBlock
-	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
+	var blk MinedBlock
+	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil
 	}
@@ -86,7 +86,11 @@ func (f *mysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error { /
 		return err
 	}
 
-	other, err := cid.Decode(bk.Cid)
+	if 0 >= len(blk.Cid) {
+		return nil
+	}
+
+	other, err := cid.Decode(blk.Cid)
 	if err != nil {
 		return err
 	}
@@ -100,8 +104,8 @@ func (f *mysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error { /
 
 // time-offset mining faults (2 blocks with the same parents)
 func (f *mysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
-	var bk MinedBlock
-	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and parent_key=?", bh.Miner.String(), types.NewTipSetKey(bh.Parents...).String()).Error
+	var blk MinedBlock
+	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and parent_key=?", bh.Miner.String(), types.NewTipSetKey(bh.Parents...).String()).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil
 	}
@@ -109,7 +113,11 @@ func (f *mysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 		return err
 	}
 
-	other, err := cid.Decode(bk.Cid)
+	if 0 >= len(blk.Cid) {
+		return nil
+	}
+
+	other, err := cid.Decode(blk.Cid)
 	if err != nil {
 		return err
 	}
@@ -190,23 +198,25 @@ func (f *mysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 
 		// First check if we have mined a block on the parent epoch
 		var blk MinedBlock
-		err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and parent_epoch=?", bh.Miner.String(), parentEpoch).Error
+		err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and epoch=?", bh.Miner.String(), parentEpoch).Error
 		if err == nil {
 			// If we had, make sure it's in our parent tipset
-			parent, err := cid.Decode(blk.Cid)
-			if err != nil {
-				return err
-			}
-
-			var found bool
-			for _, c := range bh.Parents {
-				if c.Equals(parent) {
-					found = true
+			if len(blk.Cid) > 0 {
+				parent, err := cid.Decode(blk.Cid)
+				if err != nil {
+					return err
 				}
-			}
 
-			if !found {
-				return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				var found bool
+				for _, c := range bh.Parents {
+					if c.Equals(parent) {
+						found = true
+					}
+				}
+
+				if !found {
+					return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				}
 			}
 		} else if err != gorm.ErrRecordNotFound {
 			//other error except not found
