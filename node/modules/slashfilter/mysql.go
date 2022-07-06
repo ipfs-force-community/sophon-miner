@@ -164,7 +164,7 @@ func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, 
 				mblk.WinningAt = t
 			}
 
-			return f._db.Save(mblk).Error
+			return f._db.Create(mblk).Error
 		}
 
 		return fmt.Errorf("query record failed: %w", err)
