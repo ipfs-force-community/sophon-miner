@@ -26,4 +26,5 @@ type IMinerManager interface {
 	ListAddress(context.Context) ([]types.MinerInfo, error)
 	StatesForMining(context.Context, []address.Address) ([]types.MinerState, error)
 	CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]types.CountWinners, error)
+	WarmupForMiner(context.Context, address.Address) error
 }

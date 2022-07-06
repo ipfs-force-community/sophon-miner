@@ -19,6 +19,7 @@ var addressCmd = &cli.Command{
 		stateCmd,
 		startMiningCmd,
 		stopMiningCmd,
+		warmupCmd,
 	},
 }
 
@@ -185,6 +186,38 @@ var stopMiningCmd = &cli.Command{
 		}
 
 		fmt.Println("stop mining success.")
+		return nil
+	},
+}
+
+var warmupCmd = &cli.Command{
+	Name:      "warmup",
+	Usage:     "winPoSt warmup for miner",
+	Flags:     []cli.Flag{},
+	ArgsUsage: "<miner address>",
+	Action: func(cctx *cli.Context) error {
+		if count := cctx.Args().Len(); count < 1 {
+			return cli.ShowSubcommandHelp(cctx)
+		}
+
+		minerApi, closer, err := lcli.GetMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		minerAddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("parsing miner: %w", err)
+		}
+
+		err = minerApi.WarmupForMiner(cctx.Context, minerAddr)
+		if err == nil {
+			fmt.Println("warmup success.")
+		} else {
+			fmt.Println("warmup failed: ", err.Error())
+		}
+
 		return nil
 	},
 }

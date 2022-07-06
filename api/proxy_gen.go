@@ -53,6 +53,8 @@ type MinerAPIStruct struct {
 		Stop func(p0 context.Context, p1 []address.Address) error `perm:"admin"`
 
 		UpdateAddress func(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) `perm:"write"`
+
+		WarmupForMiner func(p0 context.Context, p1 address.Address) error `perm:"admin"`
 	}
 }
 
@@ -212,6 +214,17 @@ func (s *MinerAPIStruct) UpdateAddress(p0 context.Context, p1 int64, p2 int64) (
 
 func (s *MinerAPIStub) UpdateAddress(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) {
 	return *new([]types.MinerInfo), ErrNotSupported
+}
+
+func (s *MinerAPIStruct) WarmupForMiner(p0 context.Context, p1 address.Address) error {
+	if s.Internal.WarmupForMiner == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.WarmupForMiner(p0, p1)
+}
+
+func (s *MinerAPIStub) WarmupForMiner(p0 context.Context, p1 address.Address) error {
+	return ErrNotSupported
 }
 
 var _ Common = new(CommonStruct)
