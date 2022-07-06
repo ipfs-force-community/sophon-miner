@@ -276,56 +276,14 @@ minerLoop:
 			continue
 		}
 
-		var base *MiningBase
-		var onDone func(bool, abi.ChainEpoch, error)
-		var injectNulls abi.ChainEpoch
-
-		for {
-			prebase, err := m.GetBestMiningCandidate(ctx)
-			if err != nil {
-				log.Errorf("failed to get best mining candidate: %s", err)
-				if !m.niceSleep(time.Second * 5) {
-					continue minerLoop
-				}
-				continue
+		base, td, err := m.getLatestBase(ctx)
+		if err != nil {
+			log.Warnf("failed to get latest base, %s", err)
+			if !m.niceSleep(td) {
+				continue minerLoop
 			}
-
-			if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
-				base = prebase
-				break
-			}
-			if base != nil {
-				onDone(false, 0, nil)
-			}
-
-			// TODO: need to change the orchestration here. the problem is that
-			// we are waiting *after* we enter this loop and selecta mining
-			// candidate, which is almost certain to change in multiminer
-			// tests. Instead, we should block before entering the loop, so
-			// that when the test 'MineOne' function is triggered, we pull our
-			// best mining candidate at that time.
-
-			// Wait until propagation delay period after block we plan to mine on
-			onDone, injectNulls, err = m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-
-			// just wait for the beacon entry to become available before we select our final mining base
-			_, err = m.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
-			if err != nil {
-				log.Errorf("failed getting beacon entry: %s", err)
-				if !m.niceSleep(time.Second) {
-					continue minerLoop
-				}
-				continue
-			}
-
-			base = prebase
+			continue
 		}
-
-		base.NullRounds += injectNulls // testing
 
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
@@ -335,79 +293,45 @@ minerLoop:
 			continue
 		}
 
-		// ToDo each miner mine once in each round, need to judge the timeout !!!
-		var (
-			winPoSts []*winPoStRes
-			wg       sync.WaitGroup
-		)
-		m.lkWPP.Lock()
-		for addr, mining := range m.minerWPPMap {
-			if mining.isMining {
-				wg.Add(1)
-				tMining := mining
-				tAddr := addr
+		// mining once for all miners
+		winPoSts := m.mineOneForAll(ctx, base)
+		log.Infow("mining compute", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
 
-				go func() {
-					defer wg.Done()
+		// get the base again in order to get all the blocks in the previous round as much as possible
+		tbase, err := m.GetBestMiningCandidate(ctx)
+		isChainForked := false
+		if err == nil {
+			// rule:
+			//
+			//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain forked)
+			//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
+			if !tbase.TipSet.Equals(base.TipSet) {
+				if tbase.TipSet.At(0).Equals(base.TipSet.At(0)) {
+					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+					base = tbase
+				} else {
+					isChainForked = true
+					log.Warnw("chain has been forked", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 
-					// set timeout for miner once
-					tCtx, tCtxCancel := context.WithTimeout(ctx, build.MinerOnceTimeout)
-					defer tCtxCancel()
-
-					resChan, err := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
-					if err != nil { // ToDo retry or continue minerLoop ? currently err is always nil
-						log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
-						return
-					}
-
-					// waiting for mining results
-					select {
-					case <-tCtx.Done():
-						log.Errorf("mining timeout for %s", tAddr.String())
-						if len(tMining.err) >= DefaultMaxErrCounts {
-							tMining.err = tMining.err[:DefaultMaxErrCounts-2]
+					// Record chain forked
+					for _, res := range winPoSts {
+						if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+							Height: base.TipSet.Height() + base.NullRounds + 1,
+							Miner:  res.addr,
+						}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.ChainForked); err != nil {
+							log.Errorf("failed to record chain forked: %s", err)
 						}
-						tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
-						return
-					case res := <-resChan:
-						if res != nil && res.winner != nil {
-							winPoSts = append(winPoSts, res) //nolint:staticcheck
-						} else if res.err != nil {
-							if len(tMining.err) > DefaultMaxErrCounts {
-								tMining.err = tMining.err[:DefaultMaxErrCounts-2]
-							}
-							tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
-						}
-					}
-				}()
-
-			}
-		}
-		wg.Wait()
-		m.lkWPP.Unlock()
-
-		log.Infow("mining compute end", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
-
-		if len(winPoSts) > 0 {
-			// get the base again in order to get all the blocks in the previous round as much as possible
-			tbase, err := m.GetBestMiningCandidate(ctx)
-			if err == nil {
-				// rule:
-				//
-				//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain revert)
-				//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
-				if !tbase.TipSet.Equals(base.TipSet) {
-					if tbase.TipSet.At(0).Equals(base.TipSet.At(0)) {
-						log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
-						base = tbase
-					} else {
-						log.Warnw("bases is invalid", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 					}
 				}
 			}
-			lastBase = *base
+		}
+		lastBase = *base
 
-			// get pending messages early,
+		// After the chain is forked, the blocks based on the old bases will be invalidated,
+		// if continue to generate wrong blocks, it will affect the accuracy of slashfilter,
+		// also, the fork-based block generation is meaningless.
+		if !isChainForked && len(winPoSts) > 0 {
+			// get pending messages early
 			ticketQualitys := make([]float64, len(winPoSts))
 			for idx, res := range winPoSts {
 				ticketQualitys[idx] = res.ticket.Quality()
@@ -424,7 +348,6 @@ minerLoop:
 			var blks []*types2.BlockMsg
 			for idx, res := range winPoSts {
 				tRes := res
-				// TODO: winning post proof
 				var b *types2.BlockMsg
 				if len(msgs) > idx {
 					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
@@ -470,7 +393,7 @@ minerLoop:
 			}
 
 			if len(blks) > 0 {
-				btime := time.Unix(int64(blks[0].Header.Timestamp), 0)
+				btime := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*(uint64(base.NullRounds)+1)), 0)
 				now := build.Clock.Now()
 				switch {
 				case btime == now:
@@ -492,7 +415,7 @@ minerLoop:
 							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 							return
 						} else if exists {
-							log.Error("<!!> SLASH FILTER ERROR: double-fork mining faults")
+							log.Error("created a block at the same height as another block we've created")
 							return
 						}
 
@@ -506,51 +429,157 @@ minerLoop:
 							return
 						}
 
-						if err := m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
-							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+						if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Success); err != nil {
+							log.Errorf("failed to put block: %s", err)
 						}
 					}(b)
 				}
-
-				// ToDo Under normal circumstances, when the block is created in a cycle,
-				// the block is broadcast at the time of (timestamp),
-				// and the latest block is often not received directly from the next round,
-				// resulting in  lastbase==base staying in the previous cycle,
-				// so that it will be broadcast again. Jump one cycle (L280), miss a cycle and possibly produce blocks.
-
-				nextRound := time.Unix(int64(blks[0].Header.Timestamp)+int64(build.PropagationDelaySecs), 0)
-
-				select {
-				case <-build.Clock.After(build.Clock.Until(nextRound)):
-				case <-m.stop:
-					stopping := m.stopping
-					m.stop = nil
-					m.stopping = nil
-					close(stopping)
-					return
-				}
 			}
 		} else {
-			lastBase = *base
-
-			base.NullRounds++
 			log.Info("no block and increase nullround")
-			// Wait until the next epoch, plus the propagation delay, so a new tipset
-			// has enough time to form.
-			//
-			// See:  https://github.com/filecoin-project/venus-miner/issues/1845
-			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
-
-			select {
-			case <-build.Clock.After(build.Clock.Until(nextRound)):
-			case <-m.stop:
-				stopping := m.stopping
-				m.stop = nil
-				m.stopping = nil
-				close(stopping)
-				return
-			}
 		}
+
+		// Wait until the next epoch, plus the propagation delay, so a new tipset
+		// has enough time to form.
+		m.untilNextEpoch(base)
+	}
+}
+
+func (m *Miner) getLatestBase(ctx context.Context) (*MiningBase, time.Duration, error) {
+	var base *MiningBase
+	var onDone func(bool, abi.ChainEpoch, error)
+	var injectNulls abi.ChainEpoch
+
+	for {
+		prebase, err := m.GetBestMiningCandidate(ctx)
+		if err != nil {
+			return nil, time.Second * 5, fmt.Errorf("get best mining candidate: %w", err)
+		}
+
+		if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
+			base = prebase
+			break
+		}
+		if base != nil {
+			onDone(false, 0, nil)
+		}
+
+		// TODO: need to change the orchestration here. the problem is that
+		// we are waiting *after* we enter this loop and selecta mining
+		// candidate, which is almost certain to change in multiminer
+		// tests. Instead, we should block before entering the loop, so
+		// that when the test 'MineOne' function is triggered, we pull our
+		// best mining candidate at that time.
+
+		// Wait until propagation delay period after block we plan to mine on
+		onDone, injectNulls, err = m.waitFunc(ctx, prebase.TipSet.MinTimestamp())
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		// just wait for the beacon entry to become available before we select our final mining base
+		_, err = m.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
+		if err != nil {
+			return nil, time.Second, fmt.Errorf("getting beacon entry: %w", err)
+		}
+
+		base = prebase
+	}
+
+	base.NullRounds += injectNulls // testing
+
+	return base, 0, nil
+}
+
+func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStRes {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+
+	var (
+		winPoSts []*winPoStRes
+		wg       sync.WaitGroup
+	)
+
+	for addr, mining := range m.minerWPPMap {
+		if mining.isMining {
+			wg.Add(1)
+			tMining := mining
+			tAddr := addr
+
+			go func() {
+				defer wg.Done()
+
+				// set timeout for miner once
+				tCtx, tCtxCancel := context.WithTimeout(ctx, build.MinerOnceTimeout)
+				defer tCtxCancel()
+
+				resChan, err := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
+				if err != nil {
+					log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
+					return
+				}
+
+				// waiting for mining results
+				select {
+				case <-tCtx.Done():
+					log.Errorf("mining timeout for %s", tAddr.String())
+
+					if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+						Height: base.TipSet.Height() + base.NullRounds + 1,
+						Miner:  tAddr,
+					}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Timeout); err != nil {
+						log.Errorf("failed to record mining timeout: %s", err)
+					}
+
+					if len(tMining.err) >= DefaultMaxErrCounts {
+						tMining.err = tMining.err[:DefaultMaxErrCounts-2]
+					}
+					tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
+					return
+				case res := <-resChan:
+					if res != nil {
+						if res.err != nil {
+							if res.winner != nil {
+								// record to db only use mysql
+								if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+									Height: base.TipSet.Height() + base.NullRounds + 1,
+									Miner:  tAddr,
+								}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+									log.Errorf("failed to record winner: %s", err)
+								}
+							}
+							if len(tMining.err) > DefaultMaxErrCounts {
+								tMining.err = tMining.err[:DefaultMaxErrCounts-2]
+							}
+							tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
+						} else if res.winner != nil {
+							winPoSts = append(winPoSts, res) //nolint:staticcheck
+						}
+					}
+				}
+			}()
+
+		}
+	}
+
+	wg.Wait()
+
+	return winPoSts
+}
+
+func (m *Miner) untilNextEpoch(base *MiningBase) {
+	base.NullRounds++
+	nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
+
+	select {
+	case <-build.Clock.After(build.Clock.Until(nextRound)):
+	case <-m.stop:
+		stopping := m.stopping
+		m.stop = nil
+		m.stopping = nil
+		close(stopping)
+		return
 	}
 }
 
@@ -705,18 +734,26 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		tIsWinner := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket))
+		// record to db only use mysql
+		if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+			Height:  base.TipSet.Height() + base.NullRounds + 1,
+			Miner:   addr,
+			Parents: base.TipSet.Key().Cids(),
+		}, base.TipSet.Height()+base.NullRounds, time.Now(), slashfilter.Mining); err != nil {
+			log.Errorf("failed to record winner: %s", err)
+		}
 
 		buf := new(bytes.Buffer)
 		if err := addr.MarshalCBOR(buf); err != nil {
 			log.Errorf("failed to marshal miner address: %s", err)
-			out <- &winPoStRes{addr: addr, err: err}
+			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
 
 		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
 			log.Errorf("failed to get randomness for winning post: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, err: err}
+			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
 		prand := abi.PoStRandomness(r)
@@ -727,14 +764,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		nv, err := m.api.StateNetworkVersion(ctx, base.TipSet.Key())
 		if err != nil {
 			log.Errorf("failed to get network version: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, err: err}
+			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
 
 		postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
 		if err != nil {
 			log.Errorf("failed to compute winning post proof: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, err: err}
+			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
 
@@ -828,7 +865,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 		return blockMsg, err
 	}
 
-	// ToDo check if BlockHeader is signed
+	// block signature check
 	if blockMsg.Header.BlockSig == nil {
 		var sign SignFunc
 		account := ""
@@ -861,215 +898,6 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 	}
 
 	return blockMsg, err
-}
-
-func (m *Miner) ManualStart(ctx context.Context, addrs []address.Address) error {
-	m.lkWPP.Lock()
-	defer m.lkWPP.Unlock()
-
-	if len(addrs) > 0 {
-		for _, addr := range addrs {
-			if _, ok := m.minerWPPMap[addr]; ok {
-				m.minerWPPMap[addr].isMining = true
-			} else {
-				return fmt.Errorf("%s not exist", addr)
-			}
-		}
-	} else {
-		for k := range m.minerWPPMap {
-			m.minerWPPMap[k].isMining = true
-		}
-	}
-
-	return nil
-}
-
-func (m *Miner) ManualStop(ctx context.Context, addrs []address.Address) error {
-	m.lkWPP.Lock()
-	defer m.lkWPP.Unlock()
-
-	if len(addrs) > 0 {
-		for _, addr := range addrs {
-			if _, ok := m.minerWPPMap[addr]; ok {
-				m.minerWPPMap[addr].isMining = false
-			} else {
-				return fmt.Errorf("%s not exist", addr)
-			}
-		}
-	} else {
-		for k := range m.minerWPPMap {
-			m.minerWPPMap[k].isMining = false
-		}
-	}
-
-	return nil
-}
-
-func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]types.MinerInfo, error) {
-	miners, err := m.minerManager.Update(ctx, skip, limit)
-	if err != nil {
-		return nil, err
-	}
-
-	// update minerWPPMap
-	m.lkWPP.Lock()
-	m.minerWPPMap = make(map[address.Address]*minerWPP)
-	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
-		if err != nil {
-			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
-			continue
-		}
-
-		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name, isMining: true}
-	}
-	m.lkWPP.Unlock()
-
-	return miners, nil
-}
-
-func (m *Miner) ListAddress(ctx context.Context) ([]types.MinerInfo, error) {
-	m.lkWPP.Lock()
-	defer m.lkWPP.Unlock()
-
-	return m.minerManager.List(ctx)
-}
-
-func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([]types.MinerState, error) {
-	m.lkWPP.Lock()
-	defer m.lkWPP.Unlock()
-
-	res := make([]types.MinerState, 0)
-	if len(addrs) > 0 {
-		for _, addr := range addrs {
-			if val, ok := m.minerWPPMap[addr]; ok {
-				res = append(res, types.MinerState{Addr: addr, IsMining: val.isMining, Err: val.err})
-			}
-		}
-	} else {
-		for k, v := range m.minerWPPMap {
-			res = append(res, types.MinerState{Addr: k, IsMining: v.isMining, Err: v.err})
-		}
-	}
-
-	return res, nil
-}
-
-func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr address.Address, api SignFunc, epoch abi.ChainEpoch) (*types2.ElectionProof, error) {
-	ts, err := m.api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types2.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	mbi, err := m.api.MinerGetBaseInfo(ctx, mAddr, ts.Height()+1, ts.Key())
-	if err != nil {
-		return nil, err
-	}
-
-	if mbi == nil {
-		return nil, fmt.Errorf("can't find base info on chain, addr %s should be a new miner or no sector found before chain finality", mAddr.String())
-	}
-
-	if !mbi.EligibleForMining {
-		return nil, fmt.Errorf("%s slashed or just have no power yet", mAddr.String())
-	}
-
-	rbase := mbi.PrevBeaconEntry
-	if len(mbi.BeaconEntries) > 0 {
-		rbase = mbi.BeaconEntries[len(mbi.BeaconEntries)-1]
-	}
-
-	return IsRoundWinner(ctx, ts.Height()+1, account, mAddr, rbase, mbi, api)
-}
-
-func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]types.CountWinners, error) {
-	log.Infof("count winners, addrs: %v, start: %v, end: %v", addrs, start, end)
-
-	ts, err := m.api.ChainHead(ctx)
-	if err != nil {
-		log.Error("get chain head", err)
-		return []types.CountWinners{}, err
-	}
-
-	if start > ts.Height() || end > ts.Height() {
-		return []types.CountWinners{}, fmt.Errorf("start or end greater than cur tipset height: %v", ts.Height())
-	}
-
-	res := make([]types.CountWinners, 0)
-	wg := sync.WaitGroup{}
-
-	mAddrs := make([]address.Address, 0)
-	m.lkWPP.Lock()
-	if len(addrs) > 0 {
-		for _, addr := range addrs {
-			if _, ok := m.minerWPPMap[addr]; ok {
-				mAddrs = append(mAddrs, addr)
-			} else {
-				res = append(res, types.CountWinners{Msg: "miner not exist", Miner: addr})
-			}
-		}
-	} else {
-		for k := range m.minerWPPMap {
-			mAddrs = append(mAddrs, k)
-		}
-	}
-	m.lkWPP.Unlock()
-
-	if len(mAddrs) > 0 {
-		wg.Add(len(mAddrs))
-		for _, addr := range mAddrs {
-			tAddr := addr
-
-			go func() {
-				defer wg.Done()
-
-				winInfo := make([]types.SimpleWinInfo, 0)
-				totalWinCount := int64(0)
-
-				var sign SignFunc = nil
-				account := ""
-				if val, ok := m.minerWPPMap[tAddr]; ok {
-					account = val.account
-					walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
-					if err != nil {
-						log.Errorf("[%v] create wallet RPC failed: %s", tAddr, err)
-						res = append(res, types.CountWinners{Msg: err.Error(), Miner: tAddr})
-						return
-					}
-					defer closer()
-					sign = walletAPI.WalletSign
-				} else {
-					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
-					return
-				}
-
-				wgWin := sync.WaitGroup{}
-				for epoch := start; epoch <= end; epoch++ {
-					wgWin.Add(1)
-
-					go func(epoch abi.ChainEpoch) {
-						defer wgWin.Done()
-
-						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
-						if err != nil {
-							log.Errorf("generate winner met error %s", err)
-							return
-						}
-
-						if winner != nil {
-							totalWinCount += winner.WinCount
-							winInfo = append(winInfo, types.SimpleWinInfo{Epoch: epoch + 1, WinCount: winner.WinCount})
-						}
-					}(epoch)
-				}
-				wgWin.Wait()
-				res = append(res, types.CountWinners{Miner: tAddr, TotalWinCount: totalWinCount, WinEpochList: winInfo})
-			}()
-		}
-		wg.Wait()
-	}
-
-	return res, nil
 }
 
 func (m *Miner) SyncStatus(ctx context.Context) {
