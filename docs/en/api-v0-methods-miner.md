@@ -20,6 +20,8 @@
   * [StatesForMining](#StatesForMining)
 * [Update](#Update)
   * [UpdateAddress](#UpdateAddress)
+* [Warmup](#Warmup)
+  * [WarmupForMiner](#WarmupForMiner)
 ## 
 
 
@@ -275,4 +277,21 @@ Response:
   }
 ]
 ```
+
+## Warmup
+
+
+### WarmupForMiner
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "t01234"
+]
+```
+
+Response: `{}`
 
