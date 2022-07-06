@@ -137,25 +137,29 @@ func (f *mysqlSlashFilter) HasBlock(ctx context.Context, bh *types.BlockHeader) 
 func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch, t time.Time, state StateMining) error {
 	var blk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
-	if err == gorm.ErrRecordNotFound {
-		mblk := &MinedBlock{
-			ParentEpoch: int64(parentEpoch),
-			ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
-			Epoch:       int64(bh.Height),
-			Miner:       bh.Miner.String(),
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			mblk := &MinedBlock{
+				ParentEpoch: int64(parentEpoch),
+				ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
+				Epoch:       int64(bh.Height),
+				Miner:       bh.Miner.String(),
 
-			MineState: state,
+				MineState: state,
+			}
+
+			if bh.Ticket != nil {
+				mblk.Cid = bh.Cid().String()
+			}
+
+			if !t.IsZero() {
+				mblk.WinningAt = t
+			}
+
+			return f._db.Save(mblk).Error
 		}
 
-		if bh.Ticket != nil {
-			mblk.Cid = bh.Cid().String()
-		}
-
-		if !t.IsZero() {
-			mblk.WinningAt = t
-		}
-
-		return f._db.Save(mblk).Error
+		return fmt.Errorf("query record failed: %w", err)
 	}
 
 	updateColumns := make(map[string]interface{})

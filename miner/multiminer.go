@@ -330,7 +330,6 @@ minerLoop:
 		// After the chain is forked, the blocks based on the old bases will be invalidated,
 		// if continue to generate wrong blocks, it will affect the accuracy of slashfilter,
 		// also, the fork-based block generation is meaningless.
-		var nextRound time.Time
 		if !isChainForked && len(winPoSts) > 0 {
 			// get pending messages early
 			ticketQualitys := make([]float64, len(winPoSts))
@@ -436,16 +435,13 @@ minerLoop:
 					}(b)
 				}
 			}
-			nextRound = time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds+1))+int64(build.PropagationDelaySecs), 0)
 		} else {
-			base.NullRounds++
-			nextRound = time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
 			log.Info("no block and increase nullround")
 		}
 
 		// Wait until the next epoch, plus the propagation delay, so a new tipset
 		// has enough time to form.
-		m.untilNextEpoch(nextRound)
+		m.untilNextEpoch(base)
 	}
 }
 
@@ -572,10 +568,12 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 	return winPoSts
 }
 
-func (m *Miner) untilNextEpoch(tt time.Time) {
+func (m *Miner) untilNextEpoch(base *MiningBase) {
+	base.NullRounds++
+	nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
 
 	select {
-	case <-build.Clock.After(build.Clock.Until(tt)):
+	case <-build.Clock.After(build.Clock.Until(nextRound)):
 	case <-m.stop:
 		stopping := m.stopping
 		m.stop = nil
