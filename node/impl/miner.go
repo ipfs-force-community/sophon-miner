@@ -33,6 +33,10 @@ func (m *MinerAPI) CountWinners(ctx context.Context, addrs []address.Address, st
 	return m.MiningAPI.CountWinners(ctx, addrs, start, end)
 }
 
+func (m *MinerAPI) WarmupForMiner(ctx context.Context, maddr address.Address) error {
+	return m.MiningAPI.WarmupForMiner(ctx, maddr)
+}
+
 func (m *MinerAPI) Start(ctx context.Context, addrs []address.Address) error {
 	return m.MiningAPI.ManualStart(ctx, addrs)
 }
