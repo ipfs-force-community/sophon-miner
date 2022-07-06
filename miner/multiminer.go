@@ -569,8 +569,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 }
 
 func (m *Miner) untilNextEpoch(base *MiningBase) {
-	base.NullRounds++
-	nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
+	nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds+1))+int64(build.PropagationDelaySecs), 0)
 
 	select {
 	case <-build.Clock.After(build.Clock.Until(nextRound)):
