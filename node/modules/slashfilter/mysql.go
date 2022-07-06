@@ -33,7 +33,7 @@ type MinedBlock struct {
 
 	WinningAt time.Time   `gorm:"column:winning_at;type:datetime;NOT NULL"`
 	MineState StateMining `gorm:"column:mine_state;type:tinyint(4);default:0;comment:0-mining,1-success,2-timeout,3-chain forked,4-error;NOT NULL"`
-	Consuming int64       `gorm:"column:consuming;type:bigint(10);NOT NULL"`
+	Consuming int64       `gorm:"column:consuming;type:bigint(10);NOT NULL"` // reserved
 }
 
 func (m *MinedBlock) TableName() string {
@@ -160,9 +160,10 @@ func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, 
 
 	updateColumns := make(map[string]interface{})
 	updateColumns["parent_epoch"] = parentEpoch
-	updateColumns["parent_key"] = types.NewTipSetKey(bh.Parents...).String()
+	if len(bh.Parents) > 0 {
+		updateColumns["parent_key"] = types.NewTipSetKey(bh.Parents...).String()
+	}
 	updateColumns["mine_state"] = state
-
 	if bh.Ticket != nil {
 		updateColumns["cid"] = bh.Cid().String()
 	}
