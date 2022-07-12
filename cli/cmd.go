@@ -29,7 +29,7 @@ const (
 )
 
 func GetAPIInfo(ctx *cli.Context) (config.APIInfo, error) {
-	p, err := homedir.Expand(ctx.String("miner-repo"))
+	p, err := homedir.Expand(ctx.String("repo"))
 	if err != nil {
 		return config.APIInfo{}, fmt.Errorf("could not expand home dir: %w", err)
 	}
