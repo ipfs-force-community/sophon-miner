@@ -11,7 +11,7 @@ import (
 
 var log = logging.Logger("main")
 
-const FlagMinerRepo = "miner-repo"
+const FlagMinerRepo = "repo"
 
 func main() {
 	logger.SetupLogLevels()
@@ -37,6 +37,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    FlagMinerRepo,
 				EnvVars: []string{"VENUS_MINER_PATH"},
+				Aliases: []string{"miner-repo"},
 				Value:   "~/.venusminer",
 				Usage:   "Specify miner repo path, env VENUS_MINER_PATH",
 			},
