@@ -8,6 +8,13 @@ import (
 
 var log = logging.Logger("config")
 
+type MetricsExporterType string
+
+const (
+	METPrometheus MetricsExporterType = "prometheus"
+	METGraphite   MetricsExporterType = "graphite"
+)
+
 type MySQLConfig struct {
 	Conn            string        `json:"conn"`
 	MaxOpenConn     int           `json:"maxOpenConn"`     // 100
@@ -56,6 +63,59 @@ func newDefaultTraceConfig() *TraceConfig {
 	}
 }
 
+type MetricsPrometheusExporterConfig struct {
+	RegistryType string `json:"registryType"`
+	Path         string `json:"path"`
+}
+
+func newMetricsPrometheusExporterConfig() *MetricsPrometheusExporterConfig {
+	return &MetricsPrometheusExporterConfig{
+		RegistryType: "define",
+		Path:         "/debug/metrics",
+	}
+}
+
+type MetricsGraphiteExporterConfig struct {
+	Namespace string `json:"namespace"`
+	Host      string `json:"host"`
+	Port      int    `json:"port"`
+}
+
+func newMetricsGraphiteExporterConfig() *MetricsGraphiteExporterConfig {
+	return &MetricsGraphiteExporterConfig{
+		Namespace: "venus-miner",
+		Host:      "127.0.0.1",
+		Port:      4568,
+	}
+}
+
+type MetricsExporterConfig struct {
+	Type MetricsExporterType `json:"type"`
+
+	Prometheus *MetricsPrometheusExporterConfig `json:"prometheus"`
+	Graphite   *MetricsGraphiteExporterConfig   `json:"graphite"`
+}
+
+func newDefaultMetricsExporterConfig() *MetricsExporterConfig {
+	return &MetricsExporterConfig{
+		Type:       METPrometheus,
+		Prometheus: newMetricsPrometheusExporterConfig(),
+		Graphite:   newMetricsGraphiteExporterConfig(),
+	}
+}
+
+type MetricsConfig struct {
+	Enabled  bool                   `json:"enabled"`
+	Exporter *MetricsExporterConfig `json:"exporter"`
+}
+
+func newDefaultMetricsConfig() *MetricsConfig {
+	return &MetricsConfig{
+		Enabled:  false,
+		Exporter: newDefaultMetricsExporterConfig(),
+	}
+}
+
 type MinerConfig struct {
 	FullNode *APIInfo     `json:"fullnode"`
 	Gateway  *GatewayNode `json:"gateway"`
@@ -63,7 +123,8 @@ type MinerConfig struct {
 
 	SlashFilter *SlashFilterConfig
 
-	Tracing *TraceConfig `json:"tracing"`
+	Tracing *TraceConfig   `json:"tracing"`
+	Metrics *MetricsConfig `json:"metrics"`
 }
 
 func DefaultMinerConfig() *MinerConfig {
@@ -73,6 +134,7 @@ func DefaultMinerConfig() *MinerConfig {
 		Auth:        defaultAPIInfo(),
 		SlashFilter: newSlashFilterConfig(),
 		Tracing:     newDefaultTraceConfig(),
+		Metrics:     newDefaultMetricsConfig(),
 	}
 
 	return minerCfg

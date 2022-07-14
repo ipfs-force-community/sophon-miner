@@ -3,22 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
-	"go.opencensus.io/tag"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	lapi "github.com/filecoin-project/venus-miner/api"
 	lcli "github.com/filecoin-project/venus-miner/cli"
@@ -145,11 +142,11 @@ var runCmd = &cli.Command{
 			}
 		}()
 
-		return serveRPC(minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
+		return serveRPC(cfg.Metrics, minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
 	},
 }
 
-func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64) error {
+func serveRPC(metricsConfig *config.MetricsConfig, minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64) error {
 	lst, err := manet.Listen(addr)
 	if err != nil {
 		return fmt.Errorf("could not listen: %w", err)
@@ -165,8 +162,16 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 
 	mux := mux.NewRouter()
 	mux.Handle("/rpc/v0", rpcServer)
-	mux.Handle("/debug/metrics", metrics.Exporter())
 	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+	// metrics prometheus-exporter
+	if metricsConfig.Enabled && metricsConfig.Exporter.Type == config.METPrometheus {
+		exporter, err := metrics.PrometheusExporter(metrics.RegistryType(metricsConfig.Exporter.Prometheus.RegistryType))
+		if err != nil {
+			return err
+		}
+		mux.Handle(metricsConfig.Exporter.Prometheus.Path, exporter)
+	}
 
 	ah := &auth.Handler{
 		Verify: minerAPI.AuthVerify,
@@ -175,10 +180,6 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 
 	srv := &http.Server{
 		Handler: ah,
-		BaseContext: func(listener net.Listener) context.Context {
-			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "venus-miner"))
-			return ctx
-		},
 	}
 
 	sigChan := make(chan os.Signal, 2)
