@@ -172,16 +172,25 @@ func serveRPC(metricsConfig *config.MetricsConfig, minerAPI lapi.MinerAPI, stop 
 
 	mux := mux.NewRouter()
 	mux.Handle("/rpc/v0", rpcServer)
-	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 	// metrics prometheus-exporter
-	if metricsConfig.Enabled && metricsConfig.Exporter.Type == config.METPrometheus {
-		exporter, err := metrics.PrometheusExporter(metrics.RegistryType(metricsConfig.Exporter.Prometheus.RegistryType))
-		if err != nil {
-			return err
+	if metricsConfig.Enabled {
+		switch metricsConfig.Exporter.Type {
+		case config.METPrometheus:
+			exporter, err := metrics.PrometheusExporter(metrics.RegistryType(metricsConfig.Exporter.Prometheus.RegistryType))
+			if err != nil {
+				return err
+			}
+			log.Infof("prometheus handle path: %s", metricsConfig.Exporter.Prometheus.Path)
+			mux.Handle(metricsConfig.Exporter.Prometheus.Path, exporter)
+		case config.METGraphite:
+			if err := metrics.RegisterGraphiteExporter(metricsConfig.Exporter.Graphite); err != nil {
+				log.Errorf("failed to register the exporter: %v", err)
+			}
 		}
-		mux.Handle(metricsConfig.Exporter.Prometheus.Path, exporter)
 	}
+
+	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 	ah := &auth.Handler{
 		Verify: minerAPI.AuthVerify,

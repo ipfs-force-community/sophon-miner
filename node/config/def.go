@@ -83,7 +83,7 @@ type MetricsGraphiteExporterConfig struct {
 
 func newMetricsGraphiteExporterConfig() *MetricsGraphiteExporterConfig {
 	return &MetricsGraphiteExporterConfig{
-		Namespace: "venus-miner",
+		Namespace: "miner",
 		Host:      "127.0.0.1",
 		Port:      4568,
 	}

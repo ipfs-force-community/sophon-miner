@@ -3,6 +3,7 @@ module github.com/filecoin-project/venus-miner
 go 1.17
 
 require (
+	contrib.go.opencensus.io/exporter/graphite v0.0.0-20200424223504-26b90655e0ce
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0
 	github.com/BurntSushi/toml v0.4.1

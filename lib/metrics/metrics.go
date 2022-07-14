@@ -32,14 +32,17 @@ var (
 	GetBaseInfoDurationView = &view.View{
 		Measure:     GetBaseInfoDuration,
 		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{MinerID},
 	}
 	ComputeTicketDurationView = &view.View{
 		Measure:     ComputeTicketDuration,
 		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{MinerID},
 	}
 	IsRoundWinnerDurationView = &view.View{
 		Measure:     IsRoundWinnerDuration,
 		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{MinerID},
 	}
 	ComputeProofDurationView = &view.View{
 		Measure:     ComputeProofDuration,
