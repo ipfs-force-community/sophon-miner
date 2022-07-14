@@ -76,16 +76,18 @@ func newMetricsPrometheusExporterConfig() *MetricsPrometheusExporterConfig {
 }
 
 type MetricsGraphiteExporterConfig struct {
-	Namespace string `json:"namespace"`
-	Host      string `json:"host"`
-	Port      int    `json:"port"`
+	Namespace       string `json:"namespace"`
+	Host            string `json:"host"`
+	Port            int    `json:"port"`
+	ReportingPeriod int64  `json:"reportingPeriod"`
 }
 
 func newMetricsGraphiteExporterConfig() *MetricsGraphiteExporterConfig {
 	return &MetricsGraphiteExporterConfig{
-		Namespace: "miner",
-		Host:      "127.0.0.1",
-		Port:      4568,
+		Namespace:       "miner",
+		Host:            "127.0.0.1",
+		Port:            4568,
+		ReportingPeriod: 10,
 	}
 }
 

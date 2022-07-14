@@ -107,7 +107,9 @@ BlockRecord = "cache"
       # graphite exporter 收集器服务地址
       Host = "127.0.0.1"
       # graphite exporter 收集器服务监听端口
-      Port = 4568  
+      Port = 4568
+      # 上报周期，单位为 秒（s）
+      ReportingPeriod = 10
 ```
 
 如果选择 `Metrics.Exporter` 为 `Prometheus`, 可通过命令行快速查看指标：

@@ -57,14 +57,14 @@ func PrometheusExporter(rtType RegistryType) (http.Handler, error) {
 }
 
 func RegisterGraphiteExporter(cfg *config.MetricsGraphiteExporterConfig) error {
-	exporter, err := graphite.NewExporter(graphite.Options{Namespace: "venus", Host: "127.0.0.1", Port: 4568})
+	exporter, err := graphite.NewExporter(graphite.Options{Namespace: cfg.Namespace, Host: cfg.Host, Port: cfg.Port})
 	if err != nil {
 		return fmt.Errorf("failed to create graphite exporter: %w", err)
 	}
 
 	view.RegisterExporter(exporter)
 
-	view.SetReportingPeriod(5 * time.Second)
+	view.SetReportingPeriod(time.Duration(cfg.ReportingPeriod) * time.Second)
 
 	return nil
 }
