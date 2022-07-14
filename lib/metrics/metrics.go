@@ -16,7 +16,7 @@ var (
 
 // Distribution
 var defaultMillisecondsDistribution = view.Distribution(100, 200, 400, 600, 800, 1000, 2000, 20000)
-var defaultSecondsDistribution = view.Distribution(3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 40, 60, 90, 120, 180)
+var defaultSecondsDistribution = view.Distribution(3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 180)
 
 var (
 	GetBaseInfoDuration   = stats.Float64("getbaseinfo_ms", "Duration of GetBaseInfo in miner", stats.UnitMilliseconds)
@@ -24,7 +24,7 @@ var (
 	IsRoundWinnerDuration = stats.Float64("isroundwinner_ms", "Duration of IsRoundWinner in miner", stats.UnitMilliseconds)
 	ComputeProofDuration  = stats.Float64("computeproof_s", "Duration of ComputeProof in miner", stats.UnitSeconds)
 
-	NumberOfBlock         = stats.Int64("number_of_blocks", "Number of production blocks", stats.UnitDimensionless)
+	NumberOfBlock         = stats.Int64("number_of_block", "Number of production blocks", stats.UnitDimensionless)
 	NumberOfIsRoundWinner = stats.Int64("number_of_isroundwinner", "Number of is round winner", stats.UnitDimensionless)
 )
 

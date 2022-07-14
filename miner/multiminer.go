@@ -11,6 +11,8 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
@@ -22,6 +24,7 @@ import (
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/lib/journal"
+	"github.com/filecoin-project/venus-miner/lib/metrics"
 	"github.com/filecoin-project/venus-miner/node/config"
 	miner_manager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
@@ -432,6 +435,13 @@ minerLoop:
 							return
 						}
 
+						// metrics: blocks
+						ctx, _ = tag.New(
+							ctx,
+							tag.Upsert(metrics.MinerID, bm.Header.Miner.String()),
+						)
+						stats.Record(ctx, metrics.NumberOfBlock.M(1))
+
 						if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Success); err != nil {
 							log.Errorf("failed to put block: %s", err)
 						}
@@ -665,6 +675,11 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 	out := make(chan *winPoStRes)
 
 	go func() {
+		partDone := metrics.TimerMilliseconds(ctx, metrics.GetBaseInfoDuration, addr.String())
+		defer func() {
+			partDone()
+		}()
+
 		mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
 		if err != nil {
 			log.Errorf("failed to get mining base info: %s, miner: %s", err, addr)
@@ -686,6 +701,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		tMBI := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "get base info", tMBI.Sub(start))
 
+		partDone() // GetBaseInfoDuration
+		partDone = metrics.TimerMilliseconds(ctx, metrics.ComputeTicketDuration, addr.String())
+
 		beaconPrev := mbi.PrevBeaconEntry
 		bvals := mbi.BeaconEntries
 
@@ -705,6 +723,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		tTicket := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "compute ticket", tTicket.Sub(tMBI))
+
+		partDone() // ComputeTicketDuration
+		partDone = metrics.TimerMilliseconds(ctx, metrics.IsRoundWinnerDuration, addr.String())
 
 		var sign SignFunc
 		if _, ok := m.minerWPPMap[addr]; ok {
@@ -736,6 +757,15 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		tIsWinner := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket))
+		partDone() // IsRoundWinnerDuration
+
+		// metrics: wins
+		ctx, _ = tag.New(
+			ctx,
+			tag.Upsert(metrics.MinerID, addr.String()),
+		)
+		stats.Record(ctx, metrics.NumberOfIsRoundWinner.M(1))
+
 		// record to db only use mysql
 		if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
 			Height:  base.TipSet.Height() + base.NullRounds + 1,
@@ -751,6 +781,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			out <- &winPoStRes{addr: addr, winner: winner, err: err}
 			return
 		}
+
+		partDone = metrics.TimerSeconds(ctx, metrics.ComputeProofDuration, addr.String())
 
 		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
