@@ -16,6 +16,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
+	"go.opencensus.io/stats/view"
 
 	lapi "github.com/filecoin-project/venus-miner/api"
 	lcli "github.com/filecoin-project/venus-miner/cli"
@@ -141,6 +142,15 @@ var runCmd = &cli.Command{
 				jaeger.Flush()
 			}
 		}()
+
+		// Register all metric views
+		if cfg.Metrics.Enabled {
+			if err := view.Register(
+				metrics.MinerNodeViews...,
+			); err != nil {
+				log.Fatalf("Cannot register the view: %v", err)
+			}
+		}
 
 		return serveRPC(cfg.Metrics, minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
 	},

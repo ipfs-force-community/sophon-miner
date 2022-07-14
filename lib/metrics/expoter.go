@@ -6,12 +6,9 @@ import (
 	_ "net/http/pprof"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
-	logging "github.com/ipfs/go-log/v2"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats/view"
 )
-
-var log = logging.Logger("metrics")
 
 type RegistryType string
 
