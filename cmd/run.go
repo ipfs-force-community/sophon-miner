@@ -184,9 +184,12 @@ func serveRPC(metricsConfig *config.MetricsConfig, minerAPI lapi.MinerAPI, stop 
 			log.Infof("prometheus handle path: %s", metricsConfig.Exporter.Prometheus.Path)
 			mux.Handle(metricsConfig.Exporter.Prometheus.Path, exporter)
 		case config.METGraphite:
-			if err := metrics.RegisterGraphiteExporter(metricsConfig.Exporter.Graphite); err != nil {
+			if err := metrics.RegisterGraphiteExporter(metricsConfig.Exporter.Graphite.Namespace, metricsConfig.Exporter.Graphite.Host,
+				metricsConfig.Exporter.Graphite.Port, metricsConfig.Exporter.Graphite.ReportingPeriod); err != nil {
 				log.Errorf("failed to register the exporter: %v", err)
 			}
+		default:
+			log.Warnf("invalid exporter type: %s", metricsConfig.Exporter.Type)
 		}
 	}
 

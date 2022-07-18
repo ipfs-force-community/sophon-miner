@@ -10,8 +10,6 @@ import (
 	"contrib.go.opencensus.io/exporter/prometheus"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats/view"
-
-	"github.com/filecoin-project/venus-miner/node/config"
 )
 
 type RegistryType string
@@ -56,15 +54,15 @@ func PrometheusExporter(rtType RegistryType) (http.Handler, error) {
 	return exporter, nil
 }
 
-func RegisterGraphiteExporter(cfg *config.MetricsGraphiteExporterConfig) error {
-	exporter, err := graphite.NewExporter(graphite.Options{Namespace: cfg.Namespace, Host: cfg.Host, Port: cfg.Port})
+func RegisterGraphiteExporter(namespace, host string, port int, reportPeriod int64) error {
+	exporter, err := graphite.NewExporter(graphite.Options{Namespace: namespace, Host: host, Port: port})
 	if err != nil {
 		return fmt.Errorf("failed to create graphite exporter: %w", err)
 	}
 
 	view.RegisterExporter(exporter)
 
-	view.SetReportingPeriod(time.Duration(cfg.ReportingPeriod) * time.Second)
+	view.SetReportingPeriod(time.Duration(reportPeriod) * time.Second)
 
 	return nil
 }
