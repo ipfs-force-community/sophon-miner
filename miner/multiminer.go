@@ -421,6 +421,9 @@ minerLoop:
 
 						if err := m.sf.MinedBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
 							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+							if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+								log.Errorf("failed to put block: %s", err)
+							}
 							return
 						}
 
