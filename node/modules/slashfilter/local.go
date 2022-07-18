@@ -35,8 +35,8 @@ func (f *localSlashFilter) HasBlock(ctx context.Context, bh *vtypes.BlockHeader)
 }
 
 func (f *localSlashFilter) PutBlock(ctx context.Context, bh *vtypes.BlockHeader, parentEpoch abi.ChainEpoch, t time.Time, state StateMining) error {
-	// It is not recorded locally when win round
-	if bh.Ticket == nil {
+	// Only successful block generation is recorded locally
+	if state != Success {
 		return nil
 	}
 
