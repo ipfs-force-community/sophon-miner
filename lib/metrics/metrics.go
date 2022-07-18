@@ -5,25 +5,97 @@ import (
 	"time"
 
 	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 )
 
 // Global Tags
 var (
-	Endpoint, _     = tag.NewKey("endpoint")
-	APIInterface, _ = tag.NewKey("api") // to distinguish between gateway api and full node api endpoint calls
+	MinerID, _ = tag.NewKey("miner_id")
 )
 
-// SinceInMilliseconds returns the duration of time since the provide time as a float64.
+// Distribution
+var defaultMillisecondsDistribution = view.Distribution(100, 200, 400, 600, 800, 1000, 2000, 20000)
+var defaultSecondsDistribution = view.Distribution(3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 180)
+
+var (
+	GetBaseInfoDuration   = stats.Float64("getbaseinfo_ms", "Duration of GetBaseInfo in miner", stats.UnitMilliseconds)
+	ComputeTicketDuration = stats.Float64("computeticket_ms", "Duration of ComputeTicket in miner", stats.UnitMilliseconds)
+	IsRoundWinnerDuration = stats.Float64("isroundwinner_ms", "Duration of IsRoundWinner in miner", stats.UnitMilliseconds)
+	ComputeProofDuration  = stats.Float64("computeproof_s", "Duration of ComputeProof in miner", stats.UnitSeconds)
+
+	NumberOfBlock         = stats.Int64("number_of_block", "Number of production blocks", stats.UnitDimensionless)
+	NumberOfIsRoundWinner = stats.Int64("number_of_isroundwinner", "Number of is round winner", stats.UnitDimensionless)
+)
+
+var (
+	GetBaseInfoDurationView = &view.View{
+		Measure:     GetBaseInfoDuration,
+		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{MinerID},
+	}
+	ComputeTicketDurationView = &view.View{
+		Measure:     ComputeTicketDuration,
+		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{MinerID},
+	}
+	IsRoundWinnerDurationView = &view.View{
+		Measure:     IsRoundWinnerDuration,
+		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{MinerID},
+	}
+	ComputeProofDurationView = &view.View{
+		Measure:     ComputeProofDuration,
+		Aggregation: defaultSecondsDistribution,
+		TagKeys:     []tag.Key{MinerID},
+	}
+	NumberOfBlockView = &view.View{
+		Measure:     NumberOfBlock,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{MinerID},
+	}
+	IsRoundWinnerView = &view.View{
+		Measure:     NumberOfIsRoundWinner,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{MinerID},
+	}
+)
+
+var MinerNodeViews = []*view.View{
+	GetBaseInfoDurationView,
+	ComputeTicketDurationView,
+	IsRoundWinnerDurationView,
+	ComputeProofDurationView,
+	NumberOfBlockView,
+	IsRoundWinnerView,
+}
+
 func SinceInMilliseconds(startTime time.Time) float64 {
 	return float64(time.Since(startTime).Nanoseconds()) / 1e6
 }
 
-// Timer is a function stopwatch, calling it starts the timer,
-// calling the returned function will record the duration.
-func Timer(ctx context.Context, m *stats.Float64Measure) func() {
+func TimerMilliseconds(ctx context.Context, m *stats.Float64Measure, minerID string) func() {
 	start := time.Now()
 	return func() {
+		ctx, _ = tag.New(
+			ctx,
+			tag.Upsert(MinerID, minerID),
+		)
 		stats.Record(ctx, m.M(SinceInMilliseconds(start)))
+	}
+}
+
+func SinceInSeconds(startTime time.Time) float64 {
+	return float64(time.Since(startTime).Microseconds()) / 1e6
+}
+
+func TimerSeconds(ctx context.Context, m *stats.Float64Measure, minerID string) func() {
+	start := time.Now()
+	return func() {
+		ctx, _ = tag.New(
+			ctx,
+			tag.Upsert(MinerID, minerID),
+		)
+		stats.Record(ctx, m.M(SinceInSeconds(start)))
 	}
 }

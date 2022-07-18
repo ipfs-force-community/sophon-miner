@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
@@ -25,6 +28,9 @@ func main() {
 		configCmd,
 	}
 
+	ctx, span := trace.StartSpan(context.Background(), "/cli")
+	defer span.End()
+
 	app := &cli.App{
 		Name:                 "venus-miner",
 		Usage:                "Filecoin decentralized storage network miner",
@@ -46,6 +52,7 @@ func main() {
 		Commands: append(local, lcli.CommonCommands...),
 	}
 	app.Setup()
+	app.Metadata["traceContext"] = ctx
 
 	lcli.RunApp(app)
 }
