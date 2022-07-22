@@ -12,12 +12,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/gorilla/mux"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/urfave/cli/v2"
-	"go.opencensus.io/stats/view"
-
 	lapi "github.com/filecoin-project/venus-miner/api"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/lib/metrics"
@@ -26,6 +20,10 @@ import (
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
 	"github.com/filecoin-project/venus-miner/types"
+	"github.com/gorilla/mux"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api"
@@ -143,20 +141,17 @@ var runCmd = &cli.Command{
 			}
 		}()
 
-		// Register all metric views
-		if cfg.Metrics.Enabled {
-			if err := view.Register(
-				metrics.MinerNodeViews...,
-			); err != nil {
-				log.Fatalf("Cannot register the view: %v", err)
-			}
+		// metrics
+		err = metrics.SetupMetrics(ctx, cfg.Metrics)
+		if err != nil {
+			return err
 		}
 
-		return serveRPC(cfg.Metrics, minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
+		return serveRPC(minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
 	},
 }
 
-func serveRPC(metricsConfig *config.MetricsConfig, minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64) error {
+func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64) error {
 	lst, err := manet.Listen(addr)
 	if err != nil {
 		return fmt.Errorf("could not listen: %w", err)
@@ -172,27 +167,6 @@ func serveRPC(metricsConfig *config.MetricsConfig, minerAPI lapi.MinerAPI, stop 
 
 	mux := mux.NewRouter()
 	mux.Handle("/rpc/v0", rpcServer)
-
-	// metrics prometheus-exporter
-	if metricsConfig.Enabled {
-		switch metricsConfig.Exporter.Type {
-		case config.METPrometheus:
-			exporter, err := metrics.PrometheusExporter(metrics.RegistryType(metricsConfig.Exporter.Prometheus.RegistryType))
-			if err != nil {
-				return err
-			}
-			log.Infof("prometheus handle path: %s", metricsConfig.Exporter.Prometheus.Path)
-			mux.Handle(metricsConfig.Exporter.Prometheus.Path, exporter)
-		case config.METGraphite:
-			if err := metrics.RegisterGraphiteExporter(metricsConfig.Exporter.Graphite.Namespace, metricsConfig.Exporter.Graphite.Host,
-				metricsConfig.Exporter.Graphite.Port, metricsConfig.Exporter.Graphite.ReportingPeriod); err != nil {
-				log.Errorf("failed to register the exporter: %v", err)
-			}
-		default:
-			log.Warnf("invalid exporter type: %s", metricsConfig.Exporter.Type)
-		}
-	}
-
 	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 	ah := &auth.Handler{

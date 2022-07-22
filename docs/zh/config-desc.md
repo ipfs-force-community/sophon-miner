@@ -94,20 +94,30 @@ BlockRecord = "cache"
 [Metrics]
   # 是否开启metrics指标统计，默认为false
   Enabled = false
+  
   [Metrics.Exporter]
     # 指标导出器类型，目前可选：prometheus或graphite，默认为prometheus
     Type = "prometheus"
+    
     [Metrics.Exporter.Prometheus]
+      # multiaddr
+      EndPoint = "/ip4/0.0.0.0/tcp/12310"
+      # 命名规范: "a_b_c", 不能带"-"
+      Namespace = "miner" 
       # 指标注册表类型，可选：default（默认，会附带程序运行的环境指标）或 define（自定义）
       RegistryType = "define"
       # prometheus 服务路径
       Path = "/debug/metrics"
+      # 上报周期，单位为 秒（s）
+      ReportingPeriod = 10
+      
     [Metrics.Exporter.Graphite]
-      Namespace = "miner"
+      # 命名规范: "a_b_c", 不能带"-"
+      Namespace = "miner" 
       # graphite exporter 收集器服务地址
       Host = "127.0.0.1"
       # graphite exporter 收集器服务监听端口
-      Port = 4568
+      Port = 12310
       # 上报周期，单位为 秒（s）
       ReportingPeriod = 10
 ```
@@ -115,7 +125,7 @@ BlockRecord = "cache"
 如果选择 `Metrics.Exporter` 为 `Prometheus`, 可通过命令行快速查看指标：
 
 ```bash
- $ curl http://127.0.0.1:12308/debug/metrics
+ $ curl http://127.0.0.1:12310/debug/metrics
  # HELP miner_getbaseinfo_ms Duration of GetBaseInfo in miner
  # TYPE miner_getbaseinfo_ms histogram
  miner_getbaseinfo_ms_bucket{miner_id="t010938",le="100"} 50
@@ -129,4 +139,8 @@ BlockRecord = "cache"
  miner_getbaseinfo_ms_bucket{miner_id="t010938",le="+Inf"} 51
  miner_getbaseinfo_ms_sum{miner_id="t010938"} 470.23516
  ... ...
+```
+> 如果遇到错误 `curl: (56) Recv failure: Connection reset by peer`, 请使用本机 `ip` 地址, 如下所示:
+```bash
+$  curl http://<ip>:12310/debug/metrics
 ```

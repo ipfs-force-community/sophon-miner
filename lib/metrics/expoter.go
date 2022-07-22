@@ -1,68 +1,48 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	_ "net/http/pprof"
-	"time"
 
-	"contrib.go.opencensus.io/exporter/graphite"
-	"contrib.go.opencensus.io/exporter/prometheus"
-	promclient "github.com/prometheus/client_golang/prometheus"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats/view"
+
+	"github.com/ipfs-force-community/metrics"
 )
 
-type RegistryType string
+var log = logging.Logger("miner")
 
-const (
-	RTDefault RegistryType = "default"
-	RTDefine  RegistryType = "define"
-)
+func SetupMetrics(ctx context.Context, metricsConfig *metrics.MetricsConfig) error {
+	log.Infof("metrics config: enabled: %v, exporter type: %s, prometheus: %v, graphite: %v\n",
+		metricsConfig.Enabled, metricsConfig.Exporter.Type, metricsConfig.Exporter.Prometheus, metricsConfig.Exporter.Graphite)
 
-func PrometheusExporter(rtType RegistryType) (http.Handler, error) {
-	var registry *promclient.Registry
-	var ok bool
+	if !metricsConfig.Enabled {
+		return nil
+	}
 
-	switch rtType {
-	case RTDefault:
-		// Prometheus globals are exposed as interfaces, but the prometheus
-		// OpenCensus exporter expects a concrete *Registry. The concrete type of
-		// the globals are actually *Registry, so we downcast them, staying
-		// defensive in case things change under the hood.
-		registry, ok = promclient.DefaultRegisterer.(*promclient.Registry)
-		if !ok {
-			return nil, fmt.Errorf("failed to export default prometheus registry; some metrics will be unavailable; unexpected type: %T", promclient.DefaultRegisterer)
+	if err := view.Register(
+		MinerNodeViews...,
+	); err != nil {
+		return fmt.Errorf("cannot register the view: %w", err)
+	}
+
+	switch metricsConfig.Exporter.Type {
+	case metrics.ETPrometheus:
+		go func() {
+			if err := metrics.RegisterPrometheusExporter(ctx, metricsConfig.Exporter.Prometheus); err != nil && err != http.ErrServerClosed {
+				log.Errorf("Register prometheus exporter err: %v", err)
+			}
+			log.Info("Prometheus exporter server graceful shutdown successful")
+		}()
+
+	case metrics.ETGraphite:
+		if err := metrics.RegisterGraphiteExporter(ctx, metricsConfig.Exporter.Graphite); err != nil {
+			log.Errorf("failed to register the exporter: %v", err)
 		}
-	case RTDefine:
-		// The metrics of OpenCensus in the same process will be automatically
-		// registered to the custom registry of Prometheus, so no additional
-		// registration action is required
-		registry = promclient.NewRegistry()
 	default:
-		return nil, fmt.Errorf("wrong registry type: %s", rtType)
+		log.Warnf("invalid exporter type: %s", metricsConfig.Exporter.Type)
 	}
-
-	exporter, err := prometheus.NewExporter(prometheus.Options{
-		Registry:  registry,
-		Namespace: "miner", // 不允许有-, 如"venus-miner". prometheus不接受
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not create the prometheus stats exporter: %w", err)
-	}
-	view.RegisterExporter(exporter)
-
-	return exporter, nil
-}
-
-func RegisterGraphiteExporter(namespace, host string, port int, reportPeriod int64) error {
-	exporter, err := graphite.NewExporter(graphite.Options{Namespace: namespace, Host: host, Port: port})
-	if err != nil {
-		return fmt.Errorf("failed to create graphite exporter: %w", err)
-	}
-
-	view.RegisterExporter(exporter)
-
-	view.SetReportingPeriod(time.Duration(reportPeriod) * time.Second)
 
 	return nil
 }
