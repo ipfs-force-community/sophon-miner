@@ -6,8 +6,6 @@
   * [Start](#Start)
   * [Stop](#Stop)
   * [Version](#Version)
-* [Add](#Add)
-  * [AddAddress](#AddAddress)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
@@ -22,6 +20,8 @@
   * [StatesForMining](#StatesForMining)
 * [Update](#Update)
   * [UpdateAddress](#UpdateAddress)
+* [Warmup](#Warmup)
+  * [WarmupForMiner](#WarmupForMiner)
 ## 
 
 
@@ -95,31 +95,9 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 0,
-  "BlockDelay": 0
+  "APIVersion": 0
 }
 ```
-
-## Add
-
-
-### AddAddress
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  {
-    "Addr": "t01234",
-    "Id": "string value",
-    "Name": "string value"
-  }
-]
-```
-
-Response: `{}`
 
 ## Auth
 
@@ -299,4 +277,21 @@ Response:
   }
 ]
 ```
+
+## Warmup
+
+
+### WarmupForMiner
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "t01234"
+]
+```
+
+Response: `{}`
 

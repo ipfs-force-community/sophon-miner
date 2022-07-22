@@ -3,7 +3,8 @@
 
 package build
 
+// in order to gen check: ci
 import (
-	_ "github.com/GeertJohan/go.rice/rice"
+	_ "github.com/golang/mock/mockgen"
 	_ "golang.org/x/tools/cmd/stringer"
 )
