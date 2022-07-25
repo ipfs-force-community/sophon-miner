@@ -11,16 +11,16 @@ import (
 var log = logging.Logger("config")
 
 type MySQLConfig struct {
-	Conn            string        `json:"conn"`
-	MaxOpenConn     int           `json:"maxOpenConn"`     // 100
-	MaxIdleConn     int           `json:"maxIdleConn"`     // 10
-	ConnMaxLifeTime time.Duration `json:"connMaxLifeTime"` // 60(s)
-	Debug           bool          `json:"debug"`
+	Conn            string
+	MaxOpenConn     int           // 100
+	MaxIdleConn     int           // 10
+	ConnMaxLifeTime time.Duration // 60(s)
+	Debug           bool
 }
 
 type SlashFilterConfig struct {
-	Type  string      `json:"type"`
-	MySQL MySQLConfig `json:"mysql"`
+	Type  string
+	MySQL MySQLConfig
 }
 
 func newSlashFilterConfig() *SlashFilterConfig {
@@ -37,14 +37,14 @@ func newSlashFilterConfig() *SlashFilterConfig {
 }
 
 type MinerConfig struct {
-	FullNode *APIInfo     `json:"fullnode"`
-	Gateway  *GatewayNode `json:"gateway"`
-	Auth     *APIInfo     `json:"auth"`
+	FullNode *APIInfo
+	Gateway  *GatewayNode
+	Auth     *APIInfo
 
 	SlashFilter *SlashFilterConfig
 
-	Tracing *metrics.TraceConfig   `json:"tracing"`
-	Metrics *metrics.MetricsConfig `toml:"metrics"`
+	Tracing *metrics.TraceConfig
+	Metrics *metrics.MetricsConfig
 }
 
 func DefaultMinerConfig() *MinerConfig {
