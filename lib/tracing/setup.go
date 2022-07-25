@@ -7,12 +7,12 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/ipfs-force-community/metrics"
 )
 
 var log = logging.Logger("tracing")
 
-func SetupJaegerTracing(cfg *config.TraceConfig) *jaeger.Exporter {
+func SetupJaegerTracing(cfg *metrics.TraceConfig) *jaeger.Exporter {
 	if !cfg.JaegerTracingEnabled {
 		return nil
 	}
