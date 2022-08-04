@@ -10,7 +10,6 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/pkg/errors"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
@@ -54,6 +53,8 @@ var DefaultMaxErrCounts = 20
 // Upon each mining loop iteration, the returned callback is called reporting
 // whether we mined a block in this round or not.
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error)
+
+type signerFunc func(ctx context.Context, node *config.GatewayNode) (SignFunc, error)
 
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
@@ -102,6 +103,16 @@ func NewMiner(ctx context.Context,
 
 			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
+		signerFunc: func(ctx context.Context, cfg *config.GatewayNode) (SignFunc, error) {
+			walletAPI, closer, err := client.NewGatewayRPC(ctx, cfg)
+			if err != nil {
+				return nil, fmt.Errorf("new gateway rpc failed:%w", err)
+			}
+			return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error) {
+				defer closer()
+				return walletAPI.WalletSign(ctx, account, signer, toSign, meta)
+			}, nil
+		},
 
 		sf: sf,
 
@@ -146,7 +157,8 @@ type Miner struct {
 	stop     chan struct{}
 	stopping chan struct{}
 
-	waitFunc waitFunc
+	waitFunc   waitFunc
+	signerFunc signerFunc
 
 	lastWork *MiningBase
 
@@ -280,7 +292,7 @@ minerLoop:
 		// if there is no miner to be mined, wait
 		if !m.hasMinersNeedMining() {
 			log.Warn("no miner is configured for mining, please check ... ")
-			if !m.niceSleep(time.Second * 5) {
+			if !m.niceSleep(time.Second * 1) {
 				continue minerLoop
 			}
 			continue
@@ -757,18 +769,16 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		partDone = metrics.TimerMilliseconds(ctx, metrics.IsRoundWinnerDuration, addr.String())
 
 		var sign SignFunc
-		if _, ok := m.minerWPPMap[addr]; ok {
-			walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
-			if err != nil {
-				log.Errorf("create wallet RPC failed: %s", err)
-				out <- &winPoStRes{addr: addr, err: err}
-				return
-			}
-			defer closer()
-			sign = walletAPI.WalletSign
-		} else {
+		val, ok := m.minerWPPMap[addr]
+		if !ok {
 			log.Errorf("[%v] not exist", addr)
-			out <- &winPoStRes{addr: addr, err: errors.New("miner not exist")}
+			out <- &winPoStRes{addr: addr, err: fmt.Errorf("miner : %s not exist", addr)}
+			return
+		}
+		account := val.account
+		if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
+			log.Errorf("miner: %s get func for signning failed: %s", addr, err)
+			out <- &winPoStRes{addr: addr, err: fmt.Errorf("miner: %s get sign func failed:%w", addr, err)}
 			return
 		}
 		winner, err := IsRoundWinner(ctx, round, account, addr, rbase, mbi, sign)
@@ -880,19 +890,16 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 	//}
 
 	var sign SignFunc
-	account := ""
-	if val, ok := m.minerWPPMap[addr]; ok {
-		account = val.account
-		walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
-		if err != nil {
-			log.Errorf("create wallet RPC failed: %s", err)
-			return nil, err
-		}
-		defer closer()
-		sign = walletAPI.WalletSign
-	} else {
+	val, ok := m.minerWPPMap[addr]
+	if !ok {
 		log.Errorf("[%v] not exist", addr)
-		return nil, errors.New("miner not exist")
+		return nil, fmt.Errorf("miner %s not exist", addr)
+	}
+
+	account := val.account
+	if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
+		log.Errorf("get func for signning failed: %s", err)
+		return nil, err
 	}
 
 	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input.Bytes())
@@ -931,19 +938,15 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 	// block signature check
 	if blockMsg.Header.BlockSig == nil {
 		var sign SignFunc
-		account := ""
-		if val, ok := m.minerWPPMap[addr]; ok {
-			account = val.account
-			walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
-			if err != nil {
-				log.Errorf("create wallet RPC failed: %s", err)
-				return nil, err
-			}
-			defer closer()
-			sign = walletAPI.WalletSign
-		} else {
+		val, ok := m.minerWPPMap[addr]
+		if !ok {
 			log.Errorf("[%v] not exist", addr)
-			return nil, errors.New("miner not exist")
+			return nil, fmt.Errorf("miner %s not exist", addr)
+		}
+		account := val.account
+		if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
+			log.Errorf("get signer func failed:%s", err.Error())
+			return nil, err
 		}
 
 		nosigbytes, err := blockMsg.Header.SignatureData()

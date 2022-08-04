@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -26,8 +25,6 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 
 	c2, err := FromReader(strings.NewReader(s), DefaultMinerConfig())
 	require.NoError(t, err)
-
-	fmt.Println(s)
 
 	require.True(t, reflect.DeepEqual(c, c2))
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/types"
 
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
@@ -177,19 +176,15 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 				totalWinCount := int64(0)
 
 				var sign SignFunc = nil
-				account := ""
-				if val, ok := m.minerWPPMap[tAddr]; ok {
-					account = val.account
-					walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
-					if err != nil {
-						log.Errorf("[%v] create wallet RPC failed: %s", tAddr, err)
-						res = append(res, types.CountWinners{Msg: err.Error(), Miner: tAddr})
-						return
-					}
-					defer closer()
-					sign = walletAPI.WalletSign
-				} else {
+				val, ok := m.minerWPPMap[tAddr]
+				if !ok {
 					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
+					return
+				}
+				account := val.account
+				if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
+					log.Errorf("miner: %s get func for signning failed: %s", tAddr, err)
+					res = append(res, types.CountWinners{Msg: fmt.Sprintf("get sign func failed:%s", err), Miner: tAddr})
 					return
 				}
 

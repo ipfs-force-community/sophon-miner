@@ -62,6 +62,10 @@ func (et EventType) Enabled() bool {
 	return et.safe && et.enabled
 }
 
+func NewEventType(sys, evt string, enable, safe bool) EventType {
+	return EventType{System: sys, Event: evt, enabled: true, safe: true}
+}
+
 //go:generate go run github.com/golang/mock/mockgen -destination=mockjournal/journal.go -package=mockjournal . Journal
 
 // Journal represents an audit trail of system actions.
