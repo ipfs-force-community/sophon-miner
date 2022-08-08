@@ -587,11 +587,6 @@ func (m *Miner) untilNextEpoch(base *MiningBase) {
 	select {
 	case <-build.Clock.After(build.Clock.Until(nextRound)):
 	case <-m.stop:
-		stopping := m.stopping
-		m.stop = nil
-		m.stopping = nil
-		close(stopping)
-		return
 	}
 }
 
