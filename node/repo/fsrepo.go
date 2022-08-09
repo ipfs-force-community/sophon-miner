@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	types2 "github.com/filecoin-project/venus-miner/types"
 	"io"
 	"io/ioutil"
 	"os"
@@ -21,7 +22,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const (
@@ -339,7 +340,7 @@ func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 	return ioutil.WriteFile(fsr.join(fsAPIToken), token, 0600)
 }
 
-func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {
+func (fsr *fsLockedRepo) KeyStore() (types2.KeyStore, error) {
 	if err := fsr.stillValid(); err != nil {
 		return nil, err
 	}
