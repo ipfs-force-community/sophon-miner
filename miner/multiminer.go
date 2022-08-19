@@ -510,8 +510,9 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 	defer m.lkWPP.Unlock()
 
 	var (
-		winPoSts []*winPoStRes
-		wg       sync.WaitGroup
+		winPoSts  []*winPoStRes
+		wg        sync.WaitGroup
+		winPoStLk sync.Mutex
 	)
 
 	for addr, mining := range m.minerWPPMap {
@@ -567,7 +568,9 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 							}
 							tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
 						} else if res.winner != nil {
+							winPoStLk.Lock()
 							winPoSts = append(winPoSts, res) //nolint:staticcheck
+							winPoStLk.Unlock()
 						}
 					}
 				}
