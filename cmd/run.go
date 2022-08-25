@@ -85,9 +85,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("unable to generate local jwt client: %w", err)
 		}
-		if err != nil {
-			return err
-		}
+
 		err = lr.SetAPIToken(token)
 		if err != nil {
 			return err

@@ -90,8 +90,6 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)),
 			Override(new(types.MetadataDS), modules.Datastore),
 			Override(new(types.KeyStore), modules.KeyStore),
-			Override(new(*types.APIAlg), modules.APISecret),
-
 			Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
 				return r.APIEndpoint()
 			}),
