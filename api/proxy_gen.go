@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-miner/types"
 	"github.com/google/uuid"
@@ -17,10 +16,6 @@ var ErrNotSupported = errors.New("method not supported")
 
 type CommonStruct struct {
 	Internal struct {
-		AuthNew func(p0 context.Context, p1 []auth.Permission) ([]byte, error) `perm:"admin"`
-
-		AuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"read"`
-
 		Closing func(p0 context.Context) (<-chan struct{}, error) `perm:"read"`
 
 		LogList func(p0 context.Context) ([]string, error) `perm:"write"`
@@ -60,28 +55,6 @@ type MinerAPIStruct struct {
 
 type MinerAPIStub struct {
 	CommonStub
-}
-
-func (s *CommonStruct) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
-	if s.Internal.AuthNew == nil {
-		return *new([]byte), ErrNotSupported
-	}
-	return s.Internal.AuthNew(p0, p1)
-}
-
-func (s *CommonStub) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
-	return *new([]byte), ErrNotSupported
-}
-
-func (s *CommonStruct) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
-	if s.Internal.AuthVerify == nil {
-		return *new([]auth.Permission), ErrNotSupported
-	}
-	return s.Internal.AuthVerify(p0, p1)
-}
-
-func (s *CommonStub) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
-	return *new([]auth.Permission), ErrNotSupported
 }
 
 func (s *CommonStruct) Closing(p0 context.Context) (<-chan struct{}, error) {

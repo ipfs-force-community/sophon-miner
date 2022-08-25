@@ -6,17 +6,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/filecoin-project/go-jsonrpc/auth"
-
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
 type Common interface {
-
-	// MethodGroup: Auth
-
-	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) //perm:read
-	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)    //perm:admin
 
 	// Version provides information about API provider
 	Version(context.Context) (APIVersion, error) //perm:read

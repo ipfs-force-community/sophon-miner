@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/venus-auth/jwtclient"
 	lapi "github.com/filecoin-project/venus-miner/api"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/lib/metrics"
@@ -77,7 +77,22 @@ var runCmd = &cli.Command{
 		cfg := cfgV.(*config.MinerConfig)
 
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx, cfg.FullNode, "v1")
+		if err != nil {
+			return err
+		}
+
+		localJwtClient, token, err := jwtclient.NewLocalAuthClient()
+		if err != nil {
+			return fmt.Errorf("unable to generate local jwt client: %w", err)
+		}
+
+		err = lr.SetAPIToken(token)
+		if err != nil {
+			return err
+		}
+
 		lr.Close() //nolint:errcheck
+
 		if err != nil {
 			return fmt.Errorf("getting full node api: %w", err)
 		}
@@ -147,11 +162,11 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		return serveRPC(minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
+		return serveRPC(minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")), localJwtClient)
 	},
 }
 
-func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64) error {
+func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64, localJwtClient jwtclient.IJwtAuthClient) error {
 	lst, err := manet.Listen(addr)
 	if err != nil {
 		return fmt.Errorf("could not listen: %w", err)
@@ -169,10 +184,7 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
-	ah := &auth.Handler{
-		Verify: minerAPI.AuthVerify,
-		Next:   mux.ServeHTTP,
-	}
+	ah := jwtclient.NewAuthMux(localJwtClient, nil, mux)
 
 	srv := &http.Server{
 		Handler: ah,
