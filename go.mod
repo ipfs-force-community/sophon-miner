@@ -13,7 +13,6 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/venus v1.6.0
 	github.com/filecoin-project/venus-auth v1.6.1-0.20220818060206-3313af6a9ba1
-	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
@@ -84,6 +83,7 @@ require (
 	github.com/filecoin-project/specs-storage v0.4.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
+	github.com/gbrlsnchs/jwt/v3 v3.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.7.0 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
