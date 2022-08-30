@@ -162,7 +162,7 @@ jobs:
   build-macos:
     description: build darwin venus-miner binary
     macos:
-      xcode: "12.5.0"
+      xcode: "13.4.1"
     working_directory: ~/go/src/github.com/filecoin-project/venus-miner
     steps:
       - prepare:
