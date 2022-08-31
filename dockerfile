@@ -1,22 +1,25 @@
 FROM filvenus/venus-buildenv AS buildenv
 
-COPY . ./venus-miner
-RUN export GOPROXY=https://goproxy.cn && cd venus-miner  && make
+WORKDIR /build
 
+COPY ./go.mod /build/
+COPY ./exter[n] ./go.mod  /build/extern/
+RUN export GOPROXY=https://goproxy.cn,direct && go mod download 
 
-RUN cd venus-miner && pwd && ldd ./venus-miner
+COPY . /build
+RUN export GOPROXY=https://goproxy.cn,direct  && make
+
 
 
 FROM filvenus/venus-runtime
+
+ARG BUILD_TARGET=venus-miner
 
 # DIR for app
 WORKDIR /app
 
 # copy the app from build env
-COPY --from=buildenv  /go/venus-miner/venus-miner /app/venus-miner
-
-
-
+COPY --from=buildenv  /build/${BUILD_TARGET} /app/${BUILD_TARGET}
 
 COPY ./docker/script  /script
 
