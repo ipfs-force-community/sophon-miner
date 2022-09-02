@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -97,6 +98,26 @@ var runCmd = &cli.Command{
 			return fmt.Errorf("getting full node api: %w", err)
 		}
 		defer ncloser()
+
+		// TODO: delete this when relative issue is fixed in lotus https://github.com/filecoin-project/venus/issues/5247
+		log.Info("wait for height of chain bigger than zero ...")
+		ticker := time.NewTicker(10 * time.Second)
+		for {
+			head, err := nodeApi.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+			if head.Height() > 0 {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				fmt.Println("\nExit by user")
+				return nil
+			case <-ticker.C:
+			}
+		}
+		ticker.Stop()
 
 		netName, err := nodeApi.StateNetworkName(ctx)
 		if err != nil {
