@@ -62,7 +62,8 @@ print-%:
 .PHONY: docker
 
 
+TAG:=test
 docker:
 	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/dockerfile
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=$(BUILD_TARGET)  -t venus-miner .
-	docker tag venus-miner filvenus/venus-miner:test
+	docker tag venus-miner filvenus/venus-miner:$(TAG)
