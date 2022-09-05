@@ -23,3 +23,4 @@ bin/tmp/*
 .vscode
 scratchpad
 .vscode
+dockerfile

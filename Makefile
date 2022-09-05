@@ -12,6 +12,8 @@ endif
 CLEAN:=
 BINS:=
 
+BUILD_TARGET=venus-miner
+
 ldflags=-X=github.com/filecoin-project/venus-miner/build.CurrentCommit='+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))'
 ifneq ($(strip $(LDFLAGS)),)
 	ldflags+=-extldflags=$(LDFLAGS)
@@ -24,7 +26,7 @@ build: miner
 
 miner:
 	rm -f venus-miner
-	go build $(GOFLAGS) -o venus-miner ./cmd/
+	go build $(GOFLAGS) -o $(BUILD_TARGET) ./cmd/
 
 .PHONY: miner
 BINS+=venus-miner
@@ -60,5 +62,8 @@ print-%:
 .PHONY: docker
 
 
+TAG:=test
 docker:
-	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t venus-miner .
+	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/dockerfile
+	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=$(BUILD_TARGET)  -t venus-miner .
+	docker tag venus-miner filvenus/venus-miner:$(TAG)
