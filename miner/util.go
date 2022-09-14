@@ -20,10 +20,10 @@ type WinningPoStProver interface {
 	ComputeProof(context.Context, []builtin.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]builtin.PoStProof, error)
 }
 
-type SignFunc func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error)
+type SignFunc func(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error)
 
-func ComputeVRF(ctx context.Context, sign SignFunc, account string, worker address.Address, sigInput []byte) ([]byte, error) {
-	sig, err := sign(ctx, account, worker, sigInput, types.MsgMeta{Type: types.MTDrawRandomParam})
+func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigInput []byte) ([]byte, error) {
+	sig, err := sign(ctx, worker, sigInput, types.MsgMeta{Type: types.MTDrawRandomParam})
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +35,13 @@ func ComputeVRF(ctx context.Context, sign SignFunc, account string, worker addre
 	return sig.Data, nil
 }
 
-func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
-	miner address.Address, brand types.BeaconEntry, mbi *types.MiningBaseInfo, sign SignFunc) (*types.ElectionProof, error) {
+func IsRoundWinner(
+	ctx context.Context,
+	round abi.ChainEpoch,
+	miner address.Address,
+	brand types.BeaconEntry,
+	mbi *types.MiningBaseInfo,
+	sign SignFunc) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
@@ -59,7 +64,7 @@ func IsRoundWinner(ctx context.Context, round abi.ChainEpoch, account string,
 	//	return nil, fmt.Errorf("failed to draw randomness: %w", err)
 	//}
 
-	vrfout, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, electionRand.Bytes())
+	vrfout, err := ComputeVRF(ctx, sign, mbi.WorkerKey, electionRand.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute VRF: %w", err)
 	}

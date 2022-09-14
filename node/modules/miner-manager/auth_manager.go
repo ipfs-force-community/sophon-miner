@@ -85,10 +85,6 @@ func (m *MinerManage) Update(ctx context.Context, skip, limit int64) ([]types.Mi
 	var mInfos = make([]types.MinerInfo, 0)
 
 	for _, u := range users {
-		if u.State != 1 {
-			log.Warnf("user: %s state is disabled, it's miners won't be updated", u.Name)
-			continue
-		}
 		miners, err := m.listMiners(u.Name)
 		if err != nil {
 			log.Errorf("list user:%s minres failed:%s", u.Name, err.Error())
@@ -126,6 +122,7 @@ func (m *MinerManage) listUsers(skip, limit int64) ([]*types.User, error) {
 	resp, err := m.cli.R().SetQueryParams(map[string]string{
 		"skip":  strconv.FormatInt(skip, 10),
 		"limit": strconv.FormatInt(limit, 10),
+		"state": "1",
 	}).SetResult(&users).SetError(&apiErr{}).Get("/user/list")
 	if err != nil {
 		return nil, err
@@ -139,7 +136,7 @@ func (m *MinerManage) listUsers(skip, limit int64) ([]*types.User, error) {
 func (m *MinerManage) listMiners(user string) ([]*types.Miner, error) {
 	var res []*types.Miner
 	resp, err := m.cli.R().SetQueryParams(map[string]string{"user": user}).
-		SetResult(&res).SetError(&apiErr{}).Get("/miner/list-by-user")
+		SetResult(&res).SetError(&apiErr{}).Get("/user/miner/list")
 	if err != nil {
 		return nil, err
 	}

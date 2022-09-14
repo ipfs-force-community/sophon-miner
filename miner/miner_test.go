@@ -445,7 +445,7 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 	assert.NoError(t, err)
 
 	miner.signerFunc = func(ctx context.Context, node *config.GatewayNode) (SignFunc, error) {
-		return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
+		return func(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 
 			return &crypto.Signature{
 				Type: crypto.SigTypeBLS,
@@ -1016,7 +1016,7 @@ func (r *randGen) Cid() cid.Cid {
 
 func getMockNetworkParams(t *testing.T, cfg config2.NetworkParamsConfig) *types.NetworkParams {
 	return &types.NetworkParams{
-		NetworkName:             utils.TypeName[cfg.NetworkType],
+		NetworkName:             utils.NetworkTypeToNetworkName(cfg.NetworkType),
 		BlockDelaySecs:          cfg.BlockDelay,
 		ConsensusMinerMinPower:  abi.NewStoragePower(int64(cfg.ConsensusMinerMinPower)),
 		SupportedProofTypes:     cfg.ReplaceProofTypes,

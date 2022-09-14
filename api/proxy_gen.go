@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-miner/types"
+	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/google/uuid"
 )
 
@@ -26,7 +27,7 @@ type CommonStruct struct {
 
 		Shutdown func(p0 context.Context) error `perm:"admin"`
 
-		Version func(p0 context.Context) (APIVersion, error) `perm:"read"`
+		Version func(p0 context.Context) (sharedTypes.Version, error) `perm:"read"`
 	}
 }
 
@@ -112,15 +113,15 @@ func (s *CommonStub) Shutdown(p0 context.Context) error {
 	return ErrNotSupported
 }
 
-func (s *CommonStruct) Version(p0 context.Context) (APIVersion, error) {
+func (s *CommonStruct) Version(p0 context.Context) (sharedTypes.Version, error) {
 	if s.Internal.Version == nil {
-		return *new(APIVersion), ErrNotSupported
+		return *new(sharedTypes.Version), ErrNotSupported
 	}
 	return s.Internal.Version(p0)
 }
 
-func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
-	return *new(APIVersion), ErrNotSupported
+func (s *CommonStub) Version(p0 context.Context) (sharedTypes.Version, error) {
+	return *new(sharedTypes.Version), ErrNotSupported
 }
 
 func (s *MinerAPIStruct) CountWinners(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]types.CountWinners, error) {

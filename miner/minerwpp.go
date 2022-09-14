@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	types2 "github.com/filecoin-project/venus-miner/types"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -14,22 +12,24 @@ import (
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/filecoin-project/venus-miner/types"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"github.com/filecoin-project/venus/venus-shared/types"
+	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type MiningWpp struct {
-	minerInfo   types2.MinerInfo
+	minerInfo   types.MinerInfo
 	gatewayNode *config.GatewayNode
 
 	miner   abi.ActorID
 	winnRpt abi.RegisteredPoStProof
 }
 
-func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, minerInfo types2.MinerInfo) (*MiningWpp, error) {
-	mi, err := api.StateMinerInfo(context.TODO(), minerInfo.Addr, types.EmptyTSK)
+func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, minerInfo types.MinerInfo) (*MiningWpp, error) {
+	mi, err := api.StateMinerInfo(context.TODO(), minerInfo.Addr, sharedTypes.EmptyTSK)
 	if err != nil {
 		return nil, fmt.Errorf("getting sector size: %w", err)
 	}

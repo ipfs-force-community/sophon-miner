@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/venus-miner/types"
 
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
@@ -104,7 +105,7 @@ func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([
 	return res, nil
 }
 
-func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr address.Address, api SignFunc, epoch abi.ChainEpoch) (*sharedTypes.ElectionProof, error) {
+func (m *Miner) winCountInRound(ctx context.Context, mAddr address.Address, api SignFunc, epoch abi.ChainEpoch) (*sharedTypes.ElectionProof, error) {
 	ts, err := m.api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), sharedTypes.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -128,7 +129,7 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 		rbase = mbi.BeaconEntries[len(mbi.BeaconEntries)-1]
 	}
 
-	return IsRoundWinner(ctx, ts.Height()+1, account, mAddr, rbase, mbi, api)
+	return IsRoundWinner(ctx, ts.Height()+1, mAddr, rbase, mbi, api)
 }
 
 func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]types.CountWinners, error) {
@@ -174,15 +175,9 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 				defer wg.Done()
 
 				var err error
-				var sign SignFunc = nil
-				val, ok := m.minerWPPMap[tAddr]
-				if !ok {
-					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
-					return
-				}
-				account := val.account
+				var sign SignFunc
 				if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
-					log.Errorf("miner: %s get func for signning failed: %s", tAddr, err)
+					log.Errorf("miner: %s get signing node failed: %s", tAddr, err)
 					res = append(res, types.CountWinners{Msg: fmt.Sprintf("get sign func failed:%s", err), Miner: tAddr})
 					return
 				}
@@ -196,7 +191,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					go func(epoch abi.ChainEpoch) {
 						defer wgWin.Done()
 
-						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
+						winner, err := m.winCountInRound(ctx, tAddr, sign, epoch)
 						if err != nil {
 							log.Errorf("generate winner met error %s", err)
 							return
