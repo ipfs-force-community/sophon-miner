@@ -106,14 +106,14 @@ func NewMiner(
 			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
 		signerFunc: func(ctx context.Context, cfg *config.GatewayNode) SignFunc {
-			return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error) {
+			return func(ctx context.Context, signer address.Address, accounts []string, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error) {
 				walletAPI, closer, err := client.NewGatewayRPC(ctx, cfg)
 				if err != nil {
 					return nil, fmt.Errorf("new gateway rpc failed:%w", err)
 				}
 
 				defer closer()
-				return walletAPI.WalletSign(ctx, account, signer, toSign, meta)
+				return walletAPI.WalletSign(ctx, signer, accounts, toSign, meta)
 			}
 		},
 
@@ -703,7 +703,7 @@ type winPoStRes struct {
 //
 // This method does the following:
 //
-//	1.
+//  1.
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, addr address.Address, epp WinningPoStProver) (<-chan *winPoStRes, error) {
 	log.Infow("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
 	start := build.Clock.Now()
@@ -931,7 +931,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, fmt.Errorf("failed to get SigningBytes: %v", err)
 		}
 
-		sig, err := m.signerFunc(ctx, m.gatewayNode)(ctx, val.account, waddr, nosigbytes, types2.MsgMeta{
+		sig, err := m.signerFunc(ctx, m.gatewayNode)(ctx, waddr, []string{val.account}, nosigbytes, types2.MsgMeta{
 			Type: types2.MTBlock,
 		})
 		if err != nil {
