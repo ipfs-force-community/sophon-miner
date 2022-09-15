@@ -8,7 +8,7 @@ import (
 
 var logCmd = &cli.Command{
 	Name:  "log",
-	Usage: "Manage logging",
+	Usage: "Module log level management",
 	Subcommands: []*cli.Command{
 		logList,
 		logSetLevel,
