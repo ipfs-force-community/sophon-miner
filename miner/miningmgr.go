@@ -145,6 +145,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 	}
 
 	res := make([]types.CountWinners, 0)
+	var resLk sync.Mutex
 	wg := sync.WaitGroup{}
 
 	mAddrs := make([]address.Address, 0)
@@ -172,9 +173,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 			go func() {
 				defer wg.Done()
 
-				winInfo := make([]types.SimpleWinInfo, 0)
-				totalWinCount := int64(0)
-
+				var err error
 				var sign SignFunc = nil
 				val, ok := m.minerWPPMap[tAddr]
 				if !ok {
@@ -189,9 +188,11 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 				}
 
 				wgWin := sync.WaitGroup{}
+				winInfo := make([]types.SimpleWinInfo, 0)
+				totalWinCount := int64(0)
+				var winInfoLk sync.Mutex
 				for epoch := start; epoch <= end; epoch++ {
 					wgWin.Add(1)
-
 					go func(epoch abi.ChainEpoch) {
 						defer wgWin.Done()
 
@@ -202,13 +203,17 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 						}
 
 						if winner != nil {
+							winInfoLk.Lock()
 							totalWinCount += winner.WinCount
 							winInfo = append(winInfo, types.SimpleWinInfo{Epoch: epoch + 1, WinCount: winner.WinCount})
+							winInfoLk.Unlock()
 						}
 					}(epoch)
 				}
 				wgWin.Wait()
+				resLk.Lock()
 				res = append(res, types.CountWinners{Miner: tAddr, TotalWinCount: totalWinCount, WinEpochList: winInfo})
+				resLk.Unlock()
 			}()
 		}
 		wg.Wait()

@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	types2 "github.com/filecoin-project/venus-miner/types"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	types2 "github.com/filecoin-project/venus-miner/types"
 
 	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-datastore"
@@ -174,7 +174,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 	}
 	defer f.Close() //nolint: errcheck // Read only op
 
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %q: %w", p, err)
 	}
@@ -201,7 +201,7 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 	}
 	defer f.Close() //nolint: errcheck // Read only op
 
-	tb, err := ioutil.ReadAll(f)
+	tb, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +318,7 @@ func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
 	}
 
 	// write buffer of TOML bytes to config file
-	err = ioutil.WriteFile(fsr.configPath, buf.Bytes(), 0644)
+	err = os.WriteFile(fsr.configPath, buf.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
@@ -330,14 +330,14 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
+	return os.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
 }
 
 func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPIToken), token, 0600)
+	return os.WriteFile(fsr.join(fsAPIToken), token, 0600)
 }
 
 func (fsr *fsLockedRepo) KeyStore() (types2.KeyStore, error) {
@@ -406,7 +406,7 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	}
 	defer file.Close() //nolint: errcheck // read only op
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return types.KeyInfo{}, fmt.Errorf("reading key '%s': %w", name, err)
 	}
@@ -441,7 +441,7 @@ func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
 		return fmt.Errorf("encoding key '%s': %w", name, err)
 	}
 
-	err = ioutil.WriteFile(keyPath, keyData, 0600)
+	err = os.WriteFile(keyPath, keyData, 0600)
 	if err != nil {
 		return fmt.Errorf("writing key '%s': %w", name, err)
 	}

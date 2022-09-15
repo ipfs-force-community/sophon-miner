@@ -10,6 +10,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -18,8 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/venus-miner/api"
-
-	vapi "github.com/filecoin-project/venus/venus-shared/api"
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
@@ -42,7 +42,7 @@ func init() {
 
 	ExampleValues[reflect.TypeOf(addr)] = addr
 
-	addExample(vapi.Version(1))
+	addExample(types.APIVersion(1))
 	addExample(abi.ChainEpoch(10101))
 	addExample(int64(9))
 	addExample(true)

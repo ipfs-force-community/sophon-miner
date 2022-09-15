@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -42,7 +41,7 @@ func TestParitalConfig(t *testing.T) {
 	}
 
 	{
-		f, err := ioutil.TempFile("", "config-*.toml")
+		f, err := os.CreateTemp("", "config-*.toml")
 		fname := f.Name()
 
 		assert.NoError(err, "tmp file shold not error")
