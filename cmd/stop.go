@@ -10,7 +10,7 @@ import (
 
 var stopCmd = &cli.Command{
 	Name:  "stop",
-	Usage: "Stop a running venus miner",
+	Usage: "Stop running venus-miner daemon",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetMinerAPI(cctx)

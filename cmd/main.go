@@ -25,7 +25,6 @@ func main() {
 		stopCmd,
 		addressCmd,
 		winnerCmd,
-		configCmd,
 	}
 
 	ctx, span := trace.StartSpan(context.Background(), "/cli")
@@ -37,9 +36,6 @@ func main() {
 		Version:              build.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name: "color",
-			},
 			&cli.StringFlag{
 				Name:    FlagMinerRepo,
 				EnvVars: []string{"VENUS_MINER_PATH"},
