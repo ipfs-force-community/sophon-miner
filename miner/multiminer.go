@@ -65,23 +65,23 @@ func randTimeOffset(width time.Duration) time.Duration {
 
 // NewMiner instantiates a miner with a concrete WinningPoStProver and a miner
 // address (which can be different from the worker's address).
-func NewMiner(api v1api.FullNode,
-	gtNode *config.GatewayNode,
+func NewMiner(ctx context.Context,
+	api v1api.FullNode,
+	cfg *config.MinerConfig,
 	minerManager miner_manager.MinerManageAPI,
 	sf slashfilter.SlashFilterAPI,
-	j journal.Journal) *Miner {
-	networkParams, err := api.StateGetNetworkParams(context.TODO())
+	j journal.Journal) (*Miner, error) {
+	networkParams, err := api.StateGetNetworkParams(ctx)
 	if err != nil {
-		return nil
-	}
-	if networkParams.BlockDelaySecs < 30 {
-		build.MinerOnceTimeout = time.Millisecond * 2800
+		return nil, err
 	}
 
 	miner := &Miner{
-		api:           api,
-		networkParams: networkParams,
-		gatewayNode:   gtNode,
+		api:                  api,
+		networkParams:        networkParams,
+		PropagationDelaySecs: cfg.PropagationDelaySecs,
+		MinerOnceTimeout:     time.Duration(cfg.MinerOnceTimeout),
+		gatewayNode:          cfg.Gateway,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
 			// wait around for half the block time in case other parents come in
 			//
@@ -93,7 +93,7 @@ func NewMiner(api v1api.FullNode,
 			// the result is that we WILL NOT wait, therefore fast-forwarding
 			// and thus healing the chain by backfilling it with null rounds
 			// rapidly.
-			deadline := baseTime + build.PropagationDelaySecs
+			deadline := baseTime + cfg.PropagationDelaySecs
 			baseT := time.Unix(int64(deadline), 0)
 
 			baseT = baseT.Add(randTimeOffset(time.Second))
@@ -114,7 +114,11 @@ func NewMiner(api v1api.FullNode,
 		minerWPPMap:  make(map[address.Address]*minerWPP),
 	}
 
-	return miner
+	if networkParams.NetworkName == "2k" {
+		miner.MinerOnceTimeout = time.Millisecond * 2800
+	}
+
+	return miner, nil
 }
 
 type syncStatus struct {
@@ -132,6 +136,9 @@ type minerWPP struct {
 type Miner struct {
 	api           v1api.FullNode
 	networkParams *types2.NetworkParams
+
+	PropagationDelaySecs uint64
+	MinerOnceTimeout     time.Duration
 
 	gatewayNode *config.GatewayNode
 
@@ -525,7 +532,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 				defer wg.Done()
 
 				// set timeout for miner once
-				tCtx, tCtxCancel := context.WithTimeout(ctx, build.MinerOnceTimeout)
+				tCtx, tCtxCancel := context.WithTimeout(ctx, m.MinerOnceTimeout)
 				defer tCtxCancel()
 
 				resChan, err := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
@@ -585,7 +592,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 }
 
 func (m *Miner) untilNextEpoch(base *MiningBase) {
-	nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds+1))+int64(build.PropagationDelaySecs), 0)
+	nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds+1))+int64(m.PropagationDelaySecs), 0)
 
 	select {
 	case <-build.Clock.After(build.Clock.Until(nextRound)):

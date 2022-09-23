@@ -67,7 +67,7 @@ func NewMysql(cfg *config.MySQLConfig) (SlashFilterAPI, error) {
 	// Set the maximum number of open database connections.
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConn)
 	// The maximum time that the connection can be reused is set.
-	sqlDB.SetConnMaxLifetime(time.Second * cfg.ConnMaxLifeTime)
+	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifeTime))
 
 	log.Info("init mysql success for mysqlSlashFilter!")
 	return &mysqlSlashFilter{
