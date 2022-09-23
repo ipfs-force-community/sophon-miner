@@ -316,7 +316,7 @@ minerLoop:
 			//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain forked)
 			//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
 			if !tbase.TipSet.Equals(base.TipSet) {
-				if tbase.TipSet.At(0).Equals(base.TipSet.At(0)) {
+				if 0 == tbase.TipSet.MinTicket().Compare(base.TipSet.MinTicket()) {
 					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 					base = tbase
 				} else {
@@ -331,6 +331,12 @@ minerLoop:
 						}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.ChainForked); err != nil {
 							log.Errorf("failed to record chain forked: %s", err)
 						}
+
+						ctx, _ = tag.New(
+							ctx,
+							tag.Upsert(metrics.MinerID, res.addr.String()),
+						)
+						stats.Record(ctx, metrics.NumberOfMiningChainFork.M(1))
 					}
 				}
 			}
@@ -434,6 +440,12 @@ minerLoop:
 							if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
 								log.Errorf("failed to put block: %s", err)
 							}
+
+							ctx, _ = tag.New(
+								ctx,
+								tag.Upsert(metrics.MinerID, bm.Header.Miner.String()),
+							)
+							stats.Record(ctx, metrics.NumberOfMiningError.M(1))
 							return
 						}
 
@@ -553,6 +565,12 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 						log.Errorf("failed to record mining timeout: %s", err)
 					}
 
+					ctx, _ = tag.New(
+						ctx,
+						tag.Upsert(metrics.MinerID, tAddr.String()),
+					)
+					stats.Record(ctx, metrics.NumberOfMiningTimeout.M(1))
+
 					if len(tMining.err) >= DefaultMaxErrCounts {
 						tMining.err = tMining.err[:DefaultMaxErrCounts-2]
 					}
@@ -569,6 +587,12 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 								}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
 									log.Errorf("failed to record winner: %s", err)
 								}
+
+								ctx, _ = tag.New(
+									ctx,
+									tag.Upsert(metrics.MinerID, tAddr.String()),
+								)
+								stats.Record(ctx, metrics.NumberOfMiningError.M(1))
 							}
 							if len(tMining.err) > DefaultMaxErrCounts {
 								tMining.err = tMining.err[:DefaultMaxErrCounts-2]

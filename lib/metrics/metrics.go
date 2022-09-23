@@ -26,6 +26,10 @@ var (
 
 	NumberOfBlock         = stats.Int64("number_of_block", "Number of production blocks", stats.UnitDimensionless)
 	NumberOfIsRoundWinner = stats.Int64("number_of_isroundwinner", "Number of is round winner", stats.UnitDimensionless)
+
+	NumberOfMiningTimeout   = stats.Int64("number_of_mining_timeout", "Number of mining failures due to compute proof timeout", stats.UnitDimensionless)
+	NumberOfMiningChainFork = stats.Int64("number_of_mining_chain_fork", "Number of mining failures due to chain fork", stats.UnitDimensionless)
+	NumberOfMiningError     = stats.Int64("number_of_mining_error", "Number of mining failures due to error", stats.UnitDimensionless)
 )
 
 var (
@@ -59,6 +63,21 @@ var (
 		Aggregation: view.Count(),
 		TagKeys:     []tag.Key{MinerID},
 	}
+	NumberOfMiningTimeoutView = &view.View{
+		Measure:     NumberOfMiningTimeout,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{MinerID},
+	}
+	NumberOfMiningChainForkView = &view.View{
+		Measure:     NumberOfMiningChainFork,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{MinerID},
+	}
+	NumberOfMiningErrorView = &view.View{
+		Measure:     NumberOfMiningError,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{MinerID},
+	}
 )
 
 var MinerNodeViews = []*view.View{
@@ -68,6 +87,9 @@ var MinerNodeViews = []*view.View{
 	ComputeProofDurationView,
 	NumberOfBlockView,
 	IsRoundWinnerView,
+	NumberOfMiningTimeoutView,
+	NumberOfMiningChainForkView,
+	NumberOfMiningErrorView,
 }
 
 func SinceInMilliseconds(startTime time.Time) float64 {
