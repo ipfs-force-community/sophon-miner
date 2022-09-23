@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/miner"
 	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/filecoin-project/venus-miner/node/modules/helpers"
 	minermanager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 
@@ -15,13 +16,18 @@ import (
 )
 
 func NewMinerProcessor(lc fx.Lifecycle,
+	mctx helpers.MetricsCtx,
 	api fullnode.FullNode,
-	gtNode *config.GatewayNode,
+	cfg *config.MinerConfig,
 	sfAPI slashfilter.SlashFilterAPI,
 	minerManager minermanager.MinerManageAPI,
 	j journal.Journal,
 ) (miner.MiningAPI, error) {
-	m := miner.NewMiner(api, gtNode, minerManager, sfAPI, j)
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	m, err := miner.NewMiner(ctx, api, cfg, minerManager, sfAPI, j)
+	if err != nil {
+		return nil, err
+	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -35,5 +41,5 @@ func NewMinerProcessor(lc fx.Lifecycle,
 		},
 	})
 
-	return m, nil
+	return m, err
 }

@@ -54,6 +54,11 @@ BlockRecord = "cache"
 版本号 `>= v1.7.0` 的版本.
 
 ```toml
+# 等待base延迟的秒数
+PropagationDelaySecs = 12
+# 计算出块证明等待超时
+MinerOnceTimeout = "15s"
+
 # 链服务监听地址
 [FullNode]
   Addr = "/ip4/127.0.0.1/tcp/3453"
