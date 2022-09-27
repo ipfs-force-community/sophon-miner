@@ -3,12 +3,13 @@ package modules
 import (
 	"context"
 
+	"github.com/filecoin-project/venus-miner/node/modules/helpers"
+
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/miner"
 	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/modules/helpers"
 	minermanager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 
@@ -28,7 +29,6 @@ func NewMinerProcessor(lc fx.Lifecycle,
 	if err != nil {
 		return nil, err
 	}
-
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if err := m.Start(ctx); err != nil {

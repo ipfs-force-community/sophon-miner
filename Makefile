@@ -61,6 +61,8 @@ print-%:
 # docker
 .PHONY: docker
 
+mock:
+	go run github.com/golang/mock/mockgen -destination=./miner/mock/mock_post_provider.go  -source=./miner/util.go -package mock
 
 TAG:=test
 docker:

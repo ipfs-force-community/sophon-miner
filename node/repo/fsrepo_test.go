@@ -1,13 +1,12 @@
 package repo
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
 
 func genFsRepo(t *testing.T) (*FsRepo, func()) {
-	path, err := ioutil.TempDir("", "venus-repo-")
+	path, err := os.MkdirTemp("", "venus-repo-")
 	if err != nil {
 		t.Fatal(err)
 	}

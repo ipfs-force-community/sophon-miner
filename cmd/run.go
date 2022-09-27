@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/api/chain"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-auth/jwtclient"
@@ -27,7 +29,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -132,8 +133,8 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if v.APIVersion != api.FullAPIVersion1 {
-			return fmt.Errorf("venus-daemon API version doesn't match: expected: %s", lapi.APIVersion{APIVersion: api.FullAPIVersion1})
+		if v.APIVersion != chain.FullAPIVersion1 {
+			return fmt.Errorf("venus-daemon API version doesn't match: expected: %s", lapi.APIVersion{APIVersion: chain.FullAPIVersion1})
 		}
 
 		log.Info("Checking full node sync status")

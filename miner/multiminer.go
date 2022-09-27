@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/venus-miner/node/modules/helpers"
+
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/pkg/errors"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
@@ -55,6 +56,8 @@ var DefaultMaxErrCounts = 20
 // whether we mined a block in this round or not.
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error)
 
+type signerFunc func(ctx context.Context, node *config.GatewayNode) (SignFunc, error)
+
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
 	rand.Reader.Read(buf) //nolint:errcheck
@@ -65,13 +68,14 @@ func randTimeOffset(width time.Duration) time.Duration {
 
 // NewMiner instantiates a miner with a concrete WinningPoStProver and a miner
 // address (which can be different from the worker's address).
-func NewMiner(ctx context.Context,
+func NewMiner(
+	metricsCtx helpers.MetricsCtx,
 	api v1api.FullNode,
 	cfg *config.MinerConfig,
 	minerManager miner_manager.MinerManageAPI,
 	sf slashfilter.SlashFilterAPI,
 	j journal.Journal) (*Miner, error) {
-	networkParams, err := api.StateGetNetworkParams(ctx)
+	networkParams, err := api.StateGetNetworkParams(metricsCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +106,16 @@ func NewMiner(ctx context.Context,
 
 			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
+		signerFunc: func(ctx context.Context, cfg *config.GatewayNode) (SignFunc, error) {
+			walletAPI, closer, err := client.NewGatewayRPC(ctx, cfg)
+			if err != nil {
+				return nil, fmt.Errorf("new gateway rpc failed:%w", err)
+			}
+			return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error) {
+				defer closer()
+				return walletAPI.WalletSign(ctx, account, signer, toSign, meta)
+			}, nil
+		},
 
 		sf: sf,
 
@@ -112,6 +126,7 @@ func NewMiner(ctx context.Context,
 
 		minerManager: minerManager,
 		minerWPPMap:  make(map[address.Address]*minerWPP),
+		metricsCtx:   metricsCtx,
 	}
 
 	if networkParams.NetworkName == "2k" {
@@ -146,7 +161,8 @@ type Miner struct {
 	stop     chan struct{}
 	stopping chan struct{}
 
-	waitFunc waitFunc
+	waitFunc   waitFunc
+	signerFunc signerFunc
 
 	lastWork *MiningBase
 
@@ -160,6 +176,7 @@ type Miner struct {
 	lkWPP        sync.Mutex
 	minerWPPMap  map[address.Address]*minerWPP
 	minerManager miner_manager.MinerManageAPI
+	metricsCtx   context.Context
 }
 
 func (m *Miner) Start(ctx context.Context) error {
@@ -219,6 +236,9 @@ func (m *Miner) niceSleep(d time.Duration) bool {
 }
 
 func (m *Miner) hasMinersNeedMining() bool {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
+
 	if len(m.minerWPPMap) == 0 {
 		return false
 	}
@@ -234,26 +254,26 @@ func (m *Miner) hasMinersNeedMining() bool {
 
 // mine runs the mining loop. It performs the following:
 //
-//  1.  Queries our current best currently-known mining candidate (tipset to
-//      build upon).
-//  2.  Waits until the propagation delay of the network has elapsed (currently
-//      6 seconds). The waiting is done relative to the timestamp of the best
-//      candidate, which means that if it's way in the past, we won't wait at
-//      all (e.g. in catch-up or rush mining).
-//  3.  After the wait, we query our best mining candidate. This will be the one
-//      we'll work with.
-//  4.  Sanity check that we _actually_ have a new mining base to mine on. If
-//      not, wait one epoch + propagation delay, and go back to the top.
-//  5.  We attempt to mine a block, by calling mineOne (refer to godocs). This
-//      method will either return a block if we were eligible to mine, or nil
-//      if we weren't.
-//  6a. If we mined a block, we update our state and push it out to the network
-//      via gossipsub.
-//  6b. If we didn't mine a block, we consider this to be a nil round on top of
-//      the mining base we selected. If other miner or miners on the network
-//      were eligible to mine, we will receive their blocks via gossipsub and
-//      we will select that tipset on the next iteration of the loop, thus
-//      discarding our null round.
+//  1. Queries our current best currently-known mining candidate (tipset to
+//     build upon).
+//  2. Waits until the propagation delay of the network has elapsed (currently
+//     6 seconds). The waiting is done relative to the timestamp of the best
+//     candidate, which means that if it's way in the past, we won't wait at
+//     all (e.g. in catch-up or rush mining).
+//  3. After the wait, we query our best mining candidate. This will be the one
+//     we'll work with.
+//  4. Sanity check that we _actually_ have a new mining base to mine on. If
+//     not, wait one epoch + propagation delay, and go back to the top.
+//  5. We attempt to mine a block, by calling mineOne (refer to godocs). This
+//     method will either return a block if we were eligible to mine, or nil
+//     if we weren't.
+//     6a. If we mined a block, we update our state and push it out to the network
+//     via gossipsub.
+//     6b. If we didn't mine a block, we consider this to be a nil round on top of
+//     the mining base we selected. If other miner or miners on the network
+//     were eligible to mine, we will receive their blocks via gossipsub and
+//     we will select that tipset on the next iteration of the loop, thus
+//     discarding our null round.
 func (m *Miner) mine(ctx context.Context) {
 	log.Info("start to do winning poster")
 	ctx, span := trace.StartSpan(ctx, "/mine")
@@ -262,7 +282,6 @@ func (m *Miner) mine(ctx context.Context) {
 	go m.doWinPoStWarmup(ctx)
 
 	var lastBase MiningBase
-minerLoop:
 	for {
 		select {
 		case <-m.stop:
@@ -280,26 +299,20 @@ minerLoop:
 		// if there is no miner to be mined, wait
 		if !m.hasMinersNeedMining() {
 			log.Warn("no miner is configured for mining, please check ... ")
-			if !m.niceSleep(time.Second * 5) {
-				continue minerLoop
-			}
+			m.niceSleep(time.Second * 5)
 			continue
 		}
 
 		base, td, err := m.getLatestBase(ctx)
 		if err != nil {
 			log.Warnf("failed to get latest base, %s", err)
-			if !m.niceSleep(td) {
-				continue minerLoop
-			}
+			m.niceSleep(td)
 			continue
 		}
 
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
-			if !m.niceSleep(time.Duration(m.networkParams.BlockDelaySecs) * time.Second) {
-				continue minerLoop
-			}
+			m.niceSleep(time.Duration(m.networkParams.BlockDelaySecs) * time.Second)
 			continue
 		}
 
@@ -316,7 +329,7 @@ minerLoop:
 			//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain forked)
 			//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
 			if !tbase.TipSet.Equals(base.TipSet) {
-				if 0 == tbase.TipSet.MinTicket().Compare(base.TipSet.MinTicket()) {
+				if tbase.TipSet.MinTicket().Compare(base.TipSet.MinTicket()) == 0 {
 					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 					base = tbase
 				} else {
@@ -382,7 +395,7 @@ minerLoop:
 				for i, header := range base.TipSet.Blocks() {
 					parentMiners[i] = header.Miner
 				}
-				log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "miner", b.Header.Miner, "parents", parentMiners, "took", dur)
+				log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "miner", b.Header.Miner, "parents", parentMiners, "wincount", b.Header.ElectionProof.WinCount, "weight", b.Header.ParentWeight, "took", dur)
 
 				if dur > time.Second*time.Duration(m.networkParams.BlockDelaySecs) {
 					log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
@@ -426,45 +439,7 @@ minerLoop:
 
 				// broadcast all blocks
 				for _, b := range blks {
-					go func(bm *types2.BlockMsg) {
-						if exists, err := m.sf.HasBlock(ctx, bm.Header); err != nil {
-							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-							return
-						} else if exists {
-							log.Error("created a block at the same height as another block we've created")
-							return
-						}
-
-						if err := m.sf.MinedBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
-							log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-							if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
-								log.Errorf("failed to put block: %s", err)
-							}
-
-							ctx, _ = tag.New(
-								ctx,
-								tag.Upsert(metrics.MinerID, bm.Header.Miner.String()),
-							)
-							stats.Record(ctx, metrics.NumberOfMiningError.M(1))
-							return
-						}
-
-						if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
-							log.Errorf("failed to submit newly mined block: %s", err)
-							return
-						}
-
-						// metrics: blocks
-						ctx, _ = tag.New(
-							ctx,
-							tag.Upsert(metrics.MinerID, bm.Header.Miner.String()),
-						)
-						stats.Record(ctx, metrics.NumberOfBlock.M(1))
-
-						if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Success); err != nil {
-							log.Errorf("failed to put block: %s", err)
-						}
-					}(b)
+					go m.broadCastBlock(ctx, *base, b) //copy base to avoid data race
 				}
 			}
 		} else {
@@ -474,6 +449,48 @@ minerLoop:
 		// Wait until the next epoch, plus the propagation delay, so a new tipset
 		// has enough time to form.
 		m.untilNextEpoch(base)
+	}
+}
+
+func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *types2.BlockMsg) {
+	var err error
+	if exists, err := m.sf.HasBlock(ctx, bm.Header); err != nil {
+		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+		return
+	} else if exists {
+		log.Error("created a block at the same height as another block we've created")
+		return
+	}
+
+	if err := m.sf.MinedBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+		if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+			log.Errorf("failed to put block: %s", err)
+		}
+
+		mtsMineBlockFailCtx, _ := tag.New(
+			ctx,
+			tag.Upsert(metrics.MinerID, bm.Header.Miner.String()),
+		)
+		stats.Record(mtsMineBlockFailCtx, metrics.NumberOfMiningError.M(1))
+		return
+	}
+
+	if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
+		//TODO: exposure this failuer as a metrics item.
+		log.Errorf("failed to submit newly mined block: %s", err)
+		return
+	}
+
+	// metrics: blocks
+	metricsCtx, _ := tag.New(
+		m.metricsCtx,
+		tag.Upsert(metrics.MinerID, bm.Header.Miner.String()),
+	)
+	stats.Record(metricsCtx, metrics.NumberOfBlock.M(1))
+
+	if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Success); err != nil {
+		log.Errorf("failed to put block: %s", err)
 	}
 }
 
@@ -694,13 +711,12 @@ type winPoStRes struct {
 //
 // This method does the following:
 //
-//  1.
+//	1.
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, addr address.Address, epp WinningPoStProver) (<-chan *winPoStRes, error) {
 	log.Infow("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
 	start := build.Clock.Now()
 
 	round := base.TipSet.Height() + base.NullRounds + 1
-
 	out := make(chan *winPoStRes)
 
 	go func() {
@@ -757,18 +773,16 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		partDone = metrics.TimerMilliseconds(ctx, metrics.IsRoundWinnerDuration, addr.String())
 
 		var sign SignFunc
-		if _, ok := m.minerWPPMap[addr]; ok {
-			walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
-			if err != nil {
-				log.Errorf("create wallet RPC failed: %s", err)
-				out <- &winPoStRes{addr: addr, err: err}
-				return
-			}
-			defer closer()
-			sign = walletAPI.WalletSign
-		} else {
+		val, ok := m.minerWPPMap[addr]
+		if !ok {
 			log.Errorf("[%v] not exist", addr)
-			out <- &winPoStRes{addr: addr, err: errors.New("miner not exist")}
+			out <- &winPoStRes{addr: addr, err: fmt.Errorf("miner : %s not exist", addr)}
+			return
+		}
+		account := val.account
+		if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
+			log.Errorf("miner: %s get func for signning failed: %s", addr, err)
+			out <- &winPoStRes{addr: addr, err: fmt.Errorf("miner: %s get sign func failed:%w", addr, err)}
 			return
 		}
 		winner, err := IsRoundWinner(ctx, round, account, addr, rbase, mbi, sign)
@@ -785,16 +799,15 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		}
 
 		tIsWinner := build.Clock.Now()
-		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket))
+		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket), "win count", winner.WinCount)
 		partDone() // IsRoundWinnerDuration
 
 		// metrics: wins
-		ctx, _ = tag.New(
-			ctx,
+		metricsCtx, _ := tag.New(
+			m.metricsCtx,
 			tag.Upsert(metrics.MinerID, addr.String()),
 		)
-		stats.Record(ctx, metrics.NumberOfIsRoundWinner.M(1))
-
+		stats.Record(metricsCtx, metrics.NumberOfIsRoundWinner.M(1))
 		// record to db only use mysql
 		if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
 			Height:  base.TipSet.Height() + base.NullRounds + 1,
@@ -880,19 +893,16 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 	//}
 
 	var sign SignFunc
-	account := ""
-	if val, ok := m.minerWPPMap[addr]; ok {
-		account = val.account
-		walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
-		if err != nil {
-			log.Errorf("create wallet RPC failed: %s", err)
-			return nil, err
-		}
-		defer closer()
-		sign = walletAPI.WalletSign
-	} else {
+	val, ok := m.minerWPPMap[addr]
+	if !ok {
 		log.Errorf("[%v] not exist", addr)
-		return nil, errors.New("miner not exist")
+		return nil, fmt.Errorf("miner %s not exist", addr)
+	}
+
+	account := val.account
+	if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
+		log.Errorf("get func for signning failed: %s", err)
+		return nil, err
 	}
 
 	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input.Bytes())
@@ -931,19 +941,15 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 	// block signature check
 	if blockMsg.Header.BlockSig == nil {
 		var sign SignFunc
-		account := ""
-		if val, ok := m.minerWPPMap[addr]; ok {
-			account = val.account
-			walletAPI, closer, err := client.NewGatewayRPC(ctx, m.gatewayNode)
-			if err != nil {
-				log.Errorf("create wallet RPC failed: %s", err)
-				return nil, err
-			}
-			defer closer()
-			sign = walletAPI.WalletSign
-		} else {
+		val, ok := m.minerWPPMap[addr]
+		if !ok {
 			log.Errorf("[%v] not exist", addr)
-			return nil, errors.New("miner not exist")
+			return nil, fmt.Errorf("miner %s not exist", addr)
+		}
+		account := val.account
+		if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
+			log.Errorf("get signer func failed:%s", err.Error())
+			return nil, err
 		}
 
 		nosigbytes, err := blockMsg.Header.SignatureData()

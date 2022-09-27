@@ -7,13 +7,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/api/chain"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -103,8 +104,8 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if !v.APIVersion.EqMajorMinor(api.FullAPIVersion1) {
-			return fmt.Errorf("RemoteAPI version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(chain.FullAPIVersion1) {
+			return fmt.Errorf("RemoteAPI version didn't match (expected %s, remote %s)", chain.FullAPIVersion1, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")

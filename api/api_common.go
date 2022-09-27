@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/filecoin-project/venus/venus-shared/api"
+	"github.com/google/uuid"
 )
 
 type Common interface {
@@ -34,7 +34,7 @@ type APIVersion struct {
 	// this api
 	//
 	// See APIVersion in build/version.go
-	APIVersion api.Version
+	APIVersion vTypes.APIVersion
 }
 
 func (v APIVersion) String() string {
