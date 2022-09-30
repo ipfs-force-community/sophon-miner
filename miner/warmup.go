@@ -93,6 +93,7 @@ out:
 			SealProof:    si.SealProof,
 			SectorNumber: sector,
 			SealedCID:    si.SealedCID,
+			SectorKey:    si.SectorKeyCID,
 		},
 	}, r, ts.Height(), nv)
 	if err != nil {
