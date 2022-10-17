@@ -6,7 +6,7 @@ all: build
 GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
 ifeq ($(shell expr $(GOVERSION) \< 17), 1)
 $(warning Your Golang version is go 1.$(GOVERSION))
-$(error Update Golang to version to at least 1.17.9)
+$(error Update Golang to version to at least 1.18.1)
 endif
 
 CLEAN:=
