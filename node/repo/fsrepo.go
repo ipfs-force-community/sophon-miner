@@ -11,8 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	types2 "github.com/filecoin-project/venus-miner/types"
-
 	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
@@ -22,7 +20,9 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus/venus-shared/types"
+	vsTypes "github.com/filecoin-project/venus/venus-shared/types"
+
+	"github.com/filecoin-project/venus-miner/types"
 )
 
 const (
@@ -30,6 +30,7 @@ const (
 	fsAPIToken  = "token"
 	fsConfig    = "config.toml"
 	fsDatastore = "datastore"
+	fsVersion   = "version"
 	fsLock      = "repo.lock"
 	fsKeystore  = "keystore"
 )
@@ -333,6 +334,13 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	return os.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
 }
 
+func (fsr *fsLockedRepo) SetVersion(version string) error {
+	if err := fsr.stillValid(); err != nil {
+		return err
+	}
+	return os.WriteFile(fsr.join(fsVersion), []byte(version), 0644)
+}
+
 func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
@@ -340,7 +348,7 @@ func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 	return os.WriteFile(fsr.join(fsAPIToken), token, 0600)
 }
 
-func (fsr *fsLockedRepo) KeyStore() (types2.KeyStore, error) {
+func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {
 	if err := fsr.stillValid(); err != nil {
 		return nil, err
 	}
@@ -380,10 +388,10 @@ func (fsr *fsLockedRepo) List() ([]string, error) {
 	return keys, nil
 }
 
-// Get gets a key out of keystore and returns types.KeyInfo coresponding to named key
-func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
+// Get gets a key out of keystore and returns vsTypes.KeyInfo coresponding to named key
+func (fsr *fsLockedRepo) Get(name string) (vsTypes.KeyInfo, error) {
 	if err := fsr.stillValid(); err != nil {
-		return types.KeyInfo{}, err
+		return vsTypes.KeyInfo{}, err
 	}
 
 	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
@@ -391,37 +399,37 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 
 	fstat, err := os.Stat(keyPath)
 	if os.IsNotExist(err) {
-		return types.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, types.ErrKeyInfoNotFound)
+		return vsTypes.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, vsTypes.ErrKeyInfoNotFound)
 	} else if err != nil {
-		return types.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
+		return vsTypes.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
 	}
 
 	if fstat.Mode()&0077 != 0 {
-		return types.KeyInfo{}, fmt.Errorf(kstrPermissionMsg, name, fstat.Mode())
+		return vsTypes.KeyInfo{}, fmt.Errorf(kstrPermissionMsg, name, fstat.Mode())
 	}
 
 	file, err := os.Open(keyPath)
 	if err != nil {
-		return types.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
+		return vsTypes.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
 	}
 	defer file.Close() //nolint: errcheck // read only op
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return types.KeyInfo{}, fmt.Errorf("reading key '%s': %w", name, err)
+		return vsTypes.KeyInfo{}, fmt.Errorf("reading key '%s': %w", name, err)
 	}
 
-	var res types.KeyInfo
+	var res vsTypes.KeyInfo
 	err = json.Unmarshal(data, &res)
 	if err != nil {
-		return types.KeyInfo{}, fmt.Errorf("decoding key '%s': %w", name, err)
+		return vsTypes.KeyInfo{}, fmt.Errorf("decoding key '%s': %w", name, err)
 	}
 
 	return res, nil
 }
 
 // Put saves key info under given name
-func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
+func (fsr *fsLockedRepo) Put(name string, info vsTypes.KeyInfo) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
@@ -431,7 +439,7 @@ func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
 
 	_, err := os.Stat(keyPath)
 	if err == nil {
-		return fmt.Errorf("checking key before put '%s': %w", name, types.ErrKeyExists)
+		return fmt.Errorf("checking key before put '%s': %w", name, vsTypes.ErrKeyExists)
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("checking key before put '%s': %w", name, err)
 	}
@@ -458,7 +466,7 @@ func (fsr *fsLockedRepo) Delete(name string) error {
 
 	_, err := os.Stat(keyPath)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("checking key before delete '%s': %w", name, types.ErrKeyInfoNotFound)
+		return fmt.Errorf("checking key before delete '%s': %w", name, vsTypes.ErrKeyInfoNotFound)
 	} else if err != nil {
 		return fmt.Errorf("checking key before delete '%s': %w", name, err)
 	}
