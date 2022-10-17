@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://circleci.com/gh/filecoin-project/venus-miner"><img src="https://circleci.com/gh/filecoin-project/venus.svg?style=svg"></a>
-  <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.17-blue.svg" /></a>
+  <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.18-blue.svg" /></a>
   <br>
 </p>
 
