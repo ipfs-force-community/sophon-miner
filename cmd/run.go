@@ -10,11 +10,19 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/filecoin-project/venus/venus-shared/api/chain"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/gorilla/mux"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/urfave/cli/v2"
+
 	"github.com/filecoin-project/venus-auth/jwtclient"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+
 	lapi "github.com/filecoin-project/venus-miner/api"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/lib/metrics"
@@ -23,13 +31,6 @@ import (
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
 	"github.com/filecoin-project/venus-miner/types"
-	"github.com/gorilla/mux"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/urfave/cli/v2"
-
-	"github.com/filecoin-project/venus/pkg/constants"
-	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 var runCmd = &cli.Command{
@@ -71,6 +72,10 @@ var runCmd = &cli.Command{
 		lr, err := r.Lock()
 		if err != nil {
 			return err
+		}
+		err = lr.Migrate() //nolint: errcheck
+		if err != nil {
+			log.Errorf("Migrate failed: %v", err.Error())
 		}
 		cfgV, err := lr.Config()
 		if err != nil {
