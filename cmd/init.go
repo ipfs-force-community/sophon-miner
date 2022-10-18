@@ -7,17 +7,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/venus/venus-shared/api/chain"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
+	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/repo"
@@ -187,6 +187,10 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo) error 
 
 		if err := lr.SetAPIEndpoint(ma); err != nil {
 			return fmt.Errorf("setting api endpoint: %w", err)
+		}
+
+		if err := lr.SetVersion(build.Version); err != nil {
+			return fmt.Errorf("setting version: %w", err)
 		}
 	}
 
