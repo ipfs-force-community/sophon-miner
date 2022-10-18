@@ -53,4 +53,10 @@ type LockedRepo interface {
 
 	// Path returns absolute path of the repo
 	Path() string
+
+	// SetVersion sets the version number
+	SetVersion(version string) error
+
+	// Migrate used to upgrade the repo
+	Migrate() error
 }
