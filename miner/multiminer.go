@@ -575,6 +575,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 				case <-tCtx.Done():
 					log.Errorf("mining timeout for %s", tAddr.String())
 
+					// Timeout may not be the winner when it happens
 					if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
 						Height: base.TipSet.Height() + base.NullRounds + 1,
 						Miner:  tAddr,

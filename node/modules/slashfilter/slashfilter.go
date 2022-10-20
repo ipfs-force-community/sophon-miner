@@ -146,7 +146,8 @@ func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, 
 	var blk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		// Timeout may not be the winner when it happens, once the winner database must be recorded.
+		if err == gorm.ErrRecordNotFound && state != Timeout {
 			mblk := &MinedBlock{
 				ParentEpoch: int64(parentEpoch),
 				ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
