@@ -1,5 +1,16 @@
 # venus-miner changelog
 
+# 1.8.0-rc3 / 2022-10-20
+
+## Improvements
+
+- 不记录没有获胜的出块Timeout
+
+## 注意事项
+
+从 `1.7.*` 升级会自动迁移配置文件，从 `1.6.*` 升级需重新初始化`Repo`(init)
+
+
 # 1.8.0-rc2 / 2022-10-19
 
 ## Improvements
