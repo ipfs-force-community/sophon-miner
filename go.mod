@@ -10,10 +10,10 @@ require (
 	github.com/filecoin-project/go-address v1.0.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-jsonrpc v0.1.8
-	github.com/filecoin-project/go-state-types v0.9.0
+	github.com/filecoin-project/go-state-types v0.9.1
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.8.0-rc1
+	github.com/filecoin-project/venus v1.8.0-rc3
 	github.com/filecoin-project/venus-auth v1.8.0-rc1
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/golang/mock v1.6.0
