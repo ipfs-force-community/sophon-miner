@@ -1,3 +1,4 @@
+// stm: #unit
 package miner
 
 import (
@@ -42,12 +43,16 @@ import (
 )
 
 func TestSuccessMinerBlocks(t *testing.T) {
+	// stm: @VENUSMINER_MINERWPP_COMPUTE_PROOF_001, @VENUSMINER_MULTIMINER_GET_BEST_MINING_CANDIDATE_001, @VENUSMINER_MULTIMINER_SYNC_STATUS_001
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	// stm: @VENUSMINER_MULTIMINER_NEW_001
 	miner, chain, _ := setMiner(ctx, t, 4)
 	chain.keepChainGoing()
+	// stm: @VENUSMINER_MULTIMINER_START_001, @VENUSMINER_NODECONFIGGATEWAYDEF_DIAL_ARGS_001, @VENUSMINER_NODECONFIGGATEWAYDEF_AUTH_HEADER_001
 	assert.Nil(t, miner.Start(ctx))
 	defer func() {
+		// stm: @VENUSMINER_MULTIMINER_STOP_001
 		assert.Nil(t, miner.Stop(ctx))
 	}()
 
@@ -86,6 +91,7 @@ func TestCountWinner(t *testing.T) {
 			if blk.Height > 5 {
 				once.Do(func() {
 					addrs := chain.pcController.listAddress()
+					// stm: @VENUSMINER_MINERMGR_COUNT_WINNERS_001
 					winners, err := miner.CountWinners(ctx, addrs, 0, 4)
 					assert.Nil(t, err)
 					for _, minerSt := range winners {
@@ -298,15 +304,18 @@ func TestManualStartAndStop(t *testing.T) {
 
 		if round == 5 {
 			minerList := chain.changeMiner(3)
+			// stm: @VENUSMINER_MINERWPP_NEW_WINNING_POST_PROVER_001, @VENUSMINER_MINERMGR_UPDATE_ADDRESS_001, @VENUSMINER_NODE_MODULES_AUTH_MANAGER_UPDATE_001
 			_, err := miner.UpdateAddress(ctx, 0, 100)
 			assert.Nil(t, err)
 			for _, addr := range minerList {
 				assert.True(t, miner.minerWPPMap[addr].isMining)
 			}
 
+			// stm: @VENUSMINER_MINERMGR_MANUAL_STOP_001
 			err = miner.ManualStop(ctx, []address.Address{chain.createMiner()})
 			assert.NotNil(t, err)
 
+			// stm: @VENUSMINER_MINERMGR_MANUAL_START_001
 			err = miner.ManualStart(ctx, []address.Address{chain.createMiner()})
 			assert.NotNil(t, err)
 
@@ -355,6 +364,11 @@ func TestMinerStateStartStop(t *testing.T) {
 	defer cancel()
 	miner, chain, _ := setMiner(ctx, t, 4)
 
+	// stm: @VENUSMINER_MINERMGR_LIST_ADDRESS_001, @VENUSMINER_NODE_MODULES_AUTH_MANAGER_LIST_001
+	mInfos, err := miner.ListAddress(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, len(mInfos), 4)
+
 	stop := make(chan struct{})
 	chain.baseInfoHook = func(address2 address.Address, round abi.ChainEpoch) {
 		select {
@@ -370,6 +384,7 @@ func TestMinerStateStartStop(t *testing.T) {
 
 	<-stop
 	addrs := chain.pcController.listAddress()
+	// stm: @VENUSMINER_MINERMGR_STATES_FOR_MINING_001
 	states, err := miner.StatesForMining(ctx, addrs)
 	assert.Nil(t, err)
 	for _, st := range states {
