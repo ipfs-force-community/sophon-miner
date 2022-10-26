@@ -107,11 +107,12 @@ func NewMiner(
 			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
 		signerFunc: func(ctx context.Context, cfg *config.GatewayNode) (SignFunc, error) {
-			walletAPI, closer, err := client.NewGatewayRPC(ctx, cfg)
-			if err != nil {
-				return nil, fmt.Errorf("new gateway rpc failed:%w", err)
-			}
 			return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error) {
+				walletAPI, closer, err := client.NewGatewayRPC(ctx, cfg)
+				if err != nil {
+					return nil, fmt.Errorf("new gateway rpc failed:%w", err)
+				}
+
 				defer closer()
 				return walletAPI.WalletSign(ctx, account, signer, toSign, meta)
 			}, nil
