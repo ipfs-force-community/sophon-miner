@@ -130,7 +130,7 @@ func (fsr *FsRepo) initConfig() error {
 }
 
 func (fsr *FsRepo) Update(cfg *config.MinerConfig) error {
-	f, err := os.Open(fsr.configPath)
+	f, err := os.OpenFile(fsr.configPath, os.O_RDWR, 0666)
 	if err != nil {
 		return err
 	}

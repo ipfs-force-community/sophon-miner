@@ -1,12 +1,14 @@
+// stm: #uinit
 package slashfilter
 
 import (
 	"context"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/query"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -65,6 +67,7 @@ func checkHasBlock(t *testing.T, api SlashFilterAPI, bh *types.BlockHeader, expe
 }
 
 func TestSlashFilter(t *testing.T) {
+	// stm: @VENUSMINER_NODE_MODULES_AUTH_MANAGER_MINED_BLOCK_001
 	t.Run("mysql slash filter tests", func(t *testing.T) {
 		sf, clear := makeMysqlTestCtx(t)
 		t.Run("put-block", wrapper(testPutBlock, sf, clear))
@@ -129,6 +132,7 @@ func testPutBlock(t *testing.T, sf SlashFilterAPI, clear func() error) {
 
 	ctx := context.Background()
 
+	// stm: @VENUSMINER_NODE_MODULES_SLASHFILTER_MYSQL_HAS_BLOCK_001, @VENUSMINER_NODE_MODULES_AUTH_MANAGER_PUT_BLOCK_001
 	t.Run("new block", func(t *testing.T) {
 		cs := cases[0]
 		checkHasBlock(t, sf, cs.bh, false)

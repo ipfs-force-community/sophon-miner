@@ -1,9 +1,11 @@
+// stm: #uint
 package repo
 
 import (
 	"errors"
-	"github.com/filecoin-project/venus/venus-shared/types"
 	"testing"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
@@ -46,6 +48,13 @@ func basicTest(t *testing.T, repo Repo) {
 	apima, err = repo.APIEndpoint()
 	assert.NoError(t, err, "setting multiaddr shouldn't error")
 	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
+
+	err = lrepo.SetAPIToken([]byte("api token"))
+	assert.NoError(t, err)
+
+	token, err := repo.APIToken()
+	assert.NoError(t, err)
+	assert.Equal(t, token, []byte("api token"))
 
 	c1, err := lrepo.Config()
 	assert.Equal(t, config.DefaultMinerConfig(), c1, "there should be a default config")

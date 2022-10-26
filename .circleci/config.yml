@@ -413,9 +413,13 @@ workflows:
           suite: utest-unit-node
           target: "./node/..."
       - test:
-          name: test-unit-cli
-          suite: utest-unit-cli
-          target: "./cli/... ./cmd/... ./api/..."
+          name: test-unit-journal
+          suite: utest-unit-journal
+          target: "./lib/journal/..."
+      - test:
+          name: test-unit-miner
+          suite: utest-unit-miner
+          target: "./miner/..."
       - build-all:
           filters:
             tags:
