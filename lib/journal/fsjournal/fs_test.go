@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/node/repo"
@@ -54,27 +55,27 @@ func TestFsJournal(t *testing.T) {
 		eType := jl.RegisterEventType("s1", "b1")
 		require.NoError(t, err)
 
-		isRecoded := make(chan bool, 1)
 		// stm: @VENUSMINER_FSJOURNAL_RECORD_EVENT_001
 		jl.RecordEvent(eType, func() interface{} {
-			isRecoded <- true
 			return "hello"
 		})
-		t.Logf("wating `RecodeEvent` execution...")
-		<-isRecoded
+
+		t.Logf("Waiting record event...")
+
+		time.AfterFunc(time.Millisecond*100, func() {
+			recordEventData, err := ioutil.ReadFile(jlFile)
+			require.NoError(t, err)
+
+			event := &journal.Event{}
+			require.NoErrorf(t, json.Unmarshal(recordEventData, event),
+				"json unmarshal: [%s] to journal.Event failed.", string(recordEventData))
+			if message, isok := event.Data.(string); !isok {
+				t.Errorf("event.Data should be a string")
+			} else {
+				require.Equal(t, message, "hello")
+			}
+		})
 
 		require.NoError(t, jl.Close())
-
-		recordEventData, err := ioutil.ReadFile(jlFile)
-		require.NoError(t, err)
-
-		event := &journal.Event{}
-		require.NoErrorf(t, json.Unmarshal(recordEventData, event),
-			"json unmarshal: [%s] to journal.Event failed.", string(recordEventData))
-		if message, isok := event.Data.(string); !isok {
-			t.Errorf("event.Data should be a string")
-		} else {
-			require.Equal(t, message, "hello")
-		}
 	}
 }
