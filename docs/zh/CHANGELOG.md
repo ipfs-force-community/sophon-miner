@@ -1,5 +1,11 @@
 # venus-miner changelog
 
+# 1.8.0-rc4 / 2022-10-26
+
+## Fixes
+
+- 修复计算历史出块权时panic
+
 # 1.8.0-rc3 / 2022-10-20
 
 ## Improvements
