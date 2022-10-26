@@ -173,20 +173,12 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 			go func() {
 				defer wg.Done()
 
-				var err error
-				var sign SignFunc = nil
 				val, ok := m.minerWPPMap[tAddr]
 				if !ok {
 					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
 					return
 				}
 				account := val.account
-				if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
-					log.Errorf("miner: %s get func for signning failed: %s", tAddr, err)
-					res = append(res, types.CountWinners{Msg: fmt.Sprintf("get sign func failed:%s", err), Miner: tAddr})
-					return
-				}
-
 				wgWin := sync.WaitGroup{}
 				winInfo := make([]types.SimpleWinInfo, 0)
 				totalWinCount := int64(0)
@@ -195,6 +187,13 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					wgWin.Add(1)
 					go func(epoch abi.ChainEpoch) {
 						defer wgWin.Done()
+
+						sign, err := m.signerFunc(ctx, m.gatewayNode)
+						if err != nil {
+							log.Errorf("miner: %s get func for signning failed: %s", tAddr, err)
+							res = append(res, types.CountWinners{Msg: fmt.Sprintf("get sign func failed:%s", err), Miner: tAddr})
+							return
+						}
 
 						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
 						if err != nil {
