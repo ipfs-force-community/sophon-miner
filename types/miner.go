@@ -1,8 +1,6 @@
 package types
 
 import (
-	"time"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -10,30 +8,16 @@ import (
 type NetworkName string
 
 type MinerInfo struct {
-	Addr address.Address
-	Id   string
-	Name string
+	Addr       address.Address
+	Id         string
+	Name       string
+	OpenMining bool
 }
 
 type MinerState struct {
 	Addr     address.Address
 	IsMining bool
 	Err      []string
-}
-
-type User struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	SourceType int    `json:"sourceType"`
-	Comment    string `json:"comment"`
-	State      int    `json:"state"`
-	CreateTime int64  `json:"createTime"`
-	UpdateTime int64  `json:"updateTime"`
-}
-
-type Miner struct {
-	Miner, User          string
-	CreatedAt, UpdatedAt time.Time
 }
 
 type SimpleWinInfo struct {

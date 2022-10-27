@@ -142,10 +142,9 @@ type syncStatus struct {
 }
 
 type minerWPP struct {
-	account  string
-	epp      WinningPoStProver
-	isMining bool
-	err      []string
+	account string
+	epp     WinningPoStProver
+	err     []string
 }
 
 type Miner struct {
@@ -192,16 +191,17 @@ func (m *Miner) Start(ctx context.Context) error {
 		return err
 	}
 	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo.Addr)
 		if err != nil {
 			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
 		}
-		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name, isMining: true}
+		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name}
 	}
 
 	m.stop = make(chan struct{})
 	go m.mine(context.TODO())
+	go m.pollingMiners(ctx)
 	go m.SyncStatus(ctx)
 	return nil
 }
@@ -235,21 +235,11 @@ func (m *Miner) niceSleep(d time.Duration) bool {
 	}
 }
 
-func (m *Miner) hasMinersNeedMining() bool {
+func (m *Miner) numberOfMiners() int {
 	m.lkWPP.Lock()
 	defer m.lkWPP.Unlock()
 
-	if len(m.minerWPPMap) == 0 {
-		return false
-	}
-
-	for _, mw := range m.minerWPPMap {
-		if mw.isMining {
-			return true
-		}
-	}
-
-	return false
+	return len(m.minerWPPMap)
 }
 
 // mine runs the mining loop. It performs the following:
@@ -297,7 +287,7 @@ func (m *Miner) mine(ctx context.Context) {
 		log.Infow("sync status", "HeightDiff", m.st.heightDiff, "err:", m.st.err)
 
 		// if there is no miner to be mined, wait
-		if !m.hasMinersNeedMining() {
+		if m.numberOfMiners() == 0 {
 			log.Warn("no miner is configured for mining, please check ... ")
 			m.niceSleep(time.Second * 5)
 			continue
@@ -318,7 +308,7 @@ func (m *Miner) mine(ctx context.Context) {
 
 		// mining once for all miners
 		winPoSts := m.mineOneForAll(ctx, base)
-		log.Infow("mining compute", "number of wins", len(winPoSts), "total miner", len(m.minerWPPMap))
+		log.Infow("mining compute", "number of wins", len(winPoSts), "total miner", m.numberOfMiners())
 
 		// get the base again in order to get all the blocks in the previous round as much as possible
 		tbase, err := m.GetBestMiningCandidate(ctx)
@@ -552,80 +542,77 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 	)
 
 	for addr, mining := range m.minerWPPMap {
-		if mining.isMining {
-			wg.Add(1)
-			tMining := mining
-			tAddr := addr
+		wg.Add(1)
+		tMining := mining
+		tAddr := addr
 
-			go func() {
-				defer wg.Done()
+		go func() {
+			defer wg.Done()
 
-				// set timeout for miner once
-				tCtx, tCtxCancel := context.WithTimeout(ctx, m.MinerOnceTimeout)
-				defer tCtxCancel()
+			// set timeout for miner once
+			tCtx, tCtxCancel := context.WithTimeout(ctx, m.MinerOnceTimeout)
+			defer tCtxCancel()
 
-				resChan, err := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
-				if err != nil {
-					log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
-					return
+			resChan, err := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
+			if err != nil {
+				log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
+				return
+			}
+
+			// waiting for mining results
+			select {
+			case <-tCtx.Done():
+				log.Errorf("mining timeout for %s", tAddr.String())
+
+				// Timeout may not be the winner when it happens
+				if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+					Height: base.TipSet.Height() + base.NullRounds + 1,
+					Miner:  tAddr,
+				}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Timeout); err != nil {
+					log.Errorf("failed to record mining timeout: %s", err)
 				}
 
-				// waiting for mining results
-				select {
-				case <-tCtx.Done():
-					log.Errorf("mining timeout for %s", tAddr.String())
+				ctx, _ = tag.New(
+					ctx,
+					tag.Upsert(metrics.MinerID, tAddr.String()),
+				)
+				stats.Record(ctx, metrics.NumberOfMiningTimeout.M(1))
 
-					// Timeout may not be the winner when it happens
-					if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
-						Height: base.TipSet.Height() + base.NullRounds + 1,
-						Miner:  tAddr,
-					}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Timeout); err != nil {
-						log.Errorf("failed to record mining timeout: %s", err)
-					}
-
-					ctx, _ = tag.New(
-						ctx,
-						tag.Upsert(metrics.MinerID, tAddr.String()),
-					)
-					stats.Record(ctx, metrics.NumberOfMiningTimeout.M(1))
-
-					if len(tMining.err) >= DefaultMaxErrCounts {
-						tMining.err = tMining.err[:DefaultMaxErrCounts-2]
-					}
-					tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
-					return
-				case res := <-resChan:
-					if res != nil {
-						if res.err != nil {
-							if res.winner != nil {
-								// record to db only use mysql
-								if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
-									Height: base.TipSet.Height() + base.NullRounds + 1,
-									Miner:  tAddr,
-								}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
-									log.Errorf("failed to record winner: %s", err)
-								}
-
-								ctx, _ = tag.New(
-									ctx,
-									tag.Upsert(metrics.MinerID, tAddr.String()),
-								)
-								stats.Record(ctx, metrics.NumberOfMiningError.M(1))
+				if len(tMining.err) >= DefaultMaxErrCounts {
+					tMining.err = tMining.err[:DefaultMaxErrCounts-2]
+				}
+				tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
+				return
+			case res := <-resChan:
+				if res != nil {
+					if res.err != nil {
+						if res.winner != nil {
+							// record to db only use mysql
+							if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+								Height: base.TipSet.Height() + base.NullRounds + 1,
+								Miner:  tAddr,
+							}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+								log.Errorf("failed to record winner: %s", err)
 							}
-							if len(tMining.err) > DefaultMaxErrCounts {
-								tMining.err = tMining.err[:DefaultMaxErrCounts-2]
-							}
-							tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
-						} else if res.winner != nil {
-							winPoStLk.Lock()
-							winPoSts = append(winPoSts, res) //nolint:staticcheck
-							winPoStLk.Unlock()
+
+							ctx, _ = tag.New(
+								ctx,
+								tag.Upsert(metrics.MinerID, tAddr.String()),
+							)
+							stats.Record(ctx, metrics.NumberOfMiningError.M(1))
 						}
+						if len(tMining.err) > DefaultMaxErrCounts {
+							tMining.err = tMining.err[:DefaultMaxErrCounts-2]
+						}
+						tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
+					} else if res.winner != nil {
+						winPoStLk.Lock()
+						winPoSts = append(winPoSts, res) //nolint:staticcheck
+						winPoStLk.Unlock()
 					}
 				}
-			}()
-
-		}
+			}
+		}()
 	}
 
 	wg.Wait()

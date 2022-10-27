@@ -36,26 +36,27 @@ func (m *MockMinerManageAPI) EXPECT() *MockMinerManageAPIMockRecorder {
 	return m.recorder
 }
 
-// Count mocks base method.
-func (m *MockMinerManageAPI) Count(arg0 context.Context) int {
+// CloseMining mocks base method.
+func (m *MockMinerManageAPI) CloseMining(arg0 context.Context, arg1 address.Address) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Count", arg0)
-	ret0, _ := ret[0].(int)
+	ret := m.ctrl.Call(m, "CloseMining", arg0, arg1)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Count indicates an expected call of Count.
-func (mr *MockMinerManageAPIMockRecorder) Count(arg0 interface{}) *gomock.Call {
+// CloseMining indicates an expected call of CloseMining.
+func (mr *MockMinerManageAPIMockRecorder) CloseMining(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockMinerManageAPI)(nil).Count), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseMining", reflect.TypeOf((*MockMinerManageAPI)(nil).CloseMining), arg0, arg1)
 }
 
 // Get mocks base method.
-func (m *MockMinerManageAPI) Get(arg0 context.Context, arg1 address.Address) *types.MinerInfo {
+func (m *MockMinerManageAPI) Get(arg0 context.Context, arg1 address.Address) (*types.MinerInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
 	ret0, _ := ret[0].(*types.MinerInfo)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
@@ -78,11 +79,25 @@ func (mr *MockMinerManageAPIMockRecorder) Has(arg0, arg1 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Has", reflect.TypeOf((*MockMinerManageAPI)(nil).Has), arg0, arg1)
 }
 
+// IsOpenMining mocks base method.
+func (m *MockMinerManageAPI) IsOpenMining(arg0 context.Context, arg1 address.Address) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsOpenMining", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsOpenMining indicates an expected call of IsOpenMining.
+func (mr *MockMinerManageAPIMockRecorder) IsOpenMining(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsOpenMining", reflect.TypeOf((*MockMinerManageAPI)(nil).IsOpenMining), arg0, arg1)
+}
+
 // List mocks base method.
-func (m *MockMinerManageAPI) List(arg0 context.Context) ([]types.MinerInfo, error) {
+func (m *MockMinerManageAPI) List(arg0 context.Context) (map[address.Address]*types.MinerInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
-	ret0, _ := ret[0].([]types.MinerInfo)
+	ret0, _ := ret[0].(map[address.Address]*types.MinerInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -93,11 +108,26 @@ func (mr *MockMinerManageAPIMockRecorder) List(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockMinerManageAPI)(nil).List), arg0)
 }
 
+// OpenMining mocks base method.
+func (m *MockMinerManageAPI) OpenMining(arg0 context.Context, arg1 address.Address) (*types.MinerInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OpenMining", arg0, arg1)
+	ret0, _ := ret[0].(*types.MinerInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// OpenMining indicates an expected call of OpenMining.
+func (mr *MockMinerManageAPIMockRecorder) OpenMining(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenMining", reflect.TypeOf((*MockMinerManageAPI)(nil).OpenMining), arg0, arg1)
+}
+
 // Update mocks base method.
-func (m *MockMinerManageAPI) Update(arg0 context.Context, arg1, arg2 int64) ([]types.MinerInfo, error) {
+func (m *MockMinerManageAPI) Update(arg0 context.Context, arg1, arg2 int64) (map[address.Address]*types.MinerInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]types.MinerInfo)
+	ret0, _ := ret[0].(map[address.Address]*types.MinerInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -45,7 +45,7 @@ var _ SlashFilterAPI = (*mysqlSlashFilter)(nil)
 func NewMysql(cfg *config.MySQLConfig) (SlashFilterAPI, error) {
 	db, err := gorm.Open(mysql.Open(cfg.Conn))
 	if err != nil {
-		return nil, fmt.Errorf("[db connection failed] Connection : %s %w", cfg.Conn, err)
+		return nil, fmt.Errorf("mysql open %s: %w", cfg.Conn, err)
 	}
 
 	db.Set("gorm:table_options", "CHARSET=utf8mb4")

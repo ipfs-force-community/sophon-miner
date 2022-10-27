@@ -3,158 +3,160 @@ package miner_manager
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"strconv"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/go-resty/resty/v2"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/venus-auth/auth"
+	"github.com/filecoin-project/venus-auth/core"
+	"github.com/filecoin-project/venus-auth/jwtclient"
 
 	"github.com/filecoin-project/venus-miner/types"
 )
 
 const CoMinersLimit = 200
 
+var (
+	ErrNotFound = fmt.Errorf("not found")
+)
+
 var log = logging.Logger("auth-miners")
 
 type MinerManage struct {
-	cli   *resty.Client
-	token string
+	authClient *jwtclient.AuthClient
 
-	miners []types.MinerInfo
+	miners map[address.Address]*types.MinerInfo
 	lk     sync.Mutex
 }
 
-func NewMinerManager(url, token string) func() (MinerManageAPI, error) {
+func NewMinerManager(url string) func() (MinerManageAPI, error) {
 	return func() (MinerManageAPI, error) {
-		cli := resty.New().SetHostURL(url).SetHeader("Accept", "application/json")
-		m := &MinerManage{cli: cli, token: token}
+		authClient, err := jwtclient.NewAuthClient(url)
+		if err != nil {
+			return nil, err
+		}
+		m := &MinerManage{authClient: authClient}
 
-		miners, err := m.Update(context.TODO(), 0, 0)
+		_, err = m.Update(context.TODO(), 0, 0)
 		if err != nil {
 			return nil, err
 		}
 
-		m.miners = miners
 		return m, nil
 	}
 }
 
-func (m *MinerManage) Has(ctx context.Context, addr address.Address) bool {
+func (m *MinerManage) Has(ctx context.Context, mAddr address.Address) bool {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
-	for _, miner := range m.miners {
-		if miner.Addr.String() == addr.String() {
-			return true
-		}
+	_, ok := m.miners[mAddr]
+	return ok
+}
+
+func (m *MinerManage) Get(ctx context.Context, mAddr address.Address) (*types.MinerInfo, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	if _, ok := m.miners[mAddr]; ok {
+		return m.miners[mAddr], nil
+	}
+
+	return nil, ErrNotFound
+}
+
+func (m *MinerManage) IsOpenMining(ctx context.Context, mAddr address.Address) bool {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	if _, ok := m.miners[mAddr]; ok {
+		return m.miners[mAddr].OpenMining
 	}
 
 	return false
 }
 
-func (m *MinerManage) Get(ctx context.Context, addr address.Address) *types.MinerInfo {
+func (m *MinerManage) OpenMining(ctx context.Context, mAddr address.Address) (*types.MinerInfo, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
-	for k := range m.miners {
-		if m.miners[k].Addr.String() == addr.String() {
-			return &m.miners[k]
+	if minerInfo, ok := m.miners[mAddr]; ok {
+		_, err := m.authClient.UpsertMiner(minerInfo.Name, minerInfo.Addr.String(), true)
+		if err != nil {
+			return nil, err
 		}
+		minerInfo.OpenMining = true
+		return minerInfo, nil
 	}
 
-	return nil
+	return nil, ErrNotFound
 }
 
-func (m *MinerManage) List(ctx context.Context) ([]types.MinerInfo, error) {
+func (m *MinerManage) CloseMining(ctx context.Context, mAddr address.Address) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	if minerInfo, ok := m.miners[mAddr]; ok {
+		_, err := m.authClient.UpsertMiner(minerInfo.Name, minerInfo.Addr.String(), false)
+		if err != nil {
+			return err
+		}
+		minerInfo.OpenMining = false
+		return nil
+	}
+
+	return ErrNotFound
+}
+
+func (m *MinerManage) List(ctx context.Context) (map[address.Address]*types.MinerInfo, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
 	return m.miners, nil
 }
 
-func (m *MinerManage) Update(ctx context.Context, skip, limit int64) ([]types.MinerInfo, error) {
+func (m *MinerManage) Update(ctx context.Context, skip, limit int64) (map[address.Address]*types.MinerInfo, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
 	if limit == 0 {
 		limit = CoMinersLimit
 	}
-	users, err := m.listUsers(skip, limit)
+
+	users, err := m.authClient.ListUsersWithMiners(&auth.ListUsersRequest{Page: &core.Page{
+		Limit: limit,
+		Skip:  skip,
+	}})
 	if err != nil {
 		return nil, err
 	}
-	var mInfos = make([]types.MinerInfo, 0)
 
-	for _, u := range users {
-		if u.State != 1 {
-			log.Warnf("user: %s state is disabled, it's miners won't be updated", u.Name)
+	miners := make(map[address.Address]*types.MinerInfo, 0)
+	for _, user := range users {
+		if user.State != 1 {
+			log.Warnf("user: %s state is disabled, it's miners won't be updated", user.Name)
 			continue
 		}
-		miners, err := m.listMiners(u.Name)
-		if err != nil {
-			log.Errorf("list user:%s minres failed:%s", u.Name, err.Error())
-			continue
-		}
-		for _, val := range miners {
-			addr, err := address.NewFromString(val.Miner)
+
+		for _, miner := range user.Miners {
+			addr, err := address.NewFromString(miner.Miner)
 			if err != nil {
-				log.Errorf("invalid user:%s miner:%s, %s", u.Name, val.Miner, err.Error())
+				log.Errorf("invalid user:%s miner:%s, %s", user.Name, miner.Miner, err.Error())
 				continue
 
 			}
-			mInfos = append(mInfos, types.MinerInfo{
-				Addr: addr,
-				Id:   u.ID,
-				Name: u.Name,
-			})
+			miners[addr] = &types.MinerInfo{
+				Addr:       addr,
+				Id:         user.Id,
+				Name:       miner.User,
+				OpenMining: miner.OpenMining,
+			}
 		}
 	}
-
-	m.miners = mInfos
+	m.miners = miners
 
 	return m.miners, nil
-}
-
-func (m *MinerManage) Count(ctx context.Context) int {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-
-	return len(m.miners)
-}
-
-func (m *MinerManage) listUsers(skip, limit int64) ([]*types.User, error) {
-	var users []*types.User
-	resp, err := m.cli.R().SetQueryParams(map[string]string{
-		"skip":  strconv.FormatInt(skip, 10),
-		"limit": strconv.FormatInt(limit, 10),
-	}).SetResult(&users).SetError(&apiErr{}).Get("/user/list")
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() == http.StatusOK {
-		return *(resp.Result().(*[]*types.User)), nil
-	}
-	return nil, resp.Error().(*apiErr).Err()
-}
-
-func (m *MinerManage) listMiners(user string) ([]*types.Miner, error) {
-	var res []*types.Miner
-	resp, err := m.cli.R().SetQueryParams(map[string]string{"user": user}).
-		SetResult(&res).SetError(&apiErr{}).Get("/miner/list-by-user")
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() == http.StatusOK {
-		return *(resp.Result().(*[]*types.Miner)), nil
-	}
-	return nil, resp.Error().(*apiErr).Err()
-}
-
-type apiErr struct {
-	Error string `json:"error"`
-}
-
-func (err *apiErr) Err() error {
-	return fmt.Errorf(err.Error)
 }
 
 var _ MinerManageAPI = &MinerManage{}

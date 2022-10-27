@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	types2 "github.com/filecoin-project/venus-miner/types"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -14,6 +12,7 @@ import (
 	"github.com/filecoin-project/venus-miner/api/client"
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/node/config"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -21,15 +20,14 @@ import (
 )
 
 type MiningWpp struct {
-	minerInfo   types2.MinerInfo
+	mAddr       address.Address
 	gatewayNode *config.GatewayNode
 
-	miner   abi.ActorID
 	winnRpt abi.RegisteredPoStProof
 }
 
-func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, minerInfo types2.MinerInfo) (*MiningWpp, error) {
-	mi, err := api.StateMinerInfo(context.TODO(), minerInfo.Addr, types.EmptyTSK)
+func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, mAddr address.Address) (*MiningWpp, error) {
+	mi, err := api.StateMinerInfo(context.TODO(), mAddr, types.EmptyTSK)
 	if err != nil {
 		return nil, fmt.Errorf("getting sector size: %w", err)
 	}
@@ -40,12 +38,7 @@ func NewWinningPoStProver(api v1.FullNode, gatewayNode *config.GatewayNode, mine
 		log.Warn("*****************************************************************************")
 	}
 
-	minerId, err := address.IDFromAddress(minerInfo.Addr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &MiningWpp{gatewayNode: gatewayNode, minerInfo: minerInfo, miner: abi.ActorID(minerId), winnRpt: mi.WindowPoStProofType}, nil
+	return &MiningWpp{gatewayNode: gatewayNode, mAddr: mAddr, winnRpt: mi.WindowPoStProofType}, nil
 }
 
 var _ WinningPoStProver = (*MiningWpp)(nil)
@@ -69,7 +62,7 @@ func (wpp *MiningWpp) ComputeProof(ctx context.Context, ssi []builtin.ExtendedSe
 	}
 	defer closer()
 
-	proofBuf, err := api.ComputeProof(ctx, wpp.minerInfo.Addr, ssi, rand, currEpoch, nv)
+	proofBuf, err := api.ComputeProof(ctx, wpp.mAddr, ssi, rand, currEpoch, nv)
 	if err != nil {
 		return nil, err
 	}
