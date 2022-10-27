@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/venus-miner/node/modules/helpers"
-
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -27,6 +25,7 @@ import (
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/lib/metrics"
 	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/filecoin-project/venus-miner/node/modules/helpers"
 	miner_manager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 	"github.com/filecoin-project/venus-miner/types"
@@ -56,7 +55,7 @@ var DefaultMaxErrCounts = 20
 // whether we mined a block in this round or not.
 type waitFunc func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error)
 
-type signerFunc func(ctx context.Context, node *config.GatewayNode) (SignFunc, error)
+type signerFunc func(ctx context.Context, node *config.GatewayNode) SignFunc
 
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
@@ -106,7 +105,7 @@ func NewMiner(
 
 			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
-		signerFunc: func(ctx context.Context, cfg *config.GatewayNode) (SignFunc, error) {
+		signerFunc: func(ctx context.Context, cfg *config.GatewayNode) SignFunc {
 			return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error) {
 				walletAPI, closer, err := client.NewGatewayRPC(ctx, cfg)
 				if err != nil {
@@ -115,7 +114,7 @@ func NewMiner(
 
 				defer closer()
 				return walletAPI.WalletSign(ctx, account, signer, toSign, meta)
-			}, nil
+			}
 		},
 
 		sf: sf,
@@ -774,20 +773,13 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		partDone() // ComputeTicketDuration
 		partDone = metrics.TimerMilliseconds(ctx, metrics.IsRoundWinnerDuration, addr.String())
 
-		var sign SignFunc
 		val, ok := m.minerWPPMap[addr]
 		if !ok {
 			log.Errorf("[%v] not exist", addr)
 			out <- &winPoStRes{addr: addr, err: fmt.Errorf("miner : %s not exist", addr)}
 			return
 		}
-		account := val.account
-		if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
-			log.Errorf("miner: %s get func for signning failed: %s", addr, err)
-			out <- &winPoStRes{addr: addr, err: fmt.Errorf("miner: %s get sign func failed:%w", addr, err)}
-			return
-		}
-		winner, err := IsRoundWinner(ctx, round, account, addr, rbase, mbi, sign)
+		winner, err := IsRoundWinner(ctx, round, val.account, addr, rbase, mbi, m.signerFunc(ctx, m.gatewayNode))
 		if err != nil {
 			log.Errorf("failed to check for %s if we win next round: %s", addr, err)
 			out <- &winPoStRes{addr: addr, err: err}
@@ -894,20 +886,13 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 	//	return nil, err
 	//}
 
-	var sign SignFunc
 	val, ok := m.minerWPPMap[addr]
 	if !ok {
 		log.Errorf("[%v] not exist", addr)
 		return nil, fmt.Errorf("miner %s not exist", addr)
 	}
 
-	account := val.account
-	if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
-		log.Errorf("get func for signning failed: %s", err)
-		return nil, err
-	}
-
-	vrfOut, err := ComputeVRF(ctx, sign, account, mbi.WorkerKey, input.Bytes())
+	vrfOut, err := ComputeVRF(ctx, m.signerFunc(ctx, m.gatewayNode), val.account, mbi.WorkerKey, input.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -942,16 +927,10 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 
 	// block signature check
 	if blockMsg.Header.BlockSig == nil {
-		var sign SignFunc
 		val, ok := m.minerWPPMap[addr]
 		if !ok {
 			log.Errorf("[%v] not exist", addr)
 			return nil, fmt.Errorf("miner %s not exist", addr)
-		}
-		account := val.account
-		if sign, err = m.signerFunc(ctx, m.gatewayNode); err != nil {
-			log.Errorf("get signer func failed:%s", err.Error())
-			return nil, err
 		}
 
 		nosigbytes, err := blockMsg.Header.SignatureData()
@@ -959,7 +938,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, fmt.Errorf("failed to get SigningBytes: %v", err)
 		}
 
-		sig, err := sign(ctx, account, waddr, nosigbytes, types2.MsgMeta{
+		sig, err := m.signerFunc(ctx, m.gatewayNode)(ctx, val.account, waddr, nosigbytes, types2.MsgMeta{
 			Type: types2.MTBlock,
 		})
 		if err != nil {

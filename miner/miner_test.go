@@ -12,12 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/venus/fixtures/networks"
-
-	"github.com/filecoin-project/venus/pkg/chain"
-
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-address"
@@ -27,19 +25,21 @@ import (
 	miner2 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/lib/journal/mockjournal"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/miner-manager/mock"
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 	types2 "github.com/filecoin-project/venus-miner/types"
+
+	"github.com/filecoin-project/venus/fixtures/networks"
+	"github.com/filecoin-project/venus/pkg/chain"
 	config2 "github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	mockAPI "github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
-	"github.com/golang/mock/gomock"
-	"github.com/ipfs/go-cid"
 )
 
 func TestSuccessMinerBlocks(t *testing.T) {
@@ -459,14 +459,14 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 	miner, err := NewMiner(context.Background(), api, cfg, managerAPI, slasher, jl)
 	assert.NoError(t, err)
 
-	miner.signerFunc = func(ctx context.Context, node *config.GatewayNode) (SignFunc, error) {
+	miner.signerFunc = func(ctx context.Context, node *config.GatewayNode) SignFunc {
 		return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 
 			return &crypto.Signature{
 				Type: crypto.SigTypeBLS,
 				Data: []byte{1, 2, 3},
 			}, nil
-		}, nil
+		}
 	}
 
 	genesisMiner := chain.createMiner()

@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/venus-miner/types"
 
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
@@ -166,6 +167,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 	m.lkWPP.Unlock()
 
 	if len(mAddrs) > 0 {
+		sign := m.signerFunc(ctx, m.gatewayNode)
 		wg.Add(len(mAddrs))
 		for _, addr := range mAddrs {
 			tAddr := addr
@@ -178,6 +180,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
 					return
 				}
+
 				account := val.account
 				wgWin := sync.WaitGroup{}
 				winInfo := make([]types.SimpleWinInfo, 0)
@@ -187,13 +190,6 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					wgWin.Add(1)
 					go func(epoch abi.ChainEpoch) {
 						defer wgWin.Done()
-
-						sign, err := m.signerFunc(ctx, m.gatewayNode)
-						if err != nil {
-							log.Errorf("miner: %s get func for signning failed: %s", tAddr, err)
-							res = append(res, types.CountWinners{Msg: fmt.Sprintf("get sign func failed:%s", err), Miner: tAddr})
-							return
-						}
 
 						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
 						if err != nil {
