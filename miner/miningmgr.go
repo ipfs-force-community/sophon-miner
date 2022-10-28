@@ -166,39 +166,31 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 	var resLk sync.Mutex
 	wg := sync.WaitGroup{}
 
-	mAddrs := make([]address.Address, 0)
+	minerWpps := make(map[address.Address]*minerWPP)
 	m.lkWPP.Lock()
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
-			if _, ok := m.minerWPPMap[addr]; ok {
-				mAddrs = append(mAddrs, addr)
+			if wpp, ok := m.minerWPPMap[addr]; ok {
+				minerWpps[addr] = wpp
 			} else {
 				res = append(res, types.CountWinners{Msg: "miner not exist", Miner: addr})
 			}
 		}
 	} else {
-		for k := range m.minerWPPMap {
-			mAddrs = append(mAddrs, k)
+		for addr, wpp := range m.minerWPPMap {
+			minerWpps[addr] = wpp
 		}
 	}
 	m.lkWPP.Unlock()
 
-	if len(mAddrs) > 0 {
+	if len(minerWpps) > 0 {
 		sign := m.signerFunc(ctx, m.gatewayNode)
-		wg.Add(len(mAddrs))
-		for _, addr := range mAddrs {
+		wg.Add(len(minerWpps))
+		for addr, wpp := range minerWpps {
 			tAddr := addr
-
+			tWpp := wpp
 			go func() {
 				defer wg.Done()
-
-				val, ok := m.minerWPPMap[tAddr]
-				if !ok {
-					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
-					return
-				}
-
-				account := val.account
 				wgWin := sync.WaitGroup{}
 				winInfo := make([]types.SimpleWinInfo, 0)
 				totalWinCount := int64(0)
@@ -208,7 +200,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					go func(epoch abi.ChainEpoch) {
 						defer wgWin.Done()
 
-						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
+						winner, err := m.winCountInRound(ctx, tWpp.account, tAddr, sign, epoch)
 						if err != nil {
 							log.Errorf("generate winner met error %s", err)
 							return
@@ -238,8 +230,16 @@ func (m *Miner) pollingMiners(ctx context.Context) {
 	tm := time.NewTicker(time.Second * 60)
 	defer tm.Stop()
 
+	// just protect from data race
+	m.lkWPP.Lock()
+	stop := m.stop
+	m.lkWPP.Unlock()
+
 	for {
 		select {
+		case <-stop:
+			log.Warnf("stop polling by stop channel")
+			return
 		case <-ctx.Done():
 			log.Warnf("stop polling miners: %v", ctx.Err())
 			return

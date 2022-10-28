@@ -109,7 +109,7 @@ jobs:
         default: golang
       go-test-flags:
         type: string
-        default: "-timeout 30m"
+        default: "-race -timeout 30m"
         description: Flags passed to go test.
       target:
         type: string
