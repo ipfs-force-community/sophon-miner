@@ -232,6 +232,9 @@ func (m *Miner) pollingMiners(ctx context.Context) {
 
 	for {
 		select {
+		case <-m.stop:
+			log.Warnf("stop polling by stop channel")
+			return
 		case <-ctx.Done():
 			log.Warnf("stop polling miners: %v", ctx.Err())
 			return
