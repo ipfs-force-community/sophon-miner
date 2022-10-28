@@ -16,14 +16,15 @@ import (
 )
 
 func (m *Miner) winPoStWarmup(ctx context.Context) error {
+	m.lkWPP.Lock()
+	defer m.lkWPP.Unlock()
 	for addr, wpp := range m.minerWPPMap {
 		tAddr := addr
 		epp := wpp.epp
 		go func() {
 			err := m.winPostWarmupForMiner(ctx, tAddr, epp)
 			if err != nil {
-				log.Infow("mining warm up failed", "miner", tAddr, "err", err.Error())
-				m.minerWPPMap[tAddr].isMining = true // Only manual control switch
+				log.Warnw("mining warm up failed", "miner", tAddr, "err", err.Error())
 				m.minerWPPMap[tAddr].err = append(m.minerWPPMap[tAddr].err, time.Now().Format("2006-01-02 15:04:05 ")+err.Error())
 			}
 		}()
@@ -32,12 +33,16 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 	return nil
 }
 
-func (m *Miner) WarmupForMiner(ctx context.Context, maddr address.Address) error {
-	if wpp, ok := m.minerWPPMap[maddr]; ok {
-		return m.winPostWarmupForMiner(ctx, maddr, wpp.epp)
+func (m *Miner) WarmupForMiner(ctx context.Context, mAddr address.Address) error {
+	m.lkWPP.Lock()
+	wpp, ok := m.minerWPPMap[mAddr]
+	m.lkWPP.Unlock()
+
+	if ok {
+		return m.winPostWarmupForMiner(ctx, mAddr, wpp.epp)
 	}
 
-	return fmt.Errorf("%s not exist", maddr)
+	return fmt.Errorf("%s not exist", mAddr)
 }
 
 func (m *Miner) winPostWarmupForMiner(ctx context.Context, addr address.Address, epp WinningPoStProver) error {

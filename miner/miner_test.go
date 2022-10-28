@@ -12,12 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/venus/fixtures/networks"
-
-	"github.com/filecoin-project/venus/pkg/chain"
-
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-address"
@@ -27,19 +25,21 @@ import (
 	miner2 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/lib/journal/mockjournal"
 	"github.com/filecoin-project/venus-miner/node/config"
 	"github.com/filecoin-project/venus-miner/node/modules/miner-manager/mock"
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 	types2 "github.com/filecoin-project/venus-miner/types"
+
+	"github.com/filecoin-project/venus/fixtures/networks"
+	"github.com/filecoin-project/venus/pkg/chain"
 	config2 "github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	mockAPI "github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
-	"github.com/golang/mock/gomock"
-	"github.com/ipfs/go-cid"
 )
 
 func TestSuccessMinerBlocks(t *testing.T) {
@@ -291,15 +291,16 @@ func TestManualStartAndStop(t *testing.T) {
 		if round == 3 {
 			addrs := chain.pcController.listAddress()
 			err := miner.ManualStop(ctx, []address.Address{addrs[0]})
-			assert.False(t, miner.minerWPPMap[addrs[0]].isMining)
 			assert.Nil(t, err)
+			// After stop mining, it will no longer appear in minerWPPMap
+			_, ok := miner.minerWPPMap[addrs[0]]
+			assert.False(t, ok)
 			err = miner.ManualStop(ctx, addrs)
-			for _, wpp := range miner.minerWPPMap {
-				assert.False(t, wpp.isMining)
+			for _, addr := range addrs {
+				_, ok := miner.minerWPPMap[addr]
+				assert.False(t, ok)
 			}
 			assert.Nil(t, err)
-			err = miner.ManualStop(ctx, []address.Address{chain.createMiner()})
-			assert.NotNil(t, err)
 		}
 
 		if round == 5 {
@@ -307,35 +308,25 @@ func TestManualStartAndStop(t *testing.T) {
 			// stm: @VENUSMINER_MINERWPP_NEW_WINNING_POST_PROVER_001, @VENUSMINER_MINERMGR_UPDATE_ADDRESS_001, @VENUSMINER_NODE_MODULES_AUTH_MANAGER_UPDATE_001
 			_, err := miner.UpdateAddress(ctx, 0, 100)
 			assert.Nil(t, err)
-			for _, addr := range minerList {
-				assert.True(t, miner.minerWPPMap[addr].isMining)
-			}
-
-			// stm: @VENUSMINER_MINERMGR_MANUAL_STOP_001
-			err = miner.ManualStop(ctx, []address.Address{chain.createMiner()})
-			assert.NotNil(t, err)
-
-			// stm: @VENUSMINER_MINERMGR_MANUAL_START_001
-			err = miner.ManualStart(ctx, []address.Address{chain.createMiner()})
-			assert.NotNil(t, err)
+			assert.Equal(t, 3, len(miner.minerWPPMap))
 
 			addrs := chain.pcController.listAddress()
+			// stm: @VENUSMINER_MINERMGR_MANUAL_STOP_001
 			err = miner.ManualStop(ctx, addrs)
 			assert.Nil(t, err)
+			assert.Equal(t, 0, len(miner.minerWPPMap))
 
-			for _, addr := range minerList {
-				assert.False(t, miner.minerWPPMap[addr].isMining)
-			}
-
+			// stm: @VENUSMINER_MINERMGR_MANUAL_START_001
 			err = miner.ManualStart(ctx, []address.Address{minerList[0]})
 			assert.Nil(t, err)
-			assert.True(t, miner.minerWPPMap[minerList[0]].isMining)
+			_, ok := miner.minerWPPMap[minerList[0]]
+			assert.True(t, ok)
 
 			err = miner.ManualStart(ctx, minerList)
 			assert.Nil(t, err)
-
-			for _, wpp := range miner.minerWPPMap {
-				assert.True(t, wpp.isMining)
+			assert.Equal(t, len(minerList), len(miner.minerWPPMap))
+			for addr := range miner.minerWPPMap {
+				assert.True(t, miner.minerManager.IsOpenMining(ctx, addr))
 			}
 			chain.replaceWithWeightHead()
 		}
@@ -459,14 +450,14 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 	miner, err := NewMiner(context.Background(), api, cfg, managerAPI, slasher, jl)
 	assert.NoError(t, err)
 
-	miner.signerFunc = func(ctx context.Context, node *config.GatewayNode) (SignFunc, error) {
+	miner.signerFunc = func(ctx context.Context, node *config.GatewayNode) SignFunc {
 		return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 
 			return &crypto.Signature{
 				Type: crypto.SigTypeBLS,
 				Data: []byte{1, 2, 3},
 			}, nil
-		}, nil
+		}
 	}
 
 	genesisMiner := chain.createMiner()
@@ -482,11 +473,20 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 			return nil
 		})
 
-	managerAPI.EXPECT().List(mockAny).AnyTimes().DoAndReturn(func(arg0 context.Context) ([]types2.MinerInfo, error) {
+	managerAPI.EXPECT().List(mockAny).AnyTimes().DoAndReturn(func(arg0 context.Context) (map[address.Address]*types2.MinerInfo, error) {
 		return chain.pcController.listMinerInfo(), nil
 	})
-	managerAPI.EXPECT().Update(mockAny, mockAny, mockAny).AnyTimes().DoAndReturn(func(arg0 context.Context, arg1, arg2 int64) ([]types2.MinerInfo, error) {
+	managerAPI.EXPECT().Update(mockAny, mockAny, mockAny).AnyTimes().DoAndReturn(func(arg0 context.Context, arg1, arg2 int64) (map[address.Address]*types2.MinerInfo, error) {
 		return chain.pcController.listMinerInfo(), nil
+	})
+	managerAPI.EXPECT().OpenMining(mockAny, mockAny).AnyTimes().DoAndReturn(func(arg0 context.Context, arg1 address.Address) (*types2.MinerInfo, error) {
+		return chain.pcController.openMining(arg1), nil
+	})
+	managerAPI.EXPECT().CloseMining(mockAny, mockAny).AnyTimes().DoAndReturn(func(arg0 context.Context, arg1 address.Address) error {
+		return chain.pcController.closeMining(arg1)
+	})
+	managerAPI.EXPECT().IsOpenMining(mockAny, mockAny).AnyTimes().DoAndReturn(func(arg0 context.Context, arg1 address.Address) bool {
+		return chain.pcController.isMining(arg1)
 	})
 
 	api.EXPECT().MinerGetBaseInfo(mockAny, mockAny, mockAny, mockAny).AnyTimes().DoAndReturn(func(arg0 context.Context, arg1 address.Address, arg2 abi.ChainEpoch, arg3 types.TipSetKey) (*types.MiningBaseInfo, error) {
@@ -568,16 +568,21 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 	return miner, chain, api
 }
 
+type minerPowerInfo struct {
+	power      int64
+	openMining bool
+}
+
 type powerController struct {
 	totalPower int64
-	minerPoser map[address.Address]int64
+	minerPoser map[address.Address]*minerPowerInfo
 	lk         sync.Mutex
 }
 
 func newPowerController(addrs []address.Address) *powerController {
-	v := map[address.Address]int64{}
+	v := map[address.Address]*minerPowerInfo{}
 	for _, addr := range addrs {
-		v[addr] = 0
+		v[addr] = &minerPowerInfo{0, true}
 	}
 	return &powerController{
 		totalPower: 1000000,
@@ -586,19 +591,62 @@ func newPowerController(addrs []address.Address) *powerController {
 	}
 }
 
-func (pc *powerController) listMinerInfo() []types2.MinerInfo {
-	var infos []types2.MinerInfo
-	for addr := range pc.minerPoser {
-		infos = append(infos, types2.MinerInfo{
-			Addr: addr,
-			Id:   "test",
-			Name: "test",
-		})
+func (pc *powerController) listMinerInfo() map[address.Address]*types2.MinerInfo {
+	pc.lk.Lock()
+	defer pc.lk.Unlock()
+
+	infos := make(map[address.Address]*types2.MinerInfo)
+	for addr, power := range pc.minerPoser {
+		infos[addr] = &types2.MinerInfo{
+			Addr:       addr,
+			Id:         "test",
+			Name:       "test",
+			OpenMining: power.openMining,
+		}
 	}
 	return infos
 }
 
+func (pc *powerController) openMining(addr address.Address) *types2.MinerInfo {
+	pc.lk.Lock()
+	defer pc.lk.Unlock()
+
+	if power, ok := pc.minerPoser[addr]; ok {
+		pc.minerPoser[addr].openMining = true
+		return &types2.MinerInfo{
+			Addr:       addr,
+			Id:         "test",
+			Name:       "test",
+			OpenMining: power.openMining,
+		}
+	}
+	return nil
+}
+
+func (pc *powerController) closeMining(addr address.Address) error {
+	pc.lk.Lock()
+	defer pc.lk.Unlock()
+
+	if _, ok := pc.minerPoser[addr]; ok {
+		pc.minerPoser[addr].openMining = false
+	}
+	return nil
+}
+
+func (pc *powerController) isMining(addr address.Address) bool {
+	pc.lk.Lock()
+	defer pc.lk.Unlock()
+
+	if _, ok := pc.minerPoser[addr]; ok {
+		return pc.minerPoser[addr].openMining
+	}
+	return false
+}
+
 func (pc *powerController) listAddress() []address.Address {
+	pc.lk.Lock()
+	defer pc.lk.Unlock()
+
 	var addrs []address.Address
 	for addr := range pc.minerPoser {
 		addrs = append(addrs, addr)
@@ -613,12 +661,12 @@ func (pc *powerController) randPower() {
 	count := 1
 	for addr := range pc.minerPoser {
 		if count == len(pc.minerPoser) {
-			pc.minerPoser[addr] = t
+			pc.minerPoser[addr].power = t
 			continue
 		}
 
 		p := rand.Int63n(t)
-		pc.minerPoser[addr] = p
+		pc.minerPoser[addr].power = p
 		t = t - p
 		count++
 	}
@@ -628,21 +676,28 @@ func (pc *powerController) getPower(addr address.Address) int64 {
 	pc.lk.Lock()
 	defer pc.lk.Unlock()
 
-	return pc.minerPoser[addr]
+	if _, ok := pc.minerPoser[addr]; ok {
+		return pc.minerPoser[addr].power
+	}
+
+	return 0
 }
 
 func (pc *powerController) setPower(addr address.Address, power int64) {
 	pc.lk.Lock()
 	defer pc.lk.Unlock()
 
-	pc.minerPoser[addr] = power
+	if _, ok := pc.minerPoser[addr]; !ok {
+		pc.minerPoser[addr] = &minerPowerInfo{0, true}
+	}
+	pc.minerPoser[addr].power = power
 }
 
 func (pc *powerController) clearPower() {
 	pc.lk.Lock()
 	defer pc.lk.Unlock()
 	for addr := range pc.minerPoser {
-		pc.minerPoser[addr] = 0
+		pc.minerPoser[addr].power = 0
 	}
 }
 

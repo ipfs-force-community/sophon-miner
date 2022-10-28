@@ -4,51 +4,46 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/venus-miner/types"
 
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
-func (m *Miner) ManualStart(ctx context.Context, addrs []address.Address) error {
-	m.lkWPP.Lock()
-	defer m.lkWPP.Unlock()
+func (m *Miner) ManualStart(ctx context.Context, mAddrs []address.Address) error {
+	for _, mAddr := range mAddrs {
+		minerInfo, err := m.minerManager.OpenMining(ctx, mAddr)
+		if err != nil {
+			log.Errorf("close mining for %s: %v", mAddr.String(), err)
+			continue
+		}
 
-	if len(addrs) > 0 {
-		for _, addr := range addrs {
-			if _, ok := m.minerWPPMap[addr]; ok {
-				m.minerWPPMap[addr].isMining = true
-			} else {
-				return fmt.Errorf("%s not exist", addr)
-			}
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo.Addr)
+		if err != nil {
+			log.Errorf("create WinningPoStProver for %s: %v", minerInfo.Addr.String(), err)
+			continue
 		}
-	} else {
-		for k := range m.minerWPPMap {
-			m.minerWPPMap[k].isMining = true
-		}
+		m.lkWPP.Lock()
+		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name}
+		m.lkWPP.Unlock()
 	}
 
 	return nil
 }
 
-func (m *Miner) ManualStop(ctx context.Context, addrs []address.Address) error {
-	m.lkWPP.Lock()
-	defer m.lkWPP.Unlock()
-
-	if len(addrs) > 0 {
-		for _, addr := range addrs {
-			if _, ok := m.minerWPPMap[addr]; ok {
-				m.minerWPPMap[addr].isMining = false
-			} else {
-				return fmt.Errorf("%s not exist", addr)
-			}
+func (m *Miner) ManualStop(ctx context.Context, mAddrs []address.Address) error {
+	for _, mAddr := range mAddrs {
+		if err := m.minerManager.CloseMining(ctx, mAddr); err != nil {
+			log.Errorf("close mining for %s: %v", mAddr.String(), err)
+			continue
 		}
-	} else {
-		for k := range m.minerWPPMap {
-			m.minerWPPMap[k].isMining = false
-		}
+		m.lkWPP.Lock()
+		delete(m.minerWPPMap, mAddr)
+		m.lkWPP.Unlock()
 	}
 
 	return nil
@@ -60,28 +55,41 @@ func (m *Miner) UpdateAddress(ctx context.Context, skip, limit int64) ([]types.M
 		return nil, err
 	}
 
-	// update minerWPPMap
-	m.lkWPP.Lock()
-	m.minerWPPMap = make(map[address.Address]*minerWPP)
+	minerWPPMap := make(map[address.Address]*minerWPP)
+	minerInfos := make([]types.MinerInfo, 0, len(miners))
 	for _, minerInfo := range miners {
-		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo)
-		if err != nil {
-			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
+		if !m.minerManager.IsOpenMining(ctx, minerInfo.Addr) {
 			continue
 		}
 
-		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name, isMining: true}
+		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo.Addr)
+		if err != nil {
+			log.Errorf("create WinningPoStProver for %s: %v", minerInfo.Addr.String(), err)
+			continue
+		}
+
+		minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name}
+		minerInfos = append(minerInfos, *minerInfo)
 	}
+	m.lkWPP.Lock()
+	m.minerWPPMap = minerWPPMap
 	m.lkWPP.Unlock()
 
-	return miners, nil
+	return minerInfos, nil
 }
 
 func (m *Miner) ListAddress(ctx context.Context) ([]types.MinerInfo, error) {
-	m.lkWPP.Lock()
-	defer m.lkWPP.Unlock()
+	miners, err := m.minerManager.List(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return m.minerManager.List(ctx)
+	minerInfos := make([]types.MinerInfo, 0, len(miners))
+	for _, minerInfo := range miners {
+		minerInfos = append(minerInfos, *minerInfo)
+	}
+
+	return minerInfos, nil
 }
 
 func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([]types.MinerState, error) {
@@ -92,12 +100,22 @@ func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
 			if val, ok := m.minerWPPMap[addr]; ok {
-				res = append(res, types.MinerState{Addr: addr, IsMining: val.isMining, Err: val.err})
+				res = append(res, types.MinerState{Addr: addr, IsMining: true, Err: val.err})
+			} else {
+				res = append(res, types.MinerState{Addr: addr, IsMining: false, Err: nil})
 			}
 		}
 	} else {
-		for k, v := range m.minerWPPMap {
-			res = append(res, types.MinerState{Addr: k, IsMining: v.isMining, Err: v.err})
+		minerInfos, err := m.minerManager.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, minerInfo := range minerInfos {
+			if val, ok := m.minerWPPMap[minerInfo.Addr]; ok {
+				res = append(res, types.MinerState{Addr: minerInfo.Addr, IsMining: true, Err: val.err})
+			} else {
+				res = append(res, types.MinerState{Addr: minerInfo.Addr, IsMining: false, Err: nil})
+			}
 		}
 	}
 
@@ -166,6 +184,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 	m.lkWPP.Unlock()
 
 	if len(mAddrs) > 0 {
+		sign := m.signerFunc(ctx, m.gatewayNode)
 		wg.Add(len(mAddrs))
 		for _, addr := range mAddrs {
 			tAddr := addr
@@ -178,6 +197,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
 					return
 				}
+
 				account := val.account
 				wgWin := sync.WaitGroup{}
 				winInfo := make([]types.SimpleWinInfo, 0)
@@ -187,13 +207,6 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					wgWin.Add(1)
 					go func(epoch abi.ChainEpoch) {
 						defer wgWin.Done()
-
-						sign, err := m.signerFunc(ctx, m.gatewayNode)
-						if err != nil {
-							log.Errorf("miner: %s get func for signning failed: %s", tAddr, err)
-							res = append(res, types.CountWinners{Msg: fmt.Sprintf("get sign func failed:%s", err), Miner: tAddr})
-							return
-						}
 
 						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
 						if err != nil {
@@ -219,4 +232,24 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 	}
 
 	return res, nil
+}
+
+func (m *Miner) pollingMiners(ctx context.Context) {
+	tm := time.NewTicker(time.Second * 60)
+	defer tm.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Warnf("stop polling miners: %v", ctx.Err())
+			return
+		case <-tm.C:
+			_, err := m.UpdateAddress(ctx, 0, 0)
+			if err != nil {
+				log.Errorf("polling miners: %v", ctx.Err())
+			} else {
+				log.Debug("polling miners success")
+			}
+		}
+	}
 }

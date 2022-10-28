@@ -11,9 +11,11 @@ import (
 //go:generate go run github.com/golang/mock/mockgen -destination=mock/miner_manager.go -package=mock . MinerManageAPI
 
 type MinerManageAPI interface {
-	Has(ctx context.Context, checkAddr address.Address) bool
-	Get(ctx context.Context, checkAddr address.Address) *types.MinerInfo
-	List(ctx context.Context) ([]types.MinerInfo, error)
-	Update(ctx context.Context, skip, limit int64) ([]types.MinerInfo, error)
-	Count(ctx context.Context) int
+	Has(ctx context.Context, mAddr address.Address) bool
+	Get(ctx context.Context, mAddr address.Address) (*types.MinerInfo, error)
+	IsOpenMining(ctx context.Context, mAddr address.Address) bool
+	OpenMining(ctx context.Context, mAddr address.Address) (*types.MinerInfo, error)
+	CloseMining(ctx context.Context, mAddr address.Address) error
+	List(ctx context.Context) (map[address.Address]*types.MinerInfo, error)
+	Update(ctx context.Context, skip, limit int64) (map[address.Address]*types.MinerInfo, error)
 }
