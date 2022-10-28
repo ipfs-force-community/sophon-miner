@@ -166,39 +166,31 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 	var resLk sync.Mutex
 	wg := sync.WaitGroup{}
 
-	mAddrs := make([]address.Address, 0)
+	minerWpps := make(map[address.Address]*minerWPP)
 	m.lkWPP.Lock()
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
-			if _, ok := m.minerWPPMap[addr]; ok {
-				mAddrs = append(mAddrs, addr)
+			if wpp, ok := m.minerWPPMap[addr]; ok {
+				minerWpps[addr] = wpp
 			} else {
 				res = append(res, types.CountWinners{Msg: "miner not exist", Miner: addr})
 			}
 		}
 	} else {
-		for k := range m.minerWPPMap {
-			mAddrs = append(mAddrs, k)
+		for addr, wpp := range m.minerWPPMap {
+			minerWpps[addr] = wpp
 		}
 	}
 	m.lkWPP.Unlock()
 
-	if len(mAddrs) > 0 {
+	if len(minerWpps) > 0 {
 		sign := m.signerFunc(ctx, m.gatewayNode)
-		wg.Add(len(mAddrs))
-		for _, addr := range mAddrs {
+		wg.Add(len(minerWpps))
+		for addr, wpp := range minerWpps {
 			tAddr := addr
-
 			go func() {
 				defer wg.Done()
-
-				val, ok := m.minerWPPMap[tAddr]
-				if !ok {
-					res = append(res, types.CountWinners{Msg: "miner not exist", Miner: tAddr})
-					return
-				}
-
-				account := val.account
+				account := wpp.account
 				wgWin := sync.WaitGroup{}
 				winInfo := make([]types.SimpleWinInfo, 0)
 				totalWinCount := int64(0)
