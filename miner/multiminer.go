@@ -914,7 +914,9 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 
 	// block signature check
 	if blockMsg.Header.BlockSig == nil {
+		m.lkWPP.Lock()
 		val, ok := m.minerWPPMap[addr]
+		m.lkWPP.Unlock()
 		if !ok {
 			log.Errorf("[%v] not exist", addr)
 			return nil, fmt.Errorf("miner %s not exist", addr)

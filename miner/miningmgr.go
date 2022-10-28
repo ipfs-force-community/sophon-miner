@@ -188,9 +188,9 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 		wg.Add(len(minerWpps))
 		for addr, wpp := range minerWpps {
 			tAddr := addr
+			tWpp := wpp
 			go func() {
 				defer wg.Done()
-				account := wpp.account
 				wgWin := sync.WaitGroup{}
 				winInfo := make([]types.SimpleWinInfo, 0)
 				totalWinCount := int64(0)
@@ -200,7 +200,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 					go func(epoch abi.ChainEpoch) {
 						defer wgWin.Done()
 
-						winner, err := m.winCountInRound(ctx, account, tAddr, sign, epoch)
+						winner, err := m.winCountInRound(ctx, tWpp.account, tAddr, sign, epoch)
 						if err != nil {
 							log.Errorf("generate winner met error %s", err)
 							return
@@ -230,9 +230,14 @@ func (m *Miner) pollingMiners(ctx context.Context) {
 	tm := time.NewTicker(time.Second * 60)
 	defer tm.Stop()
 
+	// just protect from data race
+	m.lkWPP.Lock()
+	stop := m.stop
+	m.lkWPP.Unlock()
+
 	for {
 		select {
-		case <-m.stop:
+		case <-stop:
 			log.Warnf("stop polling by stop channel")
 			return
 		case <-ctx.Done():
