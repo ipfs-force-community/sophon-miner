@@ -144,8 +144,8 @@ func (m *MinerManage) Update(ctx context.Context, skip, limit int64) (map[addres
 			if err != nil {
 				log.Errorf("invalid user:%s miner:%s, %s", user.Name, miner.Miner, err.Error())
 				continue
-
 			}
+
 			miners[addr] = &types.MinerInfo{
 				Addr:       addr,
 				Id:         user.Id,

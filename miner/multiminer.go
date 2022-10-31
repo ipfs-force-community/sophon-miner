@@ -191,9 +191,13 @@ func (m *Miner) Start(ctx context.Context) error {
 		return err
 	}
 	for _, minerInfo := range miners {
+		if !m.minerManager.IsOpenMining(ctx, minerInfo.Addr) {
+			continue
+		}
+
 		epp, err := NewWinningPoStProver(m.api, m.gatewayNode, minerInfo.Addr)
 		if err != nil {
-			log.Errorf("create WinningPoStProver failed for [%v], err: %v", minerInfo.Addr.String(), err)
+			log.Errorf("create WinningPoStProver for [%v], err: %v", minerInfo.Addr.String(), err)
 			continue
 		}
 		m.minerWPPMap[minerInfo.Addr] = &minerWPP{epp: epp, account: minerInfo.Name}
