@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	miner2 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	miner "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -428,7 +428,7 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 	chain.processEvent(ctx)
 	api := mockAPI.NewMockFullNode(gomock.NewController(t))
 	api.EXPECT().StateGetNetworkParams(gomock.Any()).AnyTimes().Return(chain.params, nil)
-	api.EXPECT().StateSectorGetInfo(mockAny, mockAny, mockAny, mockAny).AnyTimes().Return(&miner2.SectorOnChainInfo{}, nil)
+	api.EXPECT().StateSectorGetInfo(mockAny, mockAny, mockAny, mockAny).AnyTimes().Return(&miner.SectorOnChainInfo{}, nil)
 
 	managerAPI := mock.NewMockMinerManageAPI(gomock.NewController(t))
 	slasher, _, _ := slashfilter.NewMysqlMock()
