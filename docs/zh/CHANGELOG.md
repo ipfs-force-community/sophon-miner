@@ -1,5 +1,12 @@
 # venus-miner changelog
 
+# 1.8.0-rc5 / 2022-11-03
+
+## Improvements
+
+- 增加 `miners`  是否出块的控制开关，需要 `venus-auth` 版本 >= v1.8.0-rc4.
+
+
 # 1.8.0-rc4 / 2022-10-26
 
 ## Fixes
