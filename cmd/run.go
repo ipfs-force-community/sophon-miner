@@ -189,11 +189,20 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		return serveRPC(minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")), localJwtClient)
+		var remoteJwtAuthClient jwtclient.IJwtAuthClient
+		if len(cfg.Auth.Addr) > 0 {
+			client, err := jwtclient.NewAuthClient(cfg.Auth.Addr)
+			if err != nil {
+				return fmt.Errorf("failed to create remote jwt auth client: %w", err)
+			}
+			remoteJwtAuthClient = jwtclient.WarpIJwtAuthClient(client)
+		}
+
+		return serveRPC(minerAPI, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")), localJwtClient, remoteJwtAuthClient)
 	},
 }
 
-func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64, localJwtClient jwtclient.IJwtAuthClient) error {
+func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64, localJwtClient, remoteJwtAuthClient jwtclient.IJwtAuthClient) error {
 	lst, err := manet.Listen(addr)
 	if err != nil {
 		return fmt.Errorf("could not listen: %w", err)
@@ -211,7 +220,7 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
-	ah := jwtclient.NewAuthMux(localJwtClient, nil, mux)
+	ah := jwtclient.NewAuthMux(localJwtClient, remoteJwtAuthClient, mux)
 
 	srv := &http.Server{
 		Handler: ah,
