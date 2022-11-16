@@ -3,7 +3,7 @@ package build
 var CurrentCommit string
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "1.8.0-rc5"
+const BuildVersion = "1.8.0"
 const Version = "180"
 
 func UserVersion() string {
