@@ -1,5 +1,13 @@
 # venus-miner changelog
 
+# 1.8.0 / 2022-11-16
+
+## Dependency Updates
+
+- github.com/filecoin-project/venus (-> v1.8.0)
+- github.com/filecoin-project/venus-auth (-> v1.8.0)
+
+
 # 1.8.0-rc5 / 2022-11-03
 
 ## Improvements
