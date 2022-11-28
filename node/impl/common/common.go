@@ -3,15 +3,15 @@ package common
 import (
 	"context"
 
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
-
-	"github.com/filecoin-project/venus-miner/types"
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-miner/api"
 	"github.com/filecoin-project/venus-miner/build"
+	"github.com/filecoin-project/venus-miner/types"
+
+	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var session = uuid.New()
@@ -22,10 +22,10 @@ type CommonAPI struct {
 	ShutdownChan types.ShutdownChan
 }
 
-var apiVersion = types2.NewVer(1, 2, 0)
+var apiVersion = sharedTypes.NewVer(1, 2, 0)
 
-func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
-	return api.APIVersion{
+func (a *CommonAPI) Version(context.Context) (sharedTypes.Version, error) {
+	return sharedTypes.Version{
 		Version:    build.UserVersion(),
 		APIVersion: apiVersion,
 	}, nil
