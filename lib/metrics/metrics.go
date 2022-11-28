@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-jsonrpc/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -80,7 +81,7 @@ var (
 	}
 )
 
-var MinerNodeViews = []*view.View{
+var MinerNodeViews = append([]*view.View{
 	GetBaseInfoDurationView,
 	ComputeTicketDurationView,
 	IsRoundWinnerDurationView,
@@ -90,7 +91,7 @@ var MinerNodeViews = []*view.View{
 	NumberOfMiningTimeoutView,
 	NumberOfMiningChainForkView,
 	NumberOfMiningErrorView,
-}
+}, metrics.DefaultViews...)
 
 func SinceInMilliseconds(startTime time.Time) float64 {
 	return float64(time.Since(startTime).Nanoseconds()) / 1e6

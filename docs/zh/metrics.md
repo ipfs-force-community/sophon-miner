@@ -24,3 +24,15 @@ NumberOfMiningChainFork = stats.Int64("number_of_mining_chain_fork", "Number of 
 // 类型：计数器，Tag：minerID，语义：因其他错误导致出块错误的次数
 NumberOfMiningError     = stats.Int64("number_of_mining_error", "Number of mining failures due to error", stats.UnitDimensionless)	
 ```
+
+
+### rpc
+
+```
+# 调用无效RPC方法的次数
+RPCInvalidMethod = stats.Int64("rpc/invalid_method", "Total number of invalid RPC methods called", stats.UnitDimensionless)
+# RPC请求失败的次数
+RPCRequestError  = stats.Int64("rpc/request_error", "Total number of request errors handled", stats.UnitDimensionless)
+# RPC响应失败的次数
+RPCResponseError = stats.Int64("rpc/response_error", "Total number of responses errors handled", stats.UnitDimensionless)
+```
