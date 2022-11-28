@@ -277,10 +277,10 @@ jobs:
           at: "."
       - run:
           name: Create bundles
-          command: ./scripts/build-bundle.sh
+          command: bash ./scripts/build-bundle.sh
       - run:
           name: Publish release
-          command: ./scripts/publish-release.sh
+          command: bash ./scripts/publish-release.sh
 
   build-and-push-image:
     description: build and push docker images to public AWS ECR registry
