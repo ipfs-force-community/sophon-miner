@@ -16,7 +16,7 @@ func (gw *GatewayNode) DialArgs() ([]string, error) {
 
 	for _, apiAddr := range gw.ListenAPI {
 		apiInfo := api.NewAPIInfo(apiAddr, gw.Token)
-		addr, err := apiInfo.DialArgs("v1")
+		addr, err := apiInfo.DialArgs("v2")
 		if err != nil {
 			log.Errorf("dial ma err: %s", err.Error())
 			continue

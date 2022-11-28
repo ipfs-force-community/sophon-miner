@@ -418,7 +418,6 @@ func buildMinerBaseInfo(t *testing.T, mAddr address.Address, minerPower, network
 
 func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockChain, *mockAPI.MockFullNode) {
 	logging.SetDebugLogging()
-	constants.InsecurePoStValidation = true
 	mockAny := gomock.Any()
 
 	p := networks.Net2k().Network
@@ -451,7 +450,7 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 	assert.NoError(t, err)
 
 	miner.signerFunc = func(ctx context.Context, node *config.GatewayNode) SignFunc {
-		return func(ctx context.Context, account string, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
+		return func(ctx context.Context, signer address.Address, accounts []string, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 
 			return &crypto.Signature{
 				Type: crypto.SigTypeBLS,
@@ -1114,4 +1113,8 @@ func getMockNetworkParams(t *testing.T, cfg config2.NetworkParamsConfig) *types.
 			UpgradeSkyrHeight:        cfg.ForkUpgradeParam.UpgradeSkyrHeight,
 		},
 	}
+}
+
+func init() {
+	constants.InsecurePoStValidation = true
 }
