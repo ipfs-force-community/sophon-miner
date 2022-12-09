@@ -85,6 +85,7 @@ func NewMiner(
 		PropagationDelaySecs: cfg.PropagationDelaySecs,
 		MinerOnceTimeout:     time.Duration(cfg.MinerOnceTimeout),
 		gatewayNode:          cfg.Gateway,
+		submitNodes:          cfg.SubmitNodes,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
 			// wait around for half the block time in case other parents come in
 			//
@@ -155,6 +156,7 @@ type Miner struct {
 	MinerOnceTimeout     time.Duration
 
 	gatewayNode *config.GatewayNode
+	submitNodes []*config.APIInfo
 
 	lk       sync.Mutex
 	stop     chan struct{}
@@ -446,6 +448,16 @@ func (m *Miner) mine(ctx context.Context) {
 	}
 }
 
+func (m *Miner) submitBlock(ctx context.Context, bm *types2.BlockMsg, apiInfo *config.APIInfo) error {
+	submitAPI, closer, err := client.NewSubmitBlockRPC(ctx, apiInfo)
+	if err != nil {
+		return fmt.Errorf("conn to submit-node %v failed: %w", apiInfo.Addr, err)
+	}
+	defer closer()
+
+	return submitAPI.SyncSubmitBlock(ctx, bm)
+}
+
 func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *types2.BlockMsg) {
 	var err error
 	if exists, err := m.sf.HasBlock(ctx, bm.Header); err != nil {
@@ -471,9 +483,24 @@ func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *types2.
 	}
 
 	if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {
-		//TODO: exposure this failuer as a metrics item.
-		log.Errorf("failed to submit newly mined block: %s", err)
-		return
+		log.Warnf("failed to submit newly mined block: %s, will try to broadcast to other nodes", err)
+
+		bSubmitted := false
+		for _, sn := range m.submitNodes {
+			err := m.submitBlock(ctx, bm, sn)
+			if err == nil {
+				bSubmitted = true
+				break
+			}
+		}
+
+		if !bSubmitted {
+			log.Error("try to submit blocks to all nodes failed")
+			if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+				log.Errorf("failed to put block: %s", err)
+			}
+			return
+		}
 	}
 
 	// metrics: blocks

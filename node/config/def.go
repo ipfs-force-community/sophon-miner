@@ -56,9 +56,10 @@ func newSlashFilterConfig() *SlashFilterConfig {
 }
 
 type MinerConfig struct {
-	FullNode *APIInfo
-	Gateway  *GatewayNode
-	Auth     *APIInfo
+	FullNode    *APIInfo
+	Gateway     *GatewayNode
+	Auth        *APIInfo
+	SubmitNodes []*APIInfo
 
 	PropagationDelaySecs uint64
 	MinerOnceTimeout     Duration
