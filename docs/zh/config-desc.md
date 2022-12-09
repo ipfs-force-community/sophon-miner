@@ -149,3 +149,24 @@ MinerOnceTimeout = "15s"
 ```bash
 $  curl http://<ip>:12310/debug/metrics
 ```
+
+### `SubmitNodes` 配置项解析
+
+当选择消息的节点和广播区块的节点 `mpool` 中的消息不一致时, 有可能导致新出的区块无法验证,如区块中打包的消息在广播节点的 `mpool` 中不存在, 故引入`SubmitNodes`配置项, 保证区块正常上链.
+
+默认的配置是空的,如下:
+```toml
+SubmitNodes = []
+```
+
+当使用了 `chain-co` 组建时,需要将对接的所有同步节点配置到 `SubmitNodes`, 参考配置如下:
+
+```toml
+[[SubmitNodes]]
+  Addr = "/192.168.200.108/tcp/3453"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiY2hhaW4tc2VydmljZSIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.DxlsJO-XrrdQLvJdA6wdWJxeYOhZt_kMYMHc7NdfQNw"
+
+[[SubmitNodes]]
+  Addr = "/ip4/192.168.200.107/tcp/3453"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiY2hhaW4tc2VydmljZSIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.DxlsJO-XrrdQLvJdA6wdWJxeYOhZt_kMYMHc7NdfQNw"
+```
