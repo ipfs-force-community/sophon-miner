@@ -1,5 +1,12 @@
 # venus-miner changelog
 
+# 1.8.1 / 2022-12-09
+
+## Improvements
+
+- 增加 `SubmitNodes` 配置项,尝试向更多的同步节点提交新出的区块.
+
+
 # 1.8.0 / 2022-11-16
 
 ## Dependency Updates
