@@ -1,15 +1,21 @@
 package repo
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/config/migrate"
+	"github.com/filecoin-project/venus-miner/node/config/migrate/v170"
+	"github.com/filecoin-project/venus-miner/node/config/migrate/v180"
 )
 
 type UpgradeFunc func(*fsLockedRepo) error
@@ -20,23 +26,41 @@ type versionInfo struct {
 }
 
 var versionMap = []versionInfo{
-	{version: 180, upgrade: Version180Upgrade},
+	{version: 180, upgrade: ToVersion180Upgrade},
 }
 
-func Version180Upgrade(fsr *fsLockedRepo) error {
-	cfgV, err := config.FromFile(fsr.configPath, &migrate.MinerConfig{})
+func ToVersion180Upgrade(fsr *fsLockedRepo) error {
+	cfgV, err := config.FromFile(fsr.configPath, &v170.MinerConfig{})
 	if err != nil {
 		return err
 	}
-	cfgV170, ok := cfgV.(*migrate.MinerConfig)
-
+	cfgOld, ok := cfgV.(*v170.MinerConfig)
 	if ok {
 		// upgrade
-		if err := fsr.SetConfig(func(i interface{}) {
-			cfg := i.(*config.MinerConfig)
-			cfgV170.ToMinerConfig(cfg)
-		}); err != nil {
-			return fmt.Errorf("modify config failed: %w", err)
+		if err := fsr.stillValid(); err != nil {
+			return err
+		}
+
+		fsr.configLk.Lock()
+		defer fsr.configLk.Unlock()
+
+		// mutate in-memory representation of config
+		cfgV180 := &v180.MinerConfig{}
+		cfgOld.ToMinerConfig(cfgV180)
+
+		// buffer into which we write TOML bytes
+		buf := new(bytes.Buffer)
+
+		// encode now-mutated config as TOML and write to buffer
+		err = toml.NewEncoder(buf).Encode(cfgV180)
+		if err != nil {
+			return err
+		}
+
+		// write buffer of TOML bytes to config file
+		err = ioutil.WriteFile(fsr.configPath, buf.Bytes(), 0644)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -61,7 +85,7 @@ func (fsr *fsLockedRepo) Migrate() error {
 		actVerStr = string(data)
 	}
 
-	actVer, _ := strconv.Atoi(actVerStr)
+	actVer, _ := strconv.Atoi(strings.Trim(actVerStr, "\n"))
 	for _, up := range versionMap {
 		if up.version > actVer {
 			if up.upgrade == nil {

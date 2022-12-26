@@ -1,4 +1,4 @@
-package migrate
+package v170
 
 import (
 	"time"
@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs-force-community/metrics"
 
 	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/filecoin-project/venus-miner/node/config/migrate/v180"
 )
 
 type MySQLConfig struct {
@@ -32,7 +33,7 @@ type MinerConfig struct {
 	Metrics *metrics.MetricsConfig
 }
 
-func (cfgV170 *MinerConfig) ToMinerConfig(cfg *config.MinerConfig) {
+func (cfgV170 *MinerConfig) ToMinerConfig(cfg *v180.MinerConfig) {
 	cfg.FullNode = cfgV170.FullNode
 	cfg.Gateway = cfgV170.Gateway
 	cfg.Auth = cfgV170.Auth
