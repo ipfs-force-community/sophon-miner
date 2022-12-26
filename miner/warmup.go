@@ -90,6 +90,10 @@ out:
 		return fmt.Errorf("getting sector info: %w", err)
 	}
 
+	if si == nil {
+		return fmt.Errorf("sector not found %d", sector)
+	}
+
 	ts, err := m.api.ChainHead(ctx)
 	if err != nil {
 		return fmt.Errorf("getting chain head")
