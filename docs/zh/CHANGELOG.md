@@ -1,5 +1,11 @@
 # venus-miner changelog
 
+# 1.9.0 / 2022-12-30
+
+## Dependency Updates
+
+- 升级venus组件的版本
+
 # 1.8.0 / 2022-11-16
 
 ## Dependency Updates
