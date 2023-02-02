@@ -28,12 +28,14 @@ import (
 var log = logging.Logger("builder")
 
 // special is a type used to give keys to modules which
-//  can't really be identified by the returned type
+//
+//	can't really be identified by the returned type
 type special struct{ id int } //nolint
 
 type invoke int
 
 // Invokes are called in the order they are defined.
+//
 //nolint:golint
 const (
 	// InitJournal at position 0 initializes the journal global var as soon as
@@ -118,7 +120,7 @@ func ConfigMinerOptions(c interface{}) Option {
 		If(cfg.SlashFilter.Type == string(slashfilter.Local), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal)),
 		If(cfg.SlashFilter.Type == string(slashfilter.MySQL), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewMysql)),
 
-		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager(cfg.Auth.Addr)),
+		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
 	)
 
