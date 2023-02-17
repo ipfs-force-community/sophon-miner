@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
 	"github.com/filecoin-project/venus-miner/types"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
@@ -838,7 +837,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		partDone = metrics.TimerSeconds(ctx, metrics.ComputeProofDuration, addr.String())
 
-		r, err := chain.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+		r, err := DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
 			log.Errorf("failed to get randomness for winning post: %s, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, winner: winner, err: err}
