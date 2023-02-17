@@ -1,5 +1,18 @@
 # venus-miner changelog
 
+# 1.10.0-rc1 / 2023-02-17
+
+## New features
+- feat: user data isolation / 增加用户数据隔离  (#163) ([filecoin-project/venus-miner#163](https://github.com/filecoin-project/venus-miner/pull/163))
+
+
+# 1.9.0 / 2022-12-30
+
+## Dependency Updates
+
+- 升级venus组件的版本
+
+
 # 1.8.0 / 2022-11-16
 
 ## Dependency Updates
