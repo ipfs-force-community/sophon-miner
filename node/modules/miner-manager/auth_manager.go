@@ -30,9 +30,9 @@ type MinerManage struct {
 	lk     sync.Mutex
 }
 
-func NewMinerManager(url string) func() (MinerManageAPI, error) {
+func NewMinerManager(url, token string) func() (MinerManageAPI, error) {
 	return func() (MinerManageAPI, error) {
-		authClient, err := jwtclient.NewAuthClient(url)
+		authClient, err := jwtclient.NewAuthClient(url, token)
 		if err != nil {
 			return nil, err
 		}
