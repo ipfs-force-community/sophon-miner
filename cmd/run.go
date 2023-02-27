@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/gorilla/mux"
@@ -222,13 +223,12 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 	rpcServer.Register("Filecoin", lapi.PermissionedMinerAPI(minerAPI))
 
 	mux := mux.NewRouter()
-	mux.Handle("/rpc/v0", rpcServer)
+	mux.Handle("/rpc/v0", jwtclient.NewAuthMux(localJwtClient, remoteJwtAuthClient, rpcServer))
+	mux.Handle("/healthcheck", healthcheck.Handler())
 	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
-	ah := jwtclient.NewAuthMux(localJwtClient, remoteJwtAuthClient, mux)
-
 	srv := &http.Server{
-		Handler: ah,
+		Handler: mux,
 	}
 
 	sigChan := make(chan os.Signal, 2)

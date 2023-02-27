@@ -7,6 +7,7 @@ retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
 	github.com/BurntSushi/toml v1.2.0
+	github.com/etherlabsio/healthcheck/v2 v2.0.0
 	github.com/filecoin-project/go-address v1.1.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-jsonrpc v0.1.8
