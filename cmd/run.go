@@ -192,7 +192,7 @@ var runCmd = &cli.Command{
 
 		var remoteJwtAuthClient jwtclient.IJwtAuthClient
 		if len(cfg.Auth.Addr) > 0 {
-			client, err := jwtclient.NewAuthClient(cfg.Auth.Addr)
+			client, err := jwtclient.NewAuthClient(cfg.Auth.Addr, cfg.Auth.Token)
 			if err != nil {
 				return fmt.Errorf("failed to create remote jwt auth client: %w", err)
 			}

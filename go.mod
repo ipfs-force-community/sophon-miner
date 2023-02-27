@@ -14,7 +14,7 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/venus v1.9.0
-	github.com/filecoin-project/venus-auth v1.9.0
+	github.com/filecoin-project/venus-auth v1.9.1-0.20230207085914-a09f51a74d09
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
