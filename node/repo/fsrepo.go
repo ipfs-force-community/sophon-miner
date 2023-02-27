@@ -2,7 +2,6 @@ package repo
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,13 +15,9 @@ import (
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-base32"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus-miner/node/config"
-	vsTypes "github.com/filecoin-project/venus/venus-shared/types"
-
-	"github.com/filecoin-project/venus-miner/types"
 )
 
 const (
@@ -32,7 +27,6 @@ const (
 	fsDatastore = "datastore"
 	fsVersion   = "version"
 	fsLock      = "repo.lock"
-	fsKeystore  = "keystore"
 )
 
 var log = logging.Logger("repo")
@@ -66,16 +60,9 @@ func (fsr *FsRepo) SetConfigPath(cfgPath string) {
 
 func (fsr *FsRepo) Exists() (bool, error) { //nolint
 	var err error
-	_, err = os.Stat(filepath.Join(fsr.path, fsDatastore))
+	_, err = os.Stat(filepath.Join(fsr.path, fsConfig))
 	notexist := os.IsNotExist(err)
-	if notexist {
-		_, err = os.Stat(filepath.Join(fsr.path, fsKeystore))
-		notexist = os.IsNotExist(err)
-		if notexist {
-			err = nil
-		}
-	}
-	return !notexist, err
+	return !notexist, nil
 }
 
 func (fsr *FsRepo) Init() error {
@@ -96,9 +83,7 @@ func (fsr *FsRepo) Init() error {
 	if err := fsr.initConfig(); err != nil {
 		return fmt.Errorf("init config: %w", err)
 	}
-
-	return fsr.initKeystore()
-
+	return nil
 }
 
 func (fsr *FsRepo) initConfig() error {
@@ -151,16 +136,6 @@ func (fsr *FsRepo) Update(cfg *config.MinerConfig) error {
 
 	return nil
 
-}
-
-func (fsr *FsRepo) initKeystore() error {
-	kstorePath := filepath.Join(fsr.path, fsKeystore)
-	if _, err := os.Stat(kstorePath); err == nil {
-		return ErrRepoExists
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-	return os.Mkdir(kstorePath, 0700)
 }
 
 // APIEndpoint returns endpoint of API in this repo
@@ -346,134 +321,4 @@ func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 		return err
 	}
 	return os.WriteFile(fsr.join(fsAPIToken), token, 0600)
-}
-
-func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {
-	if err := fsr.stillValid(); err != nil {
-		return nil, err
-	}
-	return fsr, nil
-}
-
-var kstrPermissionMsg = "permissions of key: '%s' are too relaxed, " +
-	"required: 0600, got: %#o"
-
-// List lists all the keys stored in the KeyStore
-func (fsr *fsLockedRepo) List() ([]string, error) {
-	if err := fsr.stillValid(); err != nil {
-		return nil, err
-	}
-
-	kstorePath := fsr.join(fsKeystore)
-	dir, err := os.Open(kstorePath)
-	if err != nil {
-		return nil, fmt.Errorf("opening dir to list keystore: %w", err)
-	}
-	defer dir.Close() //nolint:errcheck
-	files, err := dir.Readdir(-1)
-	if err != nil {
-		return nil, fmt.Errorf("reading keystore dir: %w", err)
-	}
-	keys := make([]string, 0, len(files))
-	for _, f := range files {
-		if f.Mode()&0077 != 0 {
-			return nil, fmt.Errorf(kstrPermissionMsg, f.Name(), f.Mode())
-		}
-		name, err := base32.RawStdEncoding.DecodeString(f.Name())
-		if err != nil {
-			return nil, fmt.Errorf("decoding key: '%s': %w", f.Name(), err)
-		}
-		keys = append(keys, string(name))
-	}
-	return keys, nil
-}
-
-// Get gets a key out of keystore and returns vsTypes.KeyInfo coresponding to named key
-func (fsr *fsLockedRepo) Get(name string) (vsTypes.KeyInfo, error) {
-	if err := fsr.stillValid(); err != nil {
-		return vsTypes.KeyInfo{}, err
-	}
-
-	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
-	keyPath := fsr.join(fsKeystore, encName)
-
-	fstat, err := os.Stat(keyPath)
-	if os.IsNotExist(err) {
-		return vsTypes.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, vsTypes.ErrKeyInfoNotFound)
-	} else if err != nil {
-		return vsTypes.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
-	}
-
-	if fstat.Mode()&0077 != 0 {
-		return vsTypes.KeyInfo{}, fmt.Errorf(kstrPermissionMsg, name, fstat.Mode())
-	}
-
-	file, err := os.Open(keyPath)
-	if err != nil {
-		return vsTypes.KeyInfo{}, fmt.Errorf("opening key '%s': %w", name, err)
-	}
-	defer file.Close() //nolint: errcheck // read only op
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return vsTypes.KeyInfo{}, fmt.Errorf("reading key '%s': %w", name, err)
-	}
-
-	var res vsTypes.KeyInfo
-	err = json.Unmarshal(data, &res)
-	if err != nil {
-		return vsTypes.KeyInfo{}, fmt.Errorf("decoding key '%s': %w", name, err)
-	}
-
-	return res, nil
-}
-
-// Put saves key info under given name
-func (fsr *fsLockedRepo) Put(name string, info vsTypes.KeyInfo) error {
-	if err := fsr.stillValid(); err != nil {
-		return err
-	}
-
-	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
-	keyPath := fsr.join(fsKeystore, encName)
-
-	_, err := os.Stat(keyPath)
-	if err == nil {
-		return fmt.Errorf("checking key before put '%s': %w", name, vsTypes.ErrKeyExists)
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("checking key before put '%s': %w", name, err)
-	}
-
-	keyData, err := json.Marshal(info)
-	if err != nil {
-		return fmt.Errorf("encoding key '%s': %w", name, err)
-	}
-
-	err = os.WriteFile(keyPath, keyData, 0600)
-	if err != nil {
-		return fmt.Errorf("writing key '%s': %w", name, err)
-	}
-	return nil
-}
-
-func (fsr *fsLockedRepo) Delete(name string) error {
-	if err := fsr.stillValid(); err != nil {
-		return err
-	}
-
-	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
-	keyPath := fsr.join(fsKeystore, encName)
-
-	_, err := os.Stat(keyPath)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("checking key before delete '%s': %w", name, vsTypes.ErrKeyInfoNotFound)
-	} else if err != nil {
-		return fmt.Errorf("checking key before delete '%s': %w", name, err)
-	}
-
-	err = os.Remove(keyPath)
-	if err != nil {
-		return fmt.Errorf("deleting key '%s': %w", name, err)
-	}
-	return nil
 }

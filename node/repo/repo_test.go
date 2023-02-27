@@ -2,10 +2,7 @@
 package repo
 
 import (
-	"errors"
 	"testing"
-
-	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
@@ -67,55 +64,7 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "getting multiaddr shouldn't error")
 	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
 
-	k1 := types.KeyInfo{Type: "foo"}
-	k2 := types.KeyInfo{Type: "bar"}
-
 	lrepo, err = repo.Lock()
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
-
-	kstr, err := lrepo.KeyStore()
-	assert.NoError(t, err, "should be able to get keystore")
-	assert.NotNil(t, lrepo, "keystore shouldn't be nil")
-
-	list, err := kstr.List()
-	assert.NoError(t, err, "should be able to list key")
-	assert.Empty(t, list, "there should be no keys")
-
-	err = kstr.Put("k1", k1)
-	assert.NoError(t, err, "should be able to put k1")
-
-	err = kstr.Put("k1", k1)
-	if assert.Error(t, err, "putting key under the same name should error") {
-		assert.True(t, errors.Is(err, types.ErrKeyExists), "returned error is ErrKeyExists")
-	}
-
-	k1prim, err := kstr.Get("k1")
-	assert.NoError(t, err, "should be able to get k1")
-	assert.Equal(t, k1, k1prim, "returned key should be the same")
-
-	k2prim, err := kstr.Get("k2")
-	if assert.Error(t, err, "should not be able to get k2") {
-		assert.True(t, errors.Is(err, types.ErrKeyInfoNotFound), "returned error is ErrKeyNotFound")
-	}
-	assert.Empty(t, k2prim, "there should be no output for k2")
-
-	err = kstr.Put("k2", k2)
-	assert.NoError(t, err, "should be able to put k2")
-
-	list, err = kstr.List()
-	assert.NoError(t, err, "should be able to list keys")
-	assert.ElementsMatch(t, []string{"k1", "k2"}, list, "returned elements match")
-
-	err = kstr.Delete("k2")
-	assert.NoError(t, err, "should be able to delete key")
-
-	list, err = kstr.List()
-	assert.NoError(t, err, "should be able to list keys")
-	assert.ElementsMatch(t, []string{"k1"}, list, "returned elements match")
-
-	err = kstr.Delete("k2")
-	if assert.Error(t, err) {
-		assert.True(t, errors.Is(err, types.ErrKeyInfoNotFound), "returned errror is ErrKeyNotFound")
-	}
 }
