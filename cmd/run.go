@@ -106,18 +106,6 @@ var runCmd = &cli.Command{
 		}
 		defer ncloser()
 
-		var remoteJwtAuthClient jwtclient.IJwtAuthClient
-		var authClient jwtclient.IAuthClient
-		if len(cfg.Auth.Addr) == 0 {
-			return fmt.Errorf("auth addr is empty")
-		}
-		client, err := jwtclient.NewAuthClient(cfg.Auth.Addr)
-		if err != nil {
-			return fmt.Errorf("failed to create remote jwt auth client: %w", err)
-		}
-		remoteJwtAuthClient = jwtclient.WarpIJwtAuthClient(client)
-		authClient = client
-
 		// TODO: delete this when relative issue is fixed in lotus https://github.com/filecoin-project/venus/issues/5247
 		log.Info("wait for height of chain bigger than zero ...")
 		ticker := time.NewTicker(10 * time.Second)
@@ -170,7 +158,6 @@ var runCmd = &cli.Command{
 			node.MinerAPI(&minerAPI),
 			node.Repo(cctx, r),
 			node.Override(new(types.ShutdownChan), shutdownChan),
-			node.Override(new(jwtclient.IAuthClient), authClient),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },
 				node.Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {

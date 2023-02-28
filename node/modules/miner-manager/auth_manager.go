@@ -41,12 +41,8 @@ func NewMinerManager(url, token string) func() (MinerManageAPI, error) {
 			return nil, err
 		}
 
-	_, err := m.Update(context.TODO(), 0, 0)
-	if err != nil {
-		return nil, err
+		return m, nil
 	}
-
-	return m, nil
 }
 
 func (m *MinerManage) Has(ctx context.Context, mAddr address.Address) bool {
