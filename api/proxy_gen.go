@@ -42,15 +42,15 @@ type MinerAPIStruct struct {
 
 		ListAddress func(p0 context.Context) ([]types.MinerInfo, error) `perm:"read"`
 
-		Start func(p0 context.Context, p1 []address.Address) error `perm:"admin"`
+		Start func(p0 context.Context, p1 []address.Address) error `perm:"write"`
 
 		StatesForMining func(p0 context.Context, p1 []address.Address) ([]types.MinerState, error) `perm:"read"`
 
-		Stop func(p0 context.Context, p1 []address.Address) error `perm:"admin"`
+		Stop func(p0 context.Context, p1 []address.Address) error `perm:"write"`
 
-		UpdateAddress func(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) `perm:"write"`
+		UpdateAddress func(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) `perm:"admin"`
 
-		WarmupForMiner func(p0 context.Context, p1 address.Address) error `perm:"admin"`
+		WarmupForMiner func(p0 context.Context, p1 address.Address) error `perm:"write"`
 	}
 }
 

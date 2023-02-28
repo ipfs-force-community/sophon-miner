@@ -8,8 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/venus-auth/auth"
-	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
 	"github.com/filecoin-project/venus-miner/types"
@@ -24,7 +22,7 @@ var (
 var log = logging.Logger("auth-miners")
 
 type MinerManage struct {
-	authClient *jwtclient.AuthClient
+	authClient jwtclient.IAuthClient
 
 	miners map[address.Address]*types.MinerInfo
 	lk     sync.Mutex
@@ -43,8 +41,12 @@ func NewMinerManager(url, token string) func() (MinerManageAPI, error) {
 			return nil, err
 		}
 
-		return m, nil
+	_, err := m.Update(context.TODO(), 0, 0)
+	if err != nil {
+		return nil, err
 	}
+
+	return m, nil
 }
 
 func (m *MinerManage) Has(ctx context.Context, mAddr address.Address) bool {
@@ -82,7 +84,7 @@ func (m *MinerManage) OpenMining(ctx context.Context, mAddr address.Address) (*t
 	defer m.lk.Unlock()
 
 	if minerInfo, ok := m.miners[mAddr]; ok {
-		_, err := m.authClient.UpsertMiner(minerInfo.Name, minerInfo.Addr.String(), true)
+		_, err := m.authClient.UpsertMiner(ctx, minerInfo.Name, minerInfo.Addr.String(), true)
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +100,7 @@ func (m *MinerManage) CloseMining(ctx context.Context, mAddr address.Address) er
 	defer m.lk.Unlock()
 
 	if minerInfo, ok := m.miners[mAddr]; ok {
-		_, err := m.authClient.UpsertMiner(minerInfo.Name, minerInfo.Addr.String(), false)
+		_, err := m.authClient.UpsertMiner(ctx, minerInfo.Name, minerInfo.Addr.String(), false)
 		if err != nil {
 			return err
 		}
@@ -124,10 +126,7 @@ func (m *MinerManage) Update(ctx context.Context, skip, limit int64) (map[addres
 		limit = CoMinersLimit
 	}
 
-	users, err := m.authClient.ListUsersWithMiners(&auth.ListUsersRequest{Page: &core.Page{
-		Limit: limit,
-		Skip:  skip,
-	}})
+	users, err := m.authClient.ListUsersWithMiners(ctx, skip, limit, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -140,14 +139,8 @@ func (m *MinerManage) Update(ctx context.Context, skip, limit int64) (map[addres
 		}
 
 		for _, miner := range user.Miners {
-			addr, err := address.NewFromString(miner.Miner)
-			if err != nil {
-				log.Errorf("invalid user:%s miner:%s, %s", user.Name, miner.Miner, err.Error())
-				continue
-			}
-
-			miners[addr] = &types.MinerInfo{
-				Addr:       addr,
+			miners[miner.Miner] = &types.MinerInfo{
+				Addr:       miner.Miner,
 				Id:         user.Id,
 				Name:       miner.User,
 				OpenMining: miner.OpenMining,

@@ -34,7 +34,6 @@ import (
 	types2 "github.com/filecoin-project/venus-miner/types"
 
 	"github.com/filecoin-project/venus/fixtures/networks"
-	"github.com/filecoin-project/venus/pkg/chain"
 	config2 "github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	mockAPI "github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
@@ -821,7 +820,7 @@ func (m *mockChain) setHead(fts *types.TipSet) {
 	}
 
 	//reorg
-	revert, apply, err := chain.ReorgOps(func(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
+	revert, apply, err := ReorgOps(func(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 		var blks []*types.BlockHeader
 		for _, blkCid := range key.Cids() {
 			blk, ok := m.blockStore[blkCid]

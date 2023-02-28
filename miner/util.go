@@ -3,7 +3,10 @@ package miner
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -78,4 +81,65 @@ func IsRoundWinner(
 	}
 
 	return ep, nil
+}
+
+// DrawRandomness todo 在venus处理好后,这里的删除,用venus中的函数
+func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	h := blake2b.New256()
+	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
+		return nil, fmt.Errorf("deriving randomness: %s", err)
+	}
+	VRFDigest := blake2b.Sum256(rbase)
+	_, err := h.Write(VRFDigest[:])
+	if err != nil {
+		return nil, fmt.Errorf("hashing VRFDigest: %s", err)
+	}
+	if err := binary.Write(h, binary.BigEndian, round); err != nil {
+		return nil, fmt.Errorf("deriving randomness: %s", err)
+	}
+	_, err = h.Write(entropy)
+	if err != nil {
+		return nil, fmt.Errorf("hashing entropy: %s", err)
+	}
+
+	return h.Sum(nil), nil
+}
+
+// ReorgOps takes two tipsets (which can be at different heights), and walks
+// their corresponding chains backwards one step at a time until we find
+// a common ancestor. It then returns the respective chain segments that fork
+// from the identified ancestor, in reverse order, where the first element of
+// each slice is the supplied tipset, and the last element is the common
+// ancestor.
+//
+// If an error happens along the way, we return the error with nil slices.
+// todo should move this code into store.ReorgOps. anywhere use this function should invoke store.ReorgOps
+// todo 因依赖filecoin-ffi,暂时从venus复制的,venus处理好依赖后删除,用venus中的
+func ReorgOps(lts func(context.Context, types.TipSetKey) (*types.TipSet, error), a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+	left := a
+	right := b
+
+	var leftChain, rightChain []*types.TipSet
+	for !left.Equals(right) {
+		if left.Height() > right.Height() {
+			leftChain = append(leftChain, left)
+			par, err := lts(context.TODO(), left.Parents())
+			if err != nil {
+				return nil, nil, err
+			}
+
+			left = par
+		} else {
+			rightChain = append(rightChain, right)
+			par, err := lts(context.TODO(), right.Parents())
+			if err != nil {
+				log.Infof("failed to fetch right.Parents: %s", err)
+				return nil, nil, err
+			}
+
+			right = par
+		}
+	}
+
+	return leftChain, rightChain, nil
 }
