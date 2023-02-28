@@ -410,8 +410,8 @@ github.com/filecoin-project/venus v1.2.4/go.mod h1:hJULXHGAnWuq5S5KRtPkwbT8DqgM9
 github.com/filecoin-project/venus v1.10.0-rc2 h1:bSPtGuLnLFTALFdHuHRpo9bkN4bnZ/2RlpNyiKC68Fs=
 github.com/filecoin-project/venus v1.10.0-rc2/go.mod h1:khIm31fH1i/2q1aLBgRo5ULB+LbSKiNsKfwQORKD+PY=
 github.com/filecoin-project/venus-auth v1.3.2/go.mod h1:m5Jog2GYxztwP7w3m/iJdv/V1/bTcAVU9rm/CbhxRQU=
-github.com/filecoin-project/venus-auth v1.10.0-rc2 h1:mC2kRcUmXaL2nPky8iiogFjrygMTUXGXHjvEV9msPgk=
-github.com/filecoin-project/venus-auth v1.10.0-rc2/go.mod h1:bJT0owiiQfQq7u8QBpIf22JHNRZdsx9rAr4wMEsg+ds=
+github.com/filecoin-project/venus-auth v1.10.0-rc2.0.20230228032348-a2418f5a8838 h1:NbBSFyb5yoKfbtd5jX9JdkJ9vupuS0DM2f/tY7Pi9lo=
+github.com/filecoin-project/venus-auth v1.10.0-rc2.0.20230228032348-a2418f5a8838/go.mod h1:5scCRopeVuhwom6QIJaFENmrmL+HrwVElx+qU/oQ3Dw=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:1i71OnUq3iUe1ma7Lr6yG6/rjvM3emb6yoL7xLFzcVQ=
 github.com/flynn/noise v1.0.0/go.mod h1:xbMo+0i6+IGbYdJhF31t2eR1BIU0CYc12+BNAKwUTag=

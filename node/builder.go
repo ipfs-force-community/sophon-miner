@@ -119,7 +119,7 @@ func ConfigMinerOptions(c interface{}) Option {
 		If(cfg.SlashFilter.Type == string(slashfilter.Local), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal)),
 		If(cfg.SlashFilter.Type == string(slashfilter.MySQL), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewMysql)),
 
-		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager),
+		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager(cfg.Auth.Addr, cfg.Auth.Token)),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
 	)
 
