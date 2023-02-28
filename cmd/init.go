@@ -7,15 +7,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
-	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/filecoin-project/venus-miner/build"
 	lcli "github.com/filecoin-project/venus-miner/cli"
@@ -146,6 +146,17 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo) error 
 	if sfType != "local" && sfType != "mysql" {
 		return fmt.Errorf("wrong slash filter type")
 	}
+	log.Info("generate API ...")
+	address := cctx.String("listen")
+	a, err := net.ResolveTCPAddr("tcp", address)
+	if err != nil {
+		return fmt.Errorf("parsing address: %w", err)
+	}
+
+	ma, err := manet.FromNetAddr(a)
+	if err != nil {
+		return fmt.Errorf("creating api multiaddress: %w", err)
+	}
 
 	if err := lr.SetConfig(func(i interface{}) {
 		cfg := i.(*config.MinerConfig)
@@ -166,34 +177,16 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo) error 
 			}
 		}
 
+		cfg.API.ListenAddress = ma.String()
 		cfg.SlashFilter.Type = sfType
 		cfg.SlashFilter.MySQL.Conn = cctx.String("mysql-conn")
 	}); err != nil {
 		return fmt.Errorf("modify config failed: %w", err)
 	}
 
-	{
-		log.Info("generate API ...")
-		address := cctx.String("listen")
-		a, err := net.ResolveTCPAddr("tcp", address)
-		if err != nil {
-			return fmt.Errorf("parsing address: %w", err)
-		}
-
-		ma, err := manet.FromNetAddr(a)
-		if err != nil {
-			return fmt.Errorf("creating api multiaddress: %w", err)
-		}
-
-		if err := lr.SetAPIEndpoint(ma); err != nil {
-			return fmt.Errorf("setting api endpoint: %w", err)
-		}
-
-		if err := lr.SetVersion(build.Version); err != nil {
-			return fmt.Errorf("setting version: %w", err)
-		}
+	if err := lr.SetVersion(build.Version); err != nil {
+		return fmt.Errorf("setting version: %w", err)
 	}
-
 	return nil
 }
 

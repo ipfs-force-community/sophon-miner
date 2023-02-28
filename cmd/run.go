@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -29,7 +31,7 @@ import (
 	"github.com/filecoin-project/venus-miner/types"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/api/chain"
+
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -39,8 +41,9 @@ var runCmd = &cli.Command{
 	Usage: "Start a venus miner process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "miner-api",
-			Usage: "12308",
+			Name:        "listen",
+			Usage:       "config default port for venus-miner",
+			DefaultText: "/ip4/127.0.0.1/tcp/12308",
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
@@ -62,27 +65,25 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		ok, err := r.Exists()
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return fmt.Errorf("repo at '%s' is not initialized, run 'venus-miner init' to set it up", minerRepoPath)
-		}
-
 		lr, err := r.Lock()
 		if err != nil {
-			return err
+			return fmt.Errorf("lock repo fail maybe need to run init command first or create repo and config manually %w", err)
 		}
-		err = lr.Migrate() //nolint: errcheck
-		if err != nil {
-			log.Errorf("Migrate failed: %v", err.Error())
-		}
+
 		cfgV, err := lr.Config()
 		if err != nil {
 			return err
 		}
 		cfg := cfgV.(*config.MinerConfig)
+
+		if err = config.Check(cfg); err != nil {
+			return fmt.Errorf("config check fail %w", err)
+		}
+
+		err = lr.Migrate() //nolint: errcheck
+		if err != nil {
+			log.Errorf("Migrate failed: %v", err.Error())
+		}
 
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx, cfg.FullNode, "v1")
 		if err != nil {
@@ -172,9 +173,9 @@ var runCmd = &cli.Command{
 			node.Override(new(types.ShutdownChan), shutdownChan),
 			node.Override(new(jwtclient.IAuthClient), authClient),
 
-			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("listen") },
 				node.Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
-					return multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/" + cctx.String("miner-api"))
+					return multiaddr.NewMultiaddr(cctx.String("listen"))
 				})),
 			node.Override(new(v1.FullNode), nodeApi),
 		)
@@ -222,13 +223,12 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 	rpcServer.Register("Filecoin", lapi.PermissionedMinerAPI(minerAPI))
 
 	mux := mux.NewRouter()
-	mux.Handle("/rpc/v0", rpcServer)
+	mux.Handle("/rpc/v0", jwtclient.NewAuthMux(localJwtClient, remoteJwtAuthClient, rpcServer))
+	mux.Handle("/healthcheck", healthcheck.Handler())
 	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
-	ah := jwtclient.NewAuthMux(localJwtClient, remoteJwtAuthClient, mux)
-
 	srv := &http.Server{
-		Handler: ah,
+		Handler: mux,
 	}
 
 	sigChan := make(chan os.Signal, 2)

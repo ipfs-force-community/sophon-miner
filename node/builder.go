@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/multiformats/go-multiaddr"
+
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
@@ -87,14 +89,9 @@ func Repo(cctx *cli.Context, r repo.Repo) Option {
 		if err != nil {
 			return err
 		}
-
 		return Options(
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)),
 			Override(new(types.MetadataDS), modules.Datastore),
-			Override(new(types.KeyStore), modules.KeyStore),
-			Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
-				return r.APIEndpoint()
-			}),
 			ConfigMinerOptions(c),
 		)(settings)
 	}
@@ -112,7 +109,9 @@ func ConfigMinerOptions(c interface{}) Option {
 	shareOps := Options(
 		Override(new(*config.MinerConfig), cfg),
 		Override(new(*config.MySQLConfig), &cfg.SlashFilter.MySQL),
-
+		Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
+			return multiaddr.NewMultiaddr(cfg.API.ListenAddress)
+		}),
 		Override(new(api.Common), From(new(common.CommonAPI))),
 	)
 

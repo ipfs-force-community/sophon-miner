@@ -6,8 +6,6 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/venus-miner/types"
 )
 
 var (
@@ -47,9 +45,6 @@ type LockedRepo interface {
 
 	// SetAPIToken sets JWT API Token for CLI
 	SetAPIToken([]byte) error
-
-	// KeyStore returns store of private keys for Filecoin transactions
-	KeyStore() (types.KeyStore, error)
 
 	// Path returns absolute path of the repo
 	Path() string
