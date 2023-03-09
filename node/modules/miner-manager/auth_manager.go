@@ -28,21 +28,20 @@ type MinerManage struct {
 	lk     sync.Mutex
 }
 
-func NewMinerManager(url, token string) func() (MinerManageAPI, error) {
-	return func() (MinerManageAPI, error) {
-		authClient, err := jwtclient.NewAuthClient(url, token)
-		if err != nil {
-			return nil, err
-		}
-		m := &MinerManage{authClient: authClient}
-
-		_, err = m.Update(context.TODO(), 0, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		return m, nil
+func NewVenusAuth(url, token string) func() (jwtclient.IAuthClient, error) {
+	return func() (jwtclient.IAuthClient, error) {
+		return jwtclient.NewAuthClient(url, token)
 	}
+}
+
+func NewMinerManager(authClient jwtclient.IAuthClient) (MinerManageAPI, error) {
+	m := &MinerManage{authClient: authClient}
+	_, err := m.Update(context.TODO(), 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 func (m *MinerManage) Has(ctx context.Context, mAddr address.Address) bool {

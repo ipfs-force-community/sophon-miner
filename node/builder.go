@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/venus-auth/jwtclient"
+
 	"github.com/multiformats/go-multiaddr"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -119,7 +121,8 @@ func ConfigMinerOptions(c interface{}) Option {
 		If(cfg.SlashFilter.Type == string(slashfilter.Local), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewLocal)),
 		If(cfg.SlashFilter.Type == string(slashfilter.MySQL), Override(new(slashfilter.SlashFilterAPI), slashfilter.NewMysql)),
 
-		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager(cfg.Auth.Addr, cfg.Auth.Token)),
+		Override(new(jwtclient.IAuthClient), minermanager.NewVenusAuth(cfg.Auth.Addr, cfg.Auth.Token)),
+		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
 	)
 

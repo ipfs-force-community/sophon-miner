@@ -5,8 +5,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/multiformats/go-multiaddr"
-
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/ipfs-force-community/metrics"
@@ -101,23 +99,21 @@ func DefaultMinerConfig() *MinerConfig {
 }
 
 func Check(cfg *MinerConfig) error {
-	_, err := multiaddr.NewMultiaddr(cfg.API.ListenAddress)
-	if err != nil {
-		return fmt.Errorf("config listen address not validat %s, %w", cfg.API.ListenAddress, err)
+	if len(cfg.API.ListenAddress) > 0 {
+		return fmt.Errorf("must config listen address")
 	}
 
-	_, err = multiaddr.NewMultiaddr(cfg.FullNode.Addr)
-	if err != nil {
-		return fmt.Errorf("config full node not validat %v, %w", cfg.FullNode, err)
+	if len(cfg.FullNode.Addr) > 0 && len(cfg.FullNode.Token) > 0 {
+		return fmt.Errorf("must config full node url and token")
 	}
 
-	_, err = url.Parse(cfg.Auth.Addr)
+	_, err := url.Parse(cfg.Auth.Addr)
 	if err != nil {
 		return fmt.Errorf("auth url format not correct %s %w", cfg.Auth.Addr, err)
 	}
 
-	for _, addr := range cfg.Gateway.ListenAPI {
-		return fmt.Errorf("gateway multiaddr format not correct %s %w", addr, err)
+	if len(cfg.Gateway.ListenAPI) == 0 {
+		return fmt.Errorf("config at lease one gateway url")
 	}
 
 	if cfg.SlashFilter.Type == "mysql" {
