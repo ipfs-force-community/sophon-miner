@@ -1,5 +1,11 @@
 # venus-miner changelog
 
+# 1.10.0 / 2023-03-02
+
+## Improvements
+
+- 数据表 `miner_blocks` 字段设置默认值，`winning_at` 允许为 `null`
+
 # 1.10.0-rc1 / 2023-02-17
 
 ## New features
