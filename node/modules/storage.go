@@ -23,10 +23,6 @@ func LockedRepo(lr repo.LockedRepo) func(lc fx.Lifecycle) repo.LockedRepo {
 	}
 }
 
-func KeyStore(lr repo.LockedRepo) (types2.KeyStore, error) {
-	return lr.KeyStore()
-}
-
 func Datastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (types2.MetadataDS, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	mds, err := r.Datastore(ctx, "/metadata")

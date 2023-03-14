@@ -28,9 +28,14 @@ type MinerManage struct {
 	lk     sync.Mutex
 }
 
+func NewVenusAuth(url, token string) func() (jwtclient.IAuthClient, error) {
+	return func() (jwtclient.IAuthClient, error) {
+		return jwtclient.NewAuthClient(url, token)
+	}
+}
+
 func NewMinerManager(authClient jwtclient.IAuthClient) (MinerManageAPI, error) {
 	m := &MinerManage{authClient: authClient}
-
 	_, err := m.Update(context.TODO(), 0, 0)
 	if err != nil {
 		return nil, err

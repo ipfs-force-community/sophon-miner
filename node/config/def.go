@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"net/url"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -55,7 +57,15 @@ func newSlashFilterConfig() *SlashFilterConfig {
 	}
 }
 
+type API struct {
+	ListenAddress       string
+	RemoteListenAddress string
+	Timeout             Duration
+
+	PrivateKey string
+}
 type MinerConfig struct {
+	API         API
 	FullNode    *APIInfo
 	Gateway     *GatewayNode
 	Auth        *APIInfo
@@ -72,6 +82,9 @@ type MinerConfig struct {
 
 func DefaultMinerConfig() *MinerConfig {
 	minerCfg := &MinerConfig{
+		API: API{
+			ListenAddress: "/ip4/127.0.0.1/tcp/12308",
+		},
 		FullNode:             defaultAPIInfo(),
 		Gateway:              newDefaultGatewayNode(),
 		Auth:                 defaultAPIInfo(),
@@ -83,4 +96,33 @@ func DefaultMinerConfig() *MinerConfig {
 	}
 
 	return minerCfg
+}
+
+func Check(cfg *MinerConfig) error {
+	if len(cfg.API.ListenAddress) == 0 {
+		return fmt.Errorf("must config listen address")
+	}
+
+	if len(cfg.FullNode.Addr) == 0 || len(cfg.FullNode.Token) == 0 {
+		return fmt.Errorf("must config full node url and token")
+	}
+
+	_, err := url.Parse(cfg.Auth.Addr)
+	if err != nil {
+		return fmt.Errorf("auth url format not correct %s %w", cfg.Auth.Addr, err)
+	}
+
+	if len(cfg.Gateway.ListenAPI) == 0 {
+		return fmt.Errorf("config at lease one gateway url")
+	}
+
+	if cfg.SlashFilter.Type == "mysql" {
+		if len(cfg.SlashFilter.MySQL.Conn) == 0 {
+			return fmt.Errorf("mysql dsn must set when slash filter is mysql")
+		}
+	} else if cfg.SlashFilter.Type == "local" {
+	} else {
+		return fmt.Errorf("not support slash filter %s", cfg.SlashFilter.Type)
+	}
+	return nil
 }
