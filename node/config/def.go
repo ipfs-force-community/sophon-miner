@@ -99,11 +99,11 @@ func DefaultMinerConfig() *MinerConfig {
 }
 
 func Check(cfg *MinerConfig) error {
-	if len(cfg.API.ListenAddress) > 0 {
+	if len(cfg.API.ListenAddress) == 0 {
 		return fmt.Errorf("must config listen address")
 	}
 
-	if len(cfg.FullNode.Addr) > 0 && len(cfg.FullNode.Token) > 0 {
+	if len(cfg.FullNode.Addr) == 0 || len(cfg.FullNode.Token) == 0 {
 		return fmt.Errorf("must config full node url and token")
 	}
 
