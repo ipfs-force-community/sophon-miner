@@ -1,5 +1,12 @@
 # venus-miner changelog
 
+# 1.10.1 / 2023-03-16
+
+## Improvements
+
+- 检查链分叉时仅限同一周期内的base (#181) ([filecoin-project/venus-miner#181](https://github.com/filecoin-project/venus-miner/pull/181))
+
+
 # 1.10.0 / 2023-03-02
 
 ## Improvements
