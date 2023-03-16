@@ -323,7 +323,7 @@ func (m *Miner) mine(ctx context.Context) {
 			//
 			//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain forked)
 			//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
-			if !tbase.TipSet.Equals(base.TipSet) {
+			if tbase.TipSet.Height() == base.TipSet.Height() && !tbase.TipSet.Equals(base.TipSet) {
 				if tbase.TipSet.MinTicket().Compare(base.TipSet.MinTicket()) == 0 {
 					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 					base = tbase
