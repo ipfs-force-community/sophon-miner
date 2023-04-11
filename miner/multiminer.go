@@ -361,11 +361,14 @@ func (m *Miner) mine(ctx context.Context) {
 				ticketQualitys[idx] = res.ticket.Quality()
 			}
 			log.Infow("select message", "tickets", len(ticketQualitys))
-			msgs, err := m.api.MpoolSelects(context.TODO(), base.TipSet.Key(), ticketQualitys)
+
+			tCtx, tCancel := context.WithTimeout(ctx, 5*time.Second)
+			msgs, err := m.api.MpoolSelects(tCtx, base.TipSet.Key(), ticketQualitys)
 			if err != nil {
-				log.Errorf("failed to select messages for block: %s", err)
-				return
+				log.Errorf("failed to select messages: %s", err)
 			}
+			tCancel()
+
 			tPending := build.Clock.Now()
 
 			// create blocks
@@ -373,7 +376,7 @@ func (m *Miner) mine(ctx context.Context) {
 			for idx, res := range winPoSts {
 				tRes := res
 				var b *types2.BlockMsg
-				if len(msgs) > idx {
+				if msgs != nil && len(msgs) > idx {
 					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
 				} else {
 					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, []*types2.SignedMessage{})
@@ -392,8 +395,8 @@ func (m *Miner) mine(ctx context.Context) {
 				}
 				log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "miner", b.Header.Miner, "parents", parentMiners, "wincount", b.Header.ElectionProof.WinCount, "weight", b.Header.ParentWeight, "took", dur)
 
-				if dur > time.Second*time.Duration(m.networkParams.BlockDelaySecs) {
-					log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
+				if dur > m.MinerOnceTimeout {
+					log.Warnw("CAUTION: block production took longer than the mine once timeout. Your computer may not be fast enough to keep up",
 						"miner", tRes.addr,
 						"tMinerBaseInfo ", tRes.timetable.tMBI.Sub(tRes.timetable.tStart),
 						"tTicket ", tRes.timetable.tTicket.Sub(tRes.timetable.tMBI),
@@ -428,8 +431,10 @@ func (m *Miner) mine(ctx context.Context) {
 						build.Clock.Sleep(build.Clock.Until(btime))
 					}
 				default:
-					log.Warnw("mined block in the past",
-						"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
+					if now.Sub(btime) > time.Duration(m.PropagationDelaySecs)*time.Second {
+						log.Warnw("mined block in the past",
+							"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
+					}
 				}
 
 				// broadcast all blocks
