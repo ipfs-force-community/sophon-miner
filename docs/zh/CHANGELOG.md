@@ -1,5 +1,12 @@
 # venus-miner changelog
 
+# 1.10.2 / 2023-04-11
+
+## Improvements
+
+- 设置选择消息接口的请求超时(#184) ([filecoin-project/venus-miner#184](https://github.com/filecoin-project/venus-miner/pull/184))
+
+
 # 1.10.1 / 2023-03-16
 
 ## Improvements
