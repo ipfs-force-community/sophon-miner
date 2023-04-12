@@ -1,5 +1,11 @@
 # venus-miner changelog
 
+# 1.10.3 / 2023-04-12
+
+## Improvements
+
+- 设置从venus-auth请求矿工接口传入较大的`limit`值.
+
 # 1.10.2 / 2023-04-11
 
 ## Improvements
