@@ -369,7 +369,7 @@ func (m *Miner) mine(ctx context.Context) {
 			}
 			tCancel()
 
-			tPending := build.Clock.Now()
+			tSelMsg := build.Clock.Now()
 
 			// create blocks
 			var blks []*types2.BlockMsg
@@ -394,18 +394,15 @@ func (m *Miner) mine(ctx context.Context) {
 					parentMiners[i] = header.Miner
 				}
 				log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "miner", b.Header.Miner, "parents", parentMiners, "wincount", b.Header.ElectionProof.WinCount, "weight", b.Header.ParentWeight, "took", dur)
-
-				if dur > m.MinerOnceTimeout {
-					log.Warnw("CAUTION: block production took longer than the mine once timeout. Your computer may not be fast enough to keep up",
-						"miner", tRes.addr,
-						"tMinerBaseInfo ", tRes.timetable.tMBI.Sub(tRes.timetable.tStart),
-						"tTicket ", tRes.timetable.tTicket.Sub(tRes.timetable.tMBI),
-						"tIsWinner ", tRes.timetable.tIsWinner.Sub(tRes.timetable.tTicket),
-						"tSeed ", tRes.timetable.tSeed.Sub(tRes.timetable.tIsWinner),
-						"tProof ", tRes.timetable.tProof.Sub(tRes.timetable.tSeed),
-						"tPending ", tPending.Sub(tRes.timetable.tProof),
-						"tCreateBlock ", tCreateBlock.Sub(tPending))
-				}
+				log.Infow("mining time consuming",
+					"miner", tRes.addr,
+					"tMinerBaseInfo", tRes.timetable.tMBI.Sub(tRes.timetable.tStart),
+					"tTicket", tRes.timetable.tTicket.Sub(tRes.timetable.tMBI),
+					"tIsWinner", tRes.timetable.tIsWinner.Sub(tRes.timetable.tTicket),
+					"tSeed", tRes.timetable.tSeed.Sub(tRes.timetable.tIsWinner),
+					"tProof", tRes.timetable.tProof.Sub(tRes.timetable.tSeed),
+					"tSelMsg", tSelMsg.Sub(tRes.timetable.tProof),
+					"tCreateBlock", tCreateBlock.Sub(tSelMsg))
 
 				m.journal.RecordEvent(m.evtTypes[evtTypeBlockMined], func() interface{} {
 					return map[string]interface{}{
@@ -926,6 +923,8 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 
 func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr address.Address, ticket *types2.Ticket,
 	eproof *types2.ElectionProof, bvals []types2.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*types2.SignedMessage) (*types2.BlockMsg, error) {
+	tStart := build.Clock.Now()
+
 	uts := base.TipSet.MinTimestamp() + m.networkParams.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1
@@ -946,6 +945,8 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 	if err != nil {
 		return blockMsg, err
 	}
+
+	tCreateBlock := build.Clock.Now()
 
 	// block signature check
 	if blockMsg.Header.BlockSig == nil {
@@ -970,6 +971,13 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 		}
 		blockMsg.Header.BlockSig = sig
 	}
+
+	tBlockSign := build.Clock.Now()
+	log.Infow("create block time consuming",
+		"miner", addr,
+		"tMinerCreateBlockAPI", tCreateBlock.Sub(tStart),
+		"tBlockSIgn", tBlockSign.Sub(tCreateBlock),
+	)
 
 	return blockMsg, err
 }
