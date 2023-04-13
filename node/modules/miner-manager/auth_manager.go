@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus-miner/types"
 )
 
-const CoMinersLimit = 200
+const CoMinersLimit = 20000
 
 var (
 	ErrNotFound = fmt.Errorf("not found")
