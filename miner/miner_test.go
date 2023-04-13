@@ -47,7 +47,7 @@ func TestSuccessMinerBlocks(t *testing.T) {
 	defer cancel()
 	// stm: @VENUSMINER_MULTIMINER_NEW_001
 	miner, chain, _ := setMiner(ctx, t, 4)
-	chain.keepChainGoing()
+	chain.keepChainGoing(ctx)
 	// stm: @VENUSMINER_MULTIMINER_START_001, @VENUSMINER_NODECONFIGGATEWAYDEF_DIAL_ARGS_001, @VENUSMINER_NODECONFIGGATEWAYDEF_AUTH_HEADER_001
 	assert.Nil(t, miner.Start(ctx))
 	defer func() {
@@ -72,7 +72,7 @@ func TestCountWinner(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	miner, chain, _ := setMiner(ctx, t, 4)
-	chain.keepChainGoing()
+	chain.keepChainGoing(ctx)
 
 	assert.Nil(t, miner.Start(ctx))
 	defer func() {
@@ -153,7 +153,7 @@ func TestForkChain(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	miner, chain, _ := setMiner(ctx, t, 4)
-	chain.keepChainGoing()
+	chain.keepChainGoing(ctx)
 
 	var once sync.Once
 	stop := make(chan struct{})
@@ -182,21 +182,21 @@ func TestForkChain(t *testing.T) {
 	}
 
 	assert.True(t, len(chain.dropBlks) > 0)
-	chain.logMatcher.match("chain has been forked")
+	chain.logMatcher.match("chain may be forked")
 }
 
 func TestParentGridFail(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	miner, chain, _ := setMiner(ctx, t, 4)
-	chain.keepChainGoing()
+	miner, chain, _ := setMiner(ctx, t, 3)
+	chain.keepChainGoing(ctx)
 
 	var once sync.Once
 	stop := make(chan struct{})
 	chain.baseInfoHook = func(address2 address.Address, round abi.ChainEpoch) {
 		if round == 5 {
 			once.Do(func() {
-				chain.mockFork(3, false)
+				chain.mockFork(1, false)
 			})
 		} else if round > 8 {
 			select {
@@ -225,7 +225,7 @@ func TestSameHeight(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	miner, chain, _ := setMiner(ctx, t, 4)
-	chain.keepChainGoing()
+	chain.keepChainGoing(ctx)
 
 	var once sync.Once
 	chain.blockEndHook = func(round abi.ChainEpoch) {
@@ -249,7 +249,7 @@ func TestSuccessUpdateBaseWhenBaseExtend(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	miner, chain, _ := setMiner(ctx, t, 2)
-	chain.keepChainGoing()
+	chain.keepChainGoing(ctx)
 
 	var once sync.Once
 	stop := make(chan struct{})
@@ -284,7 +284,7 @@ func TestManualStartAndStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	miner, chain, _ := setMiner(ctx, t, 4)
-	chain.keepChainGoing()
+	chain.keepChainGoing(ctx)
 
 	chain.setAfterEvent(func(round abi.ChainEpoch) {
 		if round == 3 {
@@ -931,10 +931,18 @@ func (m *mockChain) fallBack(lbHeight abi.ChainEpoch) {
 	assert.Equal(m.t, newHead, m.getHead()) //confirm mock fork chain success
 }
 
-func (m *mockChain) nextBlock(epoch abi.ChainEpoch) {
+func (m *mockChain) nextBlock() {
+	// when the head is unchanged for two consecutive rounds, add a round of tipset(one block)
+	head := m.getHead()
+	nullRounds := (uint64(time.Now().Unix()) - head.MinTimestamp()) / m.params.BlockDelaySecs
+
+	if nullRounds == 0 {
+		return
+	}
+
+	epoch := head.Height() + abi.ChainEpoch(nullRounds)
 	ticket := make([]byte, 32)
 	rand.Read(ticket)
-	head := m.getHead()
 	next := &types.BlockHeader{
 		Miner:                 m.createMiner(),
 		ParentWeight:          types.NewInt(100 + uint64(len(head.Cids())) + uint64(epoch) + m.additionWeight),
@@ -945,16 +953,16 @@ func (m *mockChain) nextBlock(epoch abi.ChainEpoch) {
 		Ticket:                &types.Ticket{VRFProof: ticket},
 		BeaconEntries: []types.BeaconEntry{
 			{
-				Round: 1,
+				Round: nullRounds,
 				Data:  ticket,
 			},
 		},
 		Height:    epoch,
-		Timestamp: m.genesisTm + uint64(epoch)*m.params.BlockDelaySecs,
+		Timestamp: head.MinTimestamp() + nullRounds*m.params.BlockDelaySecs,
 	}
 
-	log.Infof("insert new block %d", epoch)
 	m.setBlock(next)
+	m.t.Log("insert new block")
 }
 
 func (m *mockChain) replaceWithWeightHead() {
@@ -995,14 +1003,19 @@ func (m *mockChain) changeMiner(nMiner int) []address.Address {
 	return addrs
 }
 
-func (m *mockChain) keepChainGoing() {
-	m.setAfterEvent(func(epoch abi.ChainEpoch) {
-		head := m.getHead()
-		if head.Height() < epoch { //generate block for null round
-			m.nextBlock(epoch)
-			m.t.Log("insert new block")
+func (m *mockChain) keepChainGoing(ctx context.Context) {
+	go func() {
+		t := time.NewTicker(time.Duration(m.params.BlockDelaySecs) * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-t.C:
+				m.nextBlock()
+			case <-ctx.Done():
+				return
+			}
 		}
-	})
+	}()
 }
 
 func (m *mockChain) processEvent(ctx context.Context) {
