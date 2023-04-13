@@ -32,7 +32,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
@@ -106,7 +106,7 @@ func NewMiner(
 			return func(bool, abi.ChainEpoch, error) {}, 0, nil
 		},
 		signerFunc: func(ctx context.Context, cfg *config.GatewayNode) SignFunc {
-			return func(ctx context.Context, signer address.Address, accounts []string, toSign []byte, meta types2.MsgMeta) (*crypto.Signature, error) {
+			return func(ctx context.Context, signer address.Address, accounts []string, toSign []byte, meta sharedTypes.MsgMeta) (*crypto.Signature, error) {
 				walletAPI, closer, err := client.NewGatewayRPC(ctx, cfg)
 				if err != nil {
 					return nil, fmt.Errorf("new gateway rpc failed:%w", err)
@@ -149,7 +149,7 @@ type minerWPP struct {
 
 type Miner struct {
 	api           v1api.FullNode
-	networkParams *types2.NetworkParams
+	networkParams *sharedTypes.NetworkParams
 
 	PropagationDelaySecs uint64
 	MinerOnceTimeout     time.Duration
@@ -316,24 +316,22 @@ func (m *Miner) mine(ctx context.Context) {
 		log.Infow("mining compute", "number of wins", len(winPoSts), "total miner", m.numberOfMiners())
 
 		// get the base again in order to get all the blocks in the previous round as much as possible
-		tbase, err := m.GetBestMiningCandidate(ctx)
-		isChainForked := false
+		ts, err := m.api.ChainGetTipSetByHeight(ctx, base.TipSet.Height(), sharedTypes.EmptyTSK)
 		if err == nil {
 			// rule:
 			//
-			//  1.  tbase include more blocks(maybe unequal is more appropriate, for chain forked)
-			//  2.  tbase.TipSet.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
-			if tbase.TipSet.Height() == base.TipSet.Height() && !tbase.TipSet.Equals(base.TipSet) {
-				if tbase.TipSet.MinTicket().Compare(base.TipSet.MinTicket()) == 0 {
-					log.Infow("there are better bases here", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
-					base = tbase
+			//  1.  ts include more blocks(maybe unequal is more appropriate, for chain forked)
+			//  2.  ts.At(0) == base.TipSet.At(0), blocks[0] is used to calculate IsRoundWinner
+			if ts.Height() == base.TipSet.Height() && !ts.Equals(base.TipSet) {
+				if ts.MinTicket().Compare(base.TipSet.MinTicket()) == 0 {
+					log.Infow("there are better bases here", "new base", types.LogCids(ts.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+					base.TipSet = ts
 				} else {
-					isChainForked = true
-					log.Warnw("chain has been forked", "new base", types.LogCids(tbase.TipSet.Cids()), "base", types.LogCids(base.TipSet.Cids()))
+					log.Warnw("base changed, chain may be forked", "new base", types.LogCids(ts.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 
 					// Record chain forked
 					for _, res := range winPoSts {
-						if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+						if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
 							Height: base.TipSet.Height() + base.NullRounds + 1,
 							Miner:  res.addr,
 						}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.ChainForked); err != nil {
@@ -351,10 +349,10 @@ func (m *Miner) mine(ctx context.Context) {
 		}
 		lastBase = *base
 
-		// After the chain is forked, the blocks based on the old bases will be invalidated,
-		// if continue to generate wrong blocks, it will affect the accuracy of slashfilter,
-		// also, the fork-based block generation is meaningless.
-		if !isChainForked && len(winPoSts) > 0 {
+		// when the head of the sync is converted to: base01-> base02-> base01, the chain polymerization multiple times,
+		// get base02 here as a fork, will miss the block.
+		// therefore, no matter whether there is a fork, we all try to create block.
+		if len(winPoSts) > 0 {
 			// get pending messages early
 			ticketQualitys := make([]float64, len(winPoSts))
 			for idx, res := range winPoSts {
@@ -372,14 +370,14 @@ func (m *Miner) mine(ctx context.Context) {
 			tSelMsg := build.Clock.Now()
 
 			// create blocks
-			var blks []*types2.BlockMsg
+			var blks []*sharedTypes.BlockMsg
 			for idx, res := range winPoSts {
 				tRes := res
-				var b *types2.BlockMsg
+				var b *sharedTypes.BlockMsg
 				if msgs != nil && len(msgs) > idx {
 					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
 				} else {
-					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, []*types2.SignedMessage{})
+					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, []*sharedTypes.SignedMessage{})
 				}
 				if err != nil {
 					log.Errorf("failed to create block: %s", err)
@@ -449,7 +447,7 @@ func (m *Miner) mine(ctx context.Context) {
 	}
 }
 
-func (m *Miner) submitBlock(ctx context.Context, bm *types2.BlockMsg, apiInfo *config.APIInfo) error {
+func (m *Miner) submitBlock(ctx context.Context, bm *sharedTypes.BlockMsg, apiInfo *config.APIInfo) error {
 	submitAPI, closer, err := client.NewSubmitBlockRPC(ctx, apiInfo)
 	if err != nil {
 		return fmt.Errorf("conn to submit-node %v failed: %w", apiInfo.Addr, err)
@@ -459,7 +457,7 @@ func (m *Miner) submitBlock(ctx context.Context, bm *types2.BlockMsg, apiInfo *c
 	return submitAPI.SyncSubmitBlock(ctx, bm)
 }
 
-func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *types2.BlockMsg) {
+func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *sharedTypes.BlockMsg) {
 	var err error
 	if exists, err := m.sf.HasBlock(ctx, bm.Header); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
@@ -597,7 +595,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 				log.Errorf("mining timeout for %s", tAddr.String())
 
 				// Timeout may not be the winner when it happens
-				if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+				if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
 					Height: base.TipSet.Height() + base.NullRounds + 1,
 					Miner:  tAddr,
 				}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Timeout); err != nil {
@@ -620,7 +618,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 					if res.err != nil {
 						if res.winner != nil {
 							// record to db only use mysql
-							if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+							if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
 								Height: base.TipSet.Height() + base.NullRounds + 1,
 								Miner:  tAddr,
 							}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
@@ -663,7 +661,7 @@ func (m *Miner) untilNextEpoch(base *MiningBase) {
 
 // MiningBase is the tipset on top of which we plan to construct our next block.
 type MiningBase struct {
-	TipSet     *types2.TipSet
+	TipSet     *sharedTypes.TipSet
 	NullRounds abi.ChainEpoch
 }
 
@@ -697,7 +695,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 			return nil, err
 		}
 
-		if types2.BigCmp(btsw, ltsw) <= 0 {
+		if sharedTypes.BigCmp(btsw, ltsw) <= 0 {
 			return m.lastWork, nil
 		}
 	}
@@ -713,9 +711,9 @@ type miningTimetable struct {
 type winPoStRes struct {
 	addr      address.Address
 	waddr     address.Address
-	ticket    *types2.Ticket
-	winner    *types2.ElectionProof
-	bvals     []types2.BeaconEntry
+	ticket    *sharedTypes.Ticket
+	winner    *sharedTypes.ElectionProof
+	bvals     []sharedTypes.BeaconEntry
 	postProof []proof2.PoStProof
 	dur       time.Duration
 	timetable miningTimetable
@@ -822,7 +820,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		)
 		stats.Record(metricsCtx, metrics.NumberOfIsRoundWinner.M(1))
 		// record to db only use mysql
-		if err := m.sf.PutBlock(ctx, &types2.BlockHeader{
+		if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
 			Height:  base.TipSet.Height() + base.NullRounds + 1,
 			Miner:   addr,
 			Parents: base.TipSet.Key().Cids(),
@@ -878,7 +876,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 	return out, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, base *MiningBase, mbi *types2.MiningBaseInfo, addr address.Address) (*types2.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context, brand *sharedTypes.BeaconEntry, base *MiningBase, mbi *sharedTypes.MiningBaseInfo, addr address.Address) (*sharedTypes.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := addr.MarshalCBOR(buf); err != nil {
 		return nil, fmt.Errorf("failed to marshal address to cbor: %w", err)
@@ -916,13 +914,13 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types2.BeaconEntry, ba
 		return nil, err
 	}
 
-	return &types2.Ticket{
+	return &sharedTypes.Ticket{
 		VRFProof: vrfOut,
 	}, nil
 }
 
-func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr address.Address, ticket *types2.Ticket,
-	eproof *types2.ElectionProof, bvals []types2.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*types2.SignedMessage) (*types2.BlockMsg, error) {
+func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr address.Address, ticket *sharedTypes.Ticket,
+	eproof *sharedTypes.ElectionProof, bvals []sharedTypes.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*sharedTypes.SignedMessage) (*sharedTypes.BlockMsg, error) {
 	tStart := build.Clock.Now()
 
 	uts := base.TipSet.MinTimestamp() + m.networkParams.BlockDelaySecs*(uint64(base.NullRounds)+1)
@@ -930,7 +928,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 	nheight := base.TipSet.Height() + base.NullRounds + 1
 
 	// why even return this? that api call could just submit it for us
-	blockMsg, err := m.api.MinerCreateBlock(context.TODO(), &types2.BlockTemplate{
+	blockMsg, err := m.api.MinerCreateBlock(context.TODO(), &sharedTypes.BlockTemplate{
 		Miner:            addr,
 		Parents:          base.TipSet.Key(),
 		Ticket:           ticket,
@@ -963,8 +961,8 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, fmt.Errorf("failed to get SigningBytes: %v", err)
 		}
 
-		sig, err := m.signerFunc(ctx, m.gatewayNode)(ctx, waddr, []string{val.account}, nosigbytes, types2.MsgMeta{
-			Type: types2.MTBlock,
+		sig, err := m.signerFunc(ctx, m.gatewayNode)(ctx, waddr, []string{val.account}, nosigbytes, sharedTypes.MsgMeta{
+			Type: sharedTypes.MTBlock,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to sign new block: %v", err)
@@ -1011,10 +1009,10 @@ func (m *Miner) SyncStatus(ctx context.Context) {
 					working := -1
 					for i, ss := range state.ActiveSyncs {
 						switch ss.Stage {
-						case types2.StageSyncComplete:
+						case sharedTypes.StageSyncComplete:
 						default:
 							working = i
-						case types2.StageIdle:
+						case sharedTypes.StageIdle:
 							// not complete, not actively working
 						}
 					}
