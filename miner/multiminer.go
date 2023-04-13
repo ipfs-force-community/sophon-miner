@@ -316,7 +316,8 @@ func (m *Miner) mine(ctx context.Context) {
 		log.Infow("mining compute", "number of wins", len(winPoSts), "total miner", m.numberOfMiners())
 
 		// get the base again in order to get all the blocks in the previous round as much as possible
-		ts, err := m.api.ChainGetTipSetByHeight(ctx, base.TipSet.Height(), sharedTypes.EmptyTSK)
+		ts, err := m.api.ChainHead(ctx)
+		//isChainForked := false
 		if err == nil {
 			// rule:
 			//
@@ -327,6 +328,7 @@ func (m *Miner) mine(ctx context.Context) {
 					log.Infow("there are better bases here", "new base", types.LogCids(ts.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 					base.TipSet = ts
 				} else {
+					//isChainForked = true
 					log.Warnw("base changed, chain may be forked", "new base", types.LogCids(ts.Cids()), "base", types.LogCids(base.TipSet.Cids()))
 
 					// Record chain forked
