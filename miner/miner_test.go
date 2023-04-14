@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/venus-miner/build"
 	"github.com/filecoin-project/venus-miner/lib/journal"
 	"github.com/filecoin-project/venus-miner/lib/journal/mockjournal"
 	"github.com/filecoin-project/venus-miner/node/config"
@@ -196,7 +197,7 @@ func TestParentGridFail(t *testing.T) {
 	chain.baseInfoHook = func(address2 address.Address, round abi.ChainEpoch) {
 		if round == 5 {
 			once.Do(func() {
-				chain.mockFork(1, false)
+				chain.mockFork(3, false)
 			})
 		} else if round > 8 {
 			select {
@@ -421,7 +422,7 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 
 	p := networks.Net2k().Network
 	p.BlockDelay = 10
-	genesisTime := uint64(time.Now().Unix())
+	genesisTime := uint64(build.Clock.Now().Unix())
 	chain := newMockChain(ctx, t, p)
 	chain.processEvent(ctx)
 	api := mockAPI.NewMockFullNode(gomock.NewController(t))
@@ -547,8 +548,9 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 	api.EXPECT().MinerCreateBlock(mockAny, mockAny).AnyTimes().AnyTimes().
 		DoAndReturn(func(_ context.Context, bt *types.BlockTemplate) (*types.BlockMsg, error) {
 			next := &types.BlockHeader{
-				Miner:                 bt.Miner,
-				ParentWeight:          types.NewInt(100 + uint64(len(bt.Parents.Cids())) + uint64(bt.Epoch) + chain.additionWeight),
+				Miner: bt.Miner,
+				// The parent-weight should be the base, temporarily increase the weight of the epoch
+				ParentWeight:          types.NewInt(100 + uint64(len(bt.Parents.Cids())) + uint64(bt.Epoch)*5 + chain.additionWeight),
 				ParentStateRoot:       chain.genRand.Cid(),
 				ParentMessageReceipts: chain.genRand.Cid(),
 				Messages:              chain.genRand.Cid(),
@@ -720,7 +722,6 @@ type mockChain struct {
 	dropBlks       map[cid.Cid]*types.BlockHeader
 	newBlkCh       chan *types.BlockHeader
 	pcController   *powerController
-	genesisTm      uint64
 	callLk         sync.Mutex
 	eventCall      []func(epoch abi.ChainEpoch)
 	additionWeight uint64
@@ -873,7 +874,7 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 	m.lk.Lock()
 	m.additionWeight += 10
 	toHeight := m.head.Height() - lbHeight
-	rand.Seed(time.Now().Unix())
+	rand.Seed(build.Clock.Now().Unix())
 	var revertTs []*types.TipSet
 	ts := m.head
 	for {
@@ -891,7 +892,7 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 			blkCopy := *blk
 			blkCopy.Miner = m.createMiner()
 			blkCopy.Parents = parent.Cids()
-			blkCopy.ParentWeight = types.NewInt(100 + uint64(len(ts.Parents().Cids())) + uint64(blk.Height) + m.additionWeight)
+			blkCopy.ParentWeight = types.NewInt(100 + uint64(len(ts.Parents().Cids())) + uint64(blk.Height)*5 + m.additionWeight)
 			if changeTicket {
 				ticket := make([]byte, 32)
 				rand.Read(ticket)
@@ -913,7 +914,7 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 func (m *mockChain) fallBack(lbHeight abi.ChainEpoch) {
 	head := m.getHead()
 	ts := m.getTipsetByHeight(head.Height() - lbHeight)
-	rand.Seed(time.Now().Unix())
+	rand.Seed(build.Clock.Now().Unix())
 	var blks []*types.BlockHeader
 	for _, blk := range ts.Blocks() {
 		blkCopy := *blk
@@ -934,9 +935,9 @@ func (m *mockChain) fallBack(lbHeight abi.ChainEpoch) {
 func (m *mockChain) nextBlock() {
 	// when the head is unchanged for two consecutive rounds, add a round of tipset(one block)
 	head := m.getHead()
-	nullRounds := (uint64(time.Now().Unix()) - head.MinTimestamp()) / m.params.BlockDelaySecs
+	nullRounds := (uint64(build.Clock.Now().Unix()) - head.MinTimestamp()) / m.params.BlockDelaySecs
 
-	if nullRounds == 0 {
+	if nullRounds < 2 {
 		return
 	}
 
@@ -945,7 +946,7 @@ func (m *mockChain) nextBlock() {
 	rand.Read(ticket)
 	next := &types.BlockHeader{
 		Miner:                 m.createMiner(),
-		ParentWeight:          types.NewInt(100 + uint64(len(head.Cids())) + uint64(epoch) + m.additionWeight),
+		ParentWeight:          types.NewInt(100 + uint64(len(head.Cids())) + uint64(epoch)*5 + m.additionWeight),
 		ParentStateRoot:       m.genRand.Cid(),
 		ParentMessageReceipts: m.genRand.Cid(),
 		Messages:              m.genRand.Cid(),
@@ -962,7 +963,7 @@ func (m *mockChain) nextBlock() {
 	}
 
 	m.setBlock(next)
-	m.t.Log("insert new block")
+	m.t.Log("insert new block, height", next.Height, "weight", next.ParentWeight, "time", next.Timestamp)
 }
 
 func (m *mockChain) replaceWithWeightHead() {
