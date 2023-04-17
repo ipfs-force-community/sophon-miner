@@ -1029,7 +1029,7 @@ func (m *Miner) generateBlockMsg(ctx context.Context, template *sharedTypes.Bloc
 	out := make(chan *sharedTypes.BlockMsg)
 	defer close(out)
 
-	tCtx, tCancel := context.WithCancel(ctx)
+	tCtx, tCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer tCancel()
 
 	go func() {
