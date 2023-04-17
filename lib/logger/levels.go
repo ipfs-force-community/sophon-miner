@@ -8,8 +8,8 @@ import (
 
 func SetupLogLevels() {
 	if _, set := os.LookupEnv("GOLOG_LOG_LEVEL"); !set {
-		_ = logging.SetLogLevel("*", "INFO")
-		_ = logging.SetLogLevel("miner", "DEBUG")
+		_ = logging.SetLogLevel("*", "WARN")
+		_ = logging.SetLogLevel("miner", "INFO")
 	}
 	// Always mute RtRefreshManager because it breaks terminals
 	_ = logging.SetLogLevel("dht/RtRefreshManager", "FATAL")
