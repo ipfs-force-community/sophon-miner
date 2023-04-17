@@ -1,5 +1,13 @@
 # venus-miner changelog
 
+# 1.10.4 / 2023-04-17
+
+## Improvements
+
+- 无论出块耗时是否大于 `MinerOnceTimeout`,都打印各阶段耗时;
+- 在被判定为分叉链时,仍执行完出块流程;
+- 避免出块超时时,提前更新 `lastBase`.
+
 # 1.10.2 / 2023-04-11
 
 ## Improvements
