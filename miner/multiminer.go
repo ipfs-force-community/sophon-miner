@@ -362,12 +362,10 @@ func (m *Miner) mine(ctx context.Context) {
 			}
 			log.Infow("select message", "tickets", len(ticketQualitys))
 
-			tCtx, tCancel := context.WithTimeout(ctx, 5*time.Second)
-			msgs, err := m.api.MpoolSelects(tCtx, base.TipSet.Key(), ticketQualitys)
+			msgs, err := m.mpoolSelects(ctx, base, ticketQualitys)
 			if err != nil {
 				log.Errorf("failed to select messages: %s", err)
 			}
-			tCancel()
 
 			tSelMsg := build.Clock.Now()
 
@@ -446,6 +444,59 @@ func (m *Miner) mine(ctx context.Context) {
 		// Wait until the next epoch, plus the propagation delay, so a new tipset
 		// has enough time to form.
 		m.untilNextEpoch(base)
+	}
+}
+
+func (m *Miner) mpoolSelects(ctx context.Context, base *MiningBase, ticketQualitys []float64) ([][]*sharedTypes.SignedMessage, error) {
+	out := make(chan [][]*sharedTypes.SignedMessage)
+	defer close(out)
+
+	tCtx, tCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer tCancel()
+
+	go func() {
+		mbi, err := m.api.MpoolSelects(tCtx, base.TipSet.Key(), ticketQualitys)
+		if err != nil {
+			log.Debugf("select msgs error: %s", err)
+			return
+		}
+
+		select {
+		case out <- mbi:
+			tCancel()
+		default:
+		}
+	}()
+
+	for _, sn := range m.submitNodes {
+		tSn := sn
+		go func() {
+			submitAPI, closer, err := client.NewSubmitBlockRPC(tCtx, tSn)
+			if err != nil {
+				log.Debugf("select msgs, conn to submit-node %v failed: %s", tSn.Addr, err)
+				return
+			}
+			defer closer()
+
+			msgs, err := submitAPI.MpoolSelects(tCtx, base.TipSet.Key(), ticketQualitys)
+			if err != nil {
+				log.Debugf("select msgs from submit-node %v error: %s", tSn.Addr, err)
+				return
+			}
+
+			select {
+			case out <- msgs:
+				tCancel()
+			default:
+			}
+		}()
+	}
+
+	select {
+	case msgs := <-out:
+		return msgs, nil
+	case <-tCtx.Done():
+		return nil, fmt.Errorf("select msg failed: %v", tCtx.Err())
 	}
 }
 
@@ -722,6 +773,59 @@ type winPoStRes struct {
 	err       error
 }
 
+func (m *Miner) getBaseInfo(ctx context.Context, addr address.Address, base *MiningBase, round abi.ChainEpoch) (*sharedTypes.MiningBaseInfo, error) {
+	out := make(chan *sharedTypes.MiningBaseInfo)
+	defer close(out)
+
+	tCtx, tCancel := context.WithCancel(ctx)
+	defer tCancel()
+
+	go func() {
+		mbi, err := m.api.MinerGetBaseInfo(tCtx, addr, round, base.TipSet.Key())
+		if err != nil {
+			log.Debugf("get base info error: %s", err)
+			return
+		}
+
+		select {
+		case out <- mbi:
+			tCancel()
+		default:
+		}
+	}()
+
+	for _, sn := range m.submitNodes {
+		tSn := sn
+		go func() {
+			submitAPI, closer, err := client.NewSubmitBlockRPC(tCtx, tSn)
+			if err != nil {
+				log.Debugf("get base info, conn to submit-node %v failed: %s", tSn.Addr, err)
+				return
+			}
+			defer closer()
+
+			mbi, err := submitAPI.MinerGetBaseInfo(tCtx, addr, round, base.TipSet.Key())
+			if err != nil {
+				log.Debugf("get base info from submit-node %v error: %s", tSn.Addr, err)
+				return
+			}
+
+			select {
+			case out <- mbi:
+				tCancel()
+			default:
+			}
+		}()
+	}
+
+	select {
+	case mbi := <-out:
+		return mbi, nil
+	case <-tCtx.Done():
+		return nil, fmt.Errorf("getBaseInfo failed: %v", tCtx.Err())
+	}
+}
+
 // mineOne attempts to mine a single block, and does so synchronously, if and
 // only if we are eligible to mine.
 //
@@ -745,7 +849,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			partDone()
 		}()
 
-		mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
+		mbi, err := m.getBaseInfo(ctx, addr, base, round)
 		if err != nil {
 			log.Errorf("failed to get mining base info: %s, miner: %s", err, addr)
 			out <- &winPoStRes{addr: addr, err: err}
@@ -921,6 +1025,59 @@ func (m *Miner) computeTicket(ctx context.Context, brand *sharedTypes.BeaconEntr
 	}, nil
 }
 
+func (m *Miner) generateBlockMsg(ctx context.Context, template *sharedTypes.BlockTemplate) (*sharedTypes.BlockMsg, error) {
+	out := make(chan *sharedTypes.BlockMsg)
+	defer close(out)
+
+	tCtx, tCancel := context.WithCancel(ctx)
+	defer tCancel()
+
+	go func() {
+		blockMsg, err := m.api.MinerCreateBlock(tCtx, template)
+		if err != nil {
+			log.Debugf("generate blockmsg error: %s", err)
+			return
+		}
+
+		select {
+		case out <- blockMsg:
+			tCancel()
+		default:
+		}
+	}()
+
+	for _, sn := range m.submitNodes {
+		tSn := sn
+		go func() {
+			submitAPI, closer, err := client.NewSubmitBlockRPC(tCtx, tSn)
+			if err != nil {
+				log.Debugf("generate blockmsg, conn to submit-node %v failed: %s", tSn.Addr, err)
+				return
+			}
+			defer closer()
+
+			blockMsg, err := submitAPI.MinerCreateBlock(tCtx, template)
+			if err != nil {
+				log.Debugf("generate blockmsg from submit-node %v error: %s", tSn.Addr, err)
+				return
+			}
+
+			select {
+			case out <- blockMsg:
+				tCancel()
+			default:
+			}
+		}()
+	}
+
+	select {
+	case blockMsg := <-out:
+		return blockMsg, nil
+	case <-tCtx.Done():
+		return nil, fmt.Errorf("generate blockmsg failed: %v", tCtx.Err())
+	}
+}
+
 func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr address.Address, ticket *sharedTypes.Ticket,
 	eproof *sharedTypes.ElectionProof, bvals []sharedTypes.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*sharedTypes.SignedMessage) (*sharedTypes.BlockMsg, error) {
 	tStart := build.Clock.Now()
@@ -930,7 +1087,7 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 	nheight := base.TipSet.Height() + base.NullRounds + 1
 
 	// why even return this? that api call could just submit it for us
-	blockMsg, err := m.api.MinerCreateBlock(context.TODO(), &sharedTypes.BlockTemplate{
+	blockMsg, err := m.generateBlockMsg(ctx, &sharedTypes.BlockTemplate{
 		Miner:            addr,
 		Parents:          base.TipSet.Key(),
 		Ticket:           ticket,
@@ -941,9 +1098,8 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 		Timestamp:        uts,
 		WinningPoStProof: wpostProof,
 	})
-
 	if err != nil {
-		return blockMsg, err
+		return nil, err
 	}
 
 	tCreateBlock := build.Clock.Now()
