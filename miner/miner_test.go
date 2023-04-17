@@ -923,7 +923,9 @@ func (m *mockChain) fallBack(lbHeight abi.ChainEpoch) {
 		ticket := make([]byte, 32)
 		rand.Read(ticket)
 		blkCopy.Ticket = &types.Ticket{VRFProof: ticket}
+		m.lk.Lock()
 		m.blockStore[blkCopy.Cid()] = &blkCopy
+		m.lk.Unlock()
 		blks = append(blks, &blkCopy)
 	}
 	newHead, err := types.NewTipSet(blks)
@@ -970,7 +972,9 @@ func (m *mockChain) replaceWithWeightHead() {
 	head := m.getHead()
 	blkCopy := *(head.At(0))
 	blkCopy.Miner = m.createMiner()
+	m.lk.Lock()
 	m.blockStore[blkCopy.Cid()] = &blkCopy
+	m.lk.Unlock()
 	var blks []*types.BlockHeader
 	blks = append(blks, head.Blocks()...)
 	blks = append(blks, &blkCopy)
