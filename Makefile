@@ -66,9 +66,16 @@ mock:
 
 TAG:=test
 docker:
-	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
+ifdef DOCKERFILE
+	cp $(DOCKERFILE) ./dockerfile
+else
+	curl -o dockerfile https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
+endif
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=$(BUILD_TARGET)  -t venus-miner .
+	docker tag venus-miner filvenus/venus-miner:$(TAG)
+ifdef PRIVATE_REGISTRY
 	docker tag venus-miner $(PRIVATE_REGISTRY)/filvenus/venus-miner:$(TAG)
+endif
 
 docker-push: docker
 	docker push $(PRIVATE_REGISTRY)/filvenus/venus-miner:$(TAG)
