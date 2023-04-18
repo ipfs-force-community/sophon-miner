@@ -11,11 +11,11 @@ require (
 	github.com/filecoin-project/go-address v1.1.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-jsonrpc v0.1.8
-	github.com/filecoin-project/go-state-types v0.10.0
+	github.com/filecoin-project/go-state-types v0.11.0-rc2
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.10.2-0.20230309014040-73746cec80e4
-	github.com/filecoin-project/venus-auth v1.10.2-0.20230308100319-913815325d5e
+	github.com/filecoin-project/venus v1.11.0-rc1
+	github.com/filecoin-project/venus-auth v1.11.0-rc1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -77,7 +77,6 @@ require (
 	github.com/filecoin-project/specs-actors/v4 v4.0.2 // indirect
 	github.com/filecoin-project/specs-actors/v5 v5.0.6 // indirect
 	github.com/filecoin-project/specs-actors/v6 v6.0.2 // indirect
-	github.com/filecoin-project/specs-storage v0.4.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/gbrlsnchs/jwt/v3 v3.0.1 // indirect
