@@ -1,5 +1,20 @@
 # venus-miner changelog
 
+# 1.11.0-rc1 / 2023-04-18
+
+### New Features
+* feat: mysql table migrate for miner_blocks / 更新数据库字段为可空或者添加默认值[[#168](https://github.com/filecoin-project/venus-miner/pull/168)]
+* feat: update AuthClient which with token /客户端token验证 [[#169](https://github.com/filecoin-project/venus-miner/pull/169)]
+* feat: add status api / 添加状态检测接口 [[#172](https://github.com/filecoin-project/venus-miner/pull/172)]
+* feat: add docker push /增加推送到镜像仓库的功能 [[#183](https://github.com/filecoin-project/venus-miner/pull/183)]
+
+### Improvements
+* opt: chain-forked check /链分叉判断时只对同周期内判断 [[#181](https://github.com/filecoin-project/venus-miner/pull/181)]
+* opt: set the select messages timeout / 选择消息设置5秒超时 [[#184](https://github.com/filecoin-project/venus-miner/pull/184)]
+
+### Bug Fixes
+* fix:check gateway fail /修复gateway配置检查失败的问题 [[#177](https://github.com/filecoin-project/venus-miner/pull/177)]
+* fix: config check / 修复配置检测失败的问题 [[#178]( https://github.com/filecoin-project/venus-miner/pull/178)]
 # 1.10.0 / 2023-03-02
 
 ## Improvements
