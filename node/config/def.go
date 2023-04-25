@@ -72,6 +72,7 @@ type MinerConfig struct {
 	SubmitNodes []*APIInfo
 
 	PropagationDelaySecs uint64
+	MpoolSelectDelaySecs uint64
 	MinerOnceTimeout     Duration
 
 	SlashFilter *SlashFilterConfig
@@ -90,6 +91,7 @@ func DefaultMinerConfig() *MinerConfig {
 		Auth:                 defaultAPIInfo(),
 		PropagationDelaySecs: 12,
 		MinerOnceTimeout:     Duration(time.Second * 15),
+		MpoolSelectDelaySecs: 0,
 		SlashFilter:          newSlashFilterConfig(),
 		Tracing:              metrics.DefaultTraceConfig(),
 		Metrics:              metrics.DefaultMetricsConfig(),
