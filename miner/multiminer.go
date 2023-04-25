@@ -83,6 +83,7 @@ func NewMiner(
 		networkParams:        networkParams,
 		PropagationDelaySecs: cfg.PropagationDelaySecs,
 		MinerOnceTimeout:     time.Duration(cfg.MinerOnceTimeout),
+		MpoolSelectDelaySecs: cfg.MpoolSelectDelaySecs,
 		gatewayNode:          cfg.Gateway,
 		submitNodes:          cfg.SubmitNodes,
 		waitFunc: func(ctx context.Context, baseTime uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
@@ -153,6 +154,7 @@ type Miner struct {
 
 	PropagationDelaySecs uint64
 	MinerOnceTimeout     time.Duration
+	MpoolSelectDelaySecs uint64
 
 	gatewayNode *config.GatewayNode
 	submitNodes []*config.APIInfo
@@ -362,7 +364,15 @@ func (m *Miner) mine(ctx context.Context) {
 			}
 			log.Infow("select message", "tickets", len(ticketQualitys))
 
-			tCtx, tCancel := context.WithTimeout(ctx, 5*time.Second)
+			var (
+				tCtx    context.Context
+				tCancel context.CancelFunc
+			)
+			if m.MpoolSelectDelaySecs > 0 {
+				tCtx, tCancel = context.WithTimeout(ctx, time.Duration(m.MpoolSelectDelaySecs)*time.Second)
+			} else {
+				tCtx, tCancel = context.WithCancel(ctx)
+			}
 			msgs, err := m.api.MpoolSelects(tCtx, base.TipSet.Key(), ticketQualitys)
 			if err != nil {
 				log.Errorf("failed to select messages: %s", err)
