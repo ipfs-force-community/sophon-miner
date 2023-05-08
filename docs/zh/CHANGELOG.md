@@ -1,5 +1,11 @@
 # venus-miner changelog
 
+# 1.11.0 / 2023-04-23
+
+* bump up version to v1.11.0
+* update venus-auth to v1.11.0
+* update venus to v1.11.0
+
 # 1.11.0-rc1 / 2023-04-18
 
 ### New Features
