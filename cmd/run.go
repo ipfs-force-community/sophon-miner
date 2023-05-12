@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus/venus-shared/api/chain"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 	"github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -204,7 +205,13 @@ var runCmd = &cli.Command{
 	},
 }
 
-func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownChan chan struct{}, maxRequestSize int64, localJwtClient, remoteJwtAuthClient jwtclient.IJwtAuthClient) error {
+func serveRPC(minerAPI lapi.MinerAPI,
+	stop node.StopFunc,
+	addr multiaddr.Multiaddr,
+	shutdownChan chan struct{},
+	maxRequestSize int64,
+	localJwtClient, remoteJwtAuthClient jwtclient.IJwtAuthClient,
+) error {
 	lst, err := manet.Listen(addr)
 	if err != nil {
 		return fmt.Errorf("could not listen: %w", err)
@@ -215,8 +222,11 @@ func serveRPC(minerAPI lapi.MinerAPI, stop node.StopFunc, addr multiaddr.Multiad
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
 	}
 
+	minerAPIStruct := &lapi.MinerAPIStruct{}
+	permission.PermissionProxy(minerAPI, minerAPIStruct)
+
 	rpcServer := jsonrpc.NewServer(serverOptions...)
-	rpcServer.Register("Filecoin", lapi.PermissionedMinerAPI(minerAPI))
+	rpcServer.Register("Filecoin", minerAPIStruct)
 
 	mux := mux.NewRouter()
 	mux.Handle("/rpc/v0", jwtclient.NewAuthMux(localJwtClient, remoteJwtAuthClient, rpcServer))
