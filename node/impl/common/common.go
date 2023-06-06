@@ -7,9 +7,9 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/types"
+	"github.com/ipfs-force-community/sophon-miner/api"
+	"github.com/ipfs-force-community/sophon-miner/build"
+	"github.com/ipfs-force-community/sophon-miner/types"
 
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 )

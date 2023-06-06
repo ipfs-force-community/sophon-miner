@@ -8,9 +8,9 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/lib/journal"
-	"github.com/filecoin-project/venus-miner/node/repo"
+	"github.com/ipfs-force-community/sophon-miner/build"
+	"github.com/ipfs-force-community/sophon-miner/lib/journal"
+	"github.com/ipfs-force-community/sophon-miner/node/repo"
 )
 
 var log = logging.Logger("fsjournal")
@@ -111,9 +111,9 @@ func (f *fsJournal) rollJournalFile() error {
 	if f.fi != nil {
 		_ = f.fi.Close()
 	}
-	current := filepath.Join(f.dir, "venus-miner-journal.ndjson")
+	current := filepath.Join(f.dir, "sophon-miner-journal.ndjson")
 	rolled := filepath.Join(f.dir, fmt.Sprintf(
-		"venus-miner-journal-%s.ndjson",
+		"sophon-miner-journal-%s.ndjson",
 		build.Clock.Now().Format(RFC3339nocolon),
 	))
 

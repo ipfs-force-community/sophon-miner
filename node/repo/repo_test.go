@@ -7,7 +7,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
 )
 
 func basicTest(t *testing.T, repo Repo) {

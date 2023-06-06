@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/venus-miner/lib/journal"
+	"github.com/ipfs-force-community/sophon-miner/lib/journal"
 	logging "github.com/ipfs/go-log/v2"
 )
 

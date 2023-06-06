@@ -1,4 +1,4 @@
-module github.com/filecoin-project/venus-miner
+module github.com/ipfs-force-community/sophon-miner
 
 go 1.18
 
@@ -203,8 +203,10 @@ require (
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
 
-replace github.com/filecoin-project/venus-miner => ./
+replace github.com/ipfs-force-community/sophon-miner => ./
 
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.7
+
+replace github.com/filecoin-project/venus-auth => github.com/ipfs-force-community/sophon-auth v1.11.1-0.20230605070647-78c27168aa64

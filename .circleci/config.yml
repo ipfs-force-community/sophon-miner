@@ -93,8 +93,8 @@ jobs:
       - run:
           command: make miner
       - store_artifacts:
-          path: venus-miner
-      - run: mkdir linux && mv venus-miner linux/
+          path: sophon-miner
+      - run: mkdir linux && mv sophon-miner linux/
       - persist_to_workspace:
           root: "."
           paths:
@@ -170,7 +170,7 @@ jobs:
 
 
   build-macos:
-    description: build darwin venus-miner binary
+    description: build darwin sophon-miner binary
     parameters:
       publish:
         default: false
@@ -178,7 +178,7 @@ jobs:
         type: boolean
     macos:
       xcode: "13.4.1"
-    working_directory: ~/go/src/github.com/filecoin-project/venus-miner
+    working_directory: ~/go/src/github.com/ipfs-force-community/sophon-miner
     steps:
       - prepare:
           linux: false
@@ -206,8 +206,8 @@ jobs:
           command: make miner
           no_output_timeout: 30m
       - store_artifacts:
-          path: venus-miner
-      - run: mkdir darwin && mv venus-miner darwin/
+          path: sophon-miner
+      - run: mkdir darwin && mv sophon-miner darwin/
       - persist_to_workspace:
           root: "."
           paths:

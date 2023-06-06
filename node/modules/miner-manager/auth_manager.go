@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
-	"github.com/filecoin-project/venus-miner/types"
+	"github.com/ipfs-force-community/sophon-miner/types"
 )
 
 const CoMinersLimit = 20000

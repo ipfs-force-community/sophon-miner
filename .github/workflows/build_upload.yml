@@ -9,7 +9,7 @@ jobs:
   build_upload:
     uses: filecoin-project/venus/.github/workflows/common_build_upload.yml@master
     with:
-      bin_name: 'venus-miner'
+      bin_name: 'sophon-miner'
       has_ffi: false
     secrets:
       OSS_KEY_ID: ${{secrets.OSS_KEY_ID}}

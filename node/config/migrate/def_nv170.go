@@ -5,7 +5,7 @@ import (
 
 	"github.com/ipfs-force-community/metrics"
 
-	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
 )
 
 type MySQLConfig struct {

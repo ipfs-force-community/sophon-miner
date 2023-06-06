@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
 
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )

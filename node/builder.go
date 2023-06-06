@@ -14,18 +14,18 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/lib/journal"
-	"github.com/filecoin-project/venus-miner/miner"
-	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/impl"
-	"github.com/filecoin-project/venus-miner/node/impl/common"
-	"github.com/filecoin-project/venus-miner/node/modules"
-	"github.com/filecoin-project/venus-miner/node/modules/helpers"
-	minermanager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
-	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
-	"github.com/filecoin-project/venus-miner/node/repo"
-	"github.com/filecoin-project/venus-miner/types"
+	"github.com/ipfs-force-community/sophon-miner/api"
+	"github.com/ipfs-force-community/sophon-miner/lib/journal"
+	"github.com/ipfs-force-community/sophon-miner/miner"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/impl"
+	"github.com/ipfs-force-community/sophon-miner/node/impl/common"
+	"github.com/ipfs-force-community/sophon-miner/node/modules"
+	"github.com/ipfs-force-community/sophon-miner/node/modules/helpers"
+	minermanager "github.com/ipfs-force-community/sophon-miner/node/modules/miner-manager"
+	"github.com/ipfs-force-community/sophon-miner/node/modules/slashfilter"
+	"github.com/ipfs-force-community/sophon-miner/node/repo"
+	"github.com/ipfs-force-community/sophon-miner/types"
 )
 
 //nolint:deadcode,varcheck
@@ -74,7 +74,7 @@ func defaults() []Option {
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
 
 		Override(new(helpers.MetricsCtx), func() context.Context {
-			return metricsi.CtxScope(context.Background(), "venus-miner")
+			return metricsi.CtxScope(context.Background(), "sophon-miner")
 		}),
 
 		Override(new(types.ShutdownChan), make(chan struct{})),

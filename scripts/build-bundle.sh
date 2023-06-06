@@ -19,7 +19,7 @@ mkdir bundle
 pushd bundle
 
 BINARIES=(
-    "venus-miner"
+    "sophon-miner"
 )
 
 export IPFS_PATH=`mktemp -d`
@@ -31,15 +31,15 @@ sleep 30
 
 for ARCH in "${ARCHS[@]}"
 do
-    mkdir -p "${ARCH}/venus-miner"
+    mkdir -p "${ARCH}/sophon-miner"
     pushd "${ARCH}"
     for BINARY in "${BINARIES[@]}"
     do
-        cp "../../${ARCH}/${BINARY}" "venus-miner/"
-        chmod +x "venus-miner/${BINARY}"
+        cp "../../${ARCH}/${BINARY}" "sophon-miner/"
+        chmod +x "sophon-miner/${BINARY}"
     done
 
-    tar -zcvf "../venus-miner{CIRCLE_TAG}_${ARCH}-amd64.tar.gz" venus-miner
+    tar -zcvf "../sophon-miner{CIRCLE_TAG}_${ARCH}-amd64.tar.gz" sophon-miner
     popd
     rm -rf "${ARCH}"
 

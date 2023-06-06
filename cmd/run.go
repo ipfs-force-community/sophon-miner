@@ -22,14 +22,14 @@ import (
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
-	lapi "github.com/filecoin-project/venus-miner/api"
-	lcli "github.com/filecoin-project/venus-miner/cli"
-	"github.com/filecoin-project/venus-miner/lib/metrics"
-	"github.com/filecoin-project/venus-miner/lib/tracing"
-	"github.com/filecoin-project/venus-miner/node"
-	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/repo"
-	"github.com/filecoin-project/venus-miner/types"
+	lapi "github.com/ipfs-force-community/sophon-miner/api"
+	lcli "github.com/ipfs-force-community/sophon-miner/cli"
+	"github.com/ipfs-force-community/sophon-miner/lib/metrics"
+	"github.com/ipfs-force-community/sophon-miner/lib/tracing"
+	"github.com/ipfs-force-community/sophon-miner/node"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/repo"
+	"github.com/ipfs-force-community/sophon-miner/types"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 
@@ -43,7 +43,7 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:        "listen",
-			Usage:       "config default port for venus-miner",
+			Usage:       "config default port for sophon-miner",
 			DefaultText: "/ip4/127.0.0.1/tcp/12308",
 		},
 		&cli.BoolFlag{

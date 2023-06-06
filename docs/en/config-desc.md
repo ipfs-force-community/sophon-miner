@@ -1,6 +1,6 @@
 # Configuration parsing
 
-&ensp;&ensp; The file is located in `~/.venusminer/config.toml` by default, which is generated when the command `venus-miner init` is executed. Behavior comments starting with `#` in the file.
+&ensp;&ensp; The file is located in `~/.venusminer/config.toml` by default, which is generated when the command `sophon-miner init` is executed. Behavior comments starting with `#` in the file.
 
 
 ## Old version
@@ -31,7 +31,7 @@ BlockRecord = "cache"
   # `slash filter`
   SFType = "mysql"
   [Db.MySQL]
-    Conn = "root:kuangfengjuexizhan@tcp(192.168.200.2:3308)/venus-miner-butterfly-200-19?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s"
+    Conn = "root:kuangfengjuexizhan@tcp(192.168.200.2:3308)/sophon-miner-butterfly-200-19?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s"
     MaxOpenConn = 100
     MaxIdleConn = 10
     ConnMaxLifeTime = 60
@@ -45,7 +45,7 @@ BlockRecord = "cache"
   JaegerTracingEnabled = false
   JaegerEndpoint = "localhost:6831"
   ProbabilitySampler = 1.0
-  ServerName = "venus-miner"
+  ServerName = "sophon-miner"
 ```
 
 ## New version
@@ -83,7 +83,7 @@ version number `>= v1.7.0`
   JaegerTracingEnabled = false
   JaegerEndpoint = "localhost:6831"
   ProbabilitySampler = 1.0
-  ServerName = "venus-miner"
+  ServerName = "sophon-miner"
 ```
 
 ### Metrics Configuration parsing

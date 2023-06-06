@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
-	lcli "github.com/filecoin-project/venus-miner/cli"
+	lcli "github.com/ipfs-force-community/sophon-miner/cli"
 )
 
 var addressCmd = &cli.Command{

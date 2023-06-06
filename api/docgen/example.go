@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus-miner/api"
+	"github.com/ipfs-force-community/sophon-miner/api"
 
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
