@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/urfave/cli/v2"
 
-	lcli "github.com/filecoin-project/venus-miner/cli"
+	lcli "github.com/ipfs-force-community/sophon-miner/cli"
 )
 
 var winnerCmd = &cli.Command{

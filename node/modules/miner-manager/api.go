@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/venus-miner/types"
+	"github.com/ipfs-force-community/sophon-miner/types"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mock/miner_manager.go -package=mock . MinerManageAPI

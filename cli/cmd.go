@@ -14,10 +14,10 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/venus-miner/api"
-	"github.com/filecoin-project/venus-miner/api/client"
-	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/repo"
+	"github.com/ipfs-force-community/sophon-miner/api"
+	"github.com/ipfs-force-community/sophon-miner/api/client"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/repo"
 
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )

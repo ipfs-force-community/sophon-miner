@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/config/migrate"
+	"github.com/ipfs-force-community/sophon-miner/build"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/config/migrate"
 )
 
 type UpgradeFunc func(*fsLockedRepo) error

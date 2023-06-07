@@ -8,8 +8,8 @@ import (
 	mock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus-miner/lib/journal"
-	"github.com/filecoin-project/venus-miner/lib/journal/mockjournal"
+	"github.com/ipfs-force-community/sophon-miner/lib/journal"
+	"github.com/ipfs-force-community/sophon-miner/lib/journal/mockjournal"
 )
 
 func TestAlerting(t *testing.T) {

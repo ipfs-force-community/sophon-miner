@@ -3,12 +3,12 @@ package modules
 import (
 	"context"
 
-	types2 "github.com/filecoin-project/venus-miner/types"
+	types2 "github.com/ipfs-force-community/sophon-miner/types"
 
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-miner/node/modules/helpers"
-	"github.com/filecoin-project/venus-miner/node/repo"
+	"github.com/ipfs-force-community/sophon-miner/node/modules/helpers"
+	"github.com/ipfs-force-community/sophon-miner/node/repo"
 )
 
 func LockedRepo(lr repo.LockedRepo) func(lc fx.Lifecycle) repo.LockedRepo {

@@ -5,12 +5,12 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	lcli "github.com/filecoin-project/venus-miner/cli"
+	lcli "github.com/ipfs-force-community/sophon-miner/cli"
 )
 
 var stopCmd = &cli.Command{
 	Name:  "stop",
-	Usage: "Stop running venus-miner daemon",
+	Usage: "Stop running sophon-miner daemon",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetMinerAPI(cctx)

@@ -8,27 +8,29 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-miner/types"
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/google/uuid"
+	"github.com/ipfs-force-community/sophon-miner/types"
 )
 
 var ErrNotSupported = errors.New("method not supported")
 
 type CommonStruct struct {
-	Internal struct {
-		Closing func(p0 context.Context) (<-chan struct{}, error) `perm:"read"`
+	Internal CommonMethods
+}
 
-		LogList func(p0 context.Context) ([]string, error) `perm:"write"`
+type CommonMethods struct {
+	Closing func(p0 context.Context) (<-chan struct{}, error) `perm:"read"`
 
-		LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"write"`
+	LogList func(p0 context.Context) ([]string, error) `perm:"write"`
 
-		Session func(p0 context.Context) (uuid.UUID, error) `perm:"read"`
+	LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"write"`
 
-		Shutdown func(p0 context.Context) error `perm:"admin"`
+	Session func(p0 context.Context) (uuid.UUID, error) `perm:"read"`
 
-		Version func(p0 context.Context) (sharedTypes.Version, error) `perm:"read"`
-	}
+	Shutdown func(p0 context.Context) error `perm:"admin"`
+
+	Version func(p0 context.Context) (sharedTypes.Version, error) `perm:"read"`
 }
 
 type CommonStub struct {
@@ -37,21 +39,23 @@ type CommonStub struct {
 type MinerAPIStruct struct {
 	CommonStruct
 
-	Internal struct {
-		CountWinners func(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]types.CountWinners, error) `perm:"read"`
+	Internal MinerAPIMethods
+}
 
-		ListAddress func(p0 context.Context) ([]types.MinerInfo, error) `perm:"read"`
+type MinerAPIMethods struct {
+	CountWinners func(p0 context.Context, p1 []address.Address, p2 abi.ChainEpoch, p3 abi.ChainEpoch) ([]types.CountWinners, error) `perm:"read"`
 
-		Start func(p0 context.Context, p1 []address.Address) error `perm:"write"`
+	ListAddress func(p0 context.Context) ([]types.MinerInfo, error) `perm:"read"`
 
-		StatesForMining func(p0 context.Context, p1 []address.Address) ([]types.MinerState, error) `perm:"read"`
+	Start func(p0 context.Context, p1 []address.Address) error `perm:"write"`
 
-		Stop func(p0 context.Context, p1 []address.Address) error `perm:"write"`
+	StatesForMining func(p0 context.Context, p1 []address.Address) ([]types.MinerState, error) `perm:"read"`
 
-		UpdateAddress func(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) `perm:"admin"`
+	Stop func(p0 context.Context, p1 []address.Address) error `perm:"write"`
 
-		WarmupForMiner func(p0 context.Context, p1 address.Address) error `perm:"write"`
-	}
+	UpdateAddress func(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) `perm:"admin"`
+
+	WarmupForMiner func(p0 context.Context, p1 address.Address) error `perm:"write"`
 }
 
 type MinerAPIStub struct {

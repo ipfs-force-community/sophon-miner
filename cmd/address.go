@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
-	lcli "github.com/filecoin-project/venus-miner/cli"
+	lcli "github.com/ipfs-force-community/sophon-miner/cli"
 )
 
 var addressCmd = &cli.Command{
@@ -25,7 +25,7 @@ var addressCmd = &cli.Command{
 
 var updateCmd = &cli.Command{
 	Name:  "update",
-	Usage: "reacquire address from venus-auth",
+	Usage: "reacquire address from sophon-auth",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:     "skip",

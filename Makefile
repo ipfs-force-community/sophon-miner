@@ -12,9 +12,9 @@ endif
 CLEAN:=
 BINS:=
 
-BUILD_TARGET=venus-miner
+BUILD_TARGET=sophon-miner
 
-ldflags=-X=github.com/filecoin-project/venus-miner/build.CurrentCommit='+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))'
+ldflags=-X=github.com/ipfs-force-community/sophon-miner/build.CurrentCommit='+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))'
 ifneq ($(strip $(LDFLAGS)),)
 	ldflags+=-extldflags=$(LDFLAGS)
 endif
@@ -25,11 +25,11 @@ build: miner
 .PHONY: build
 
 miner:
-	rm -f venus-miner
+	rm -f $(BUILD_TARGET)
 	go build $(GOFLAGS) -o $(BUILD_TARGET) ./cmd/
 
 .PHONY: miner
-BINS+=venus-miner
+BINS+=sophon-miner
 
 docsgen:
 	go build $(GOFLAGS) -o docgen-md ./api/docgen
@@ -71,11 +71,11 @@ ifdef DOCKERFILE
 else
 	curl -o dockerfile https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
 endif
-	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=$(BUILD_TARGET)  -t venus-miner .
-	docker tag venus-miner filvenus/venus-miner:$(TAG)
+	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=$(BUILD_TARGET)  -t sophon-miner .
+	docker tag sophon-miner filvenus/sophon-miner:$(TAG)
 ifdef PRIVATE_REGISTRY
-	docker tag venus-miner $(PRIVATE_REGISTRY)/filvenus/venus-miner:$(TAG)
+	docker tag sophon-miner $(PRIVATE_REGISTRY)/filvenus/sophon-miner:$(TAG)
 endif
 
 docker-push: docker
-	docker push $(PRIVATE_REGISTRY)/filvenus/venus-miner:$(TAG)
+	docker push $(PRIVATE_REGISTRY)/filvenus/sophon-miner:$(TAG)

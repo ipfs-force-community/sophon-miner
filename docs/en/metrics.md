@@ -1,4 +1,4 @@
-## `venus-miner` metrics
+## `sophon-miner` metrics
 
 For the configuration of enabling indicators and exporters, please refer to[metrics config](./config-desc.md)
 

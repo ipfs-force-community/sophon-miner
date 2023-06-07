@@ -17,10 +17,10 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	manet "github.com/multiformats/go-multiaddr/net"
 
-	"github.com/filecoin-project/venus-miner/build"
-	lcli "github.com/filecoin-project/venus-miner/cli"
-	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/repo"
+	"github.com/ipfs-force-community/sophon-miner/build"
+	lcli "github.com/ipfs-force-community/sophon-miner/cli"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/repo"
 )
 
 var initCmd = &cli.Command{
@@ -30,7 +30,7 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "listen",
 			Usage: "host address and port",
-			Value: "0.0.0.0:12308",
+			Value: "127.0.0.1:12308",
 		},
 		&cli.StringFlag{
 			Name:     "api",
@@ -115,7 +115,7 @@ var initCmd = &cli.Command{
 		}
 
 		if err := storageMinerInit(cctx, r, &fullnode); err != nil {
-			log.Errorf("Failed to initialize venus-miner: %+v", err)
+			log.Errorf("Failed to initialize sophon-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
 				return err
@@ -127,7 +127,7 @@ var initCmd = &cli.Command{
 			return fmt.Errorf("init failed")
 		}
 
-		log.Info("Miner successfully init, you can now start it with 'venus-miner run'")
+		log.Info("Miner successfully init, you can now start it with 'sophon-miner run'")
 
 		return nil
 	},

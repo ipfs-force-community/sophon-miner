@@ -39,7 +39,7 @@ type Journal interface {
 }
 ```
 
-在 `venus-miner` 系统中注册了以下事件: `System: "miner", Event: "block_mined"`，用于记录矿工的出块。在日志中以 `json` 方式保存：
+在 `sophon-miner` 系统中注册了以下事件: `System: "miner", Event: "block_mined"`，用于记录矿工的出块。在日志中以 `json` 方式保存：
 ```json
 {"System":"miner","Event":"block_mined","Timestamp":"2022-02-08T09:44:45.49744285+08:00","Data":{"cid":{"/":"bafy2bzacebur5zuktumidwj7hm6tv42f2cy6khwtk4zjz4434b5hfrdq2xcns"},"epoch":91552,"miner":"t01031","nulls":0,"parents":[{"/":"bafy2bzacect4kjtcml4uvgvmqtmbrdvh34zb73b5pqr7udjtzd5pnpa3lq5g4"}],"timestamp":1644284700}}
 ```

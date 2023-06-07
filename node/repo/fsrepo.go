@@ -17,7 +17,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
 )
 
 const (

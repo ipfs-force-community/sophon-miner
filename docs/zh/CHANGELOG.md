@@ -1,26 +1,26 @@
-# venus-miner changelog
+# sophon-miner changelog
 
 # 1.11.0 / 2023-04-23
 
 * bump up version to v1.11.0
-* update venus-auth to v1.11.0
+* update sophon-auth to v1.11.0
 * update venus to v1.11.0
 
 # 1.11.0-rc1 / 2023-04-18
 
 ### New Features
-* feat: mysql table migrate for miner_blocks / 更新数据库字段为可空或者添加默认值[[#168](https://github.com/filecoin-project/venus-miner/pull/168)]
-* feat: update AuthClient which with token /客户端token验证 [[#169](https://github.com/filecoin-project/venus-miner/pull/169)]
-* feat: add status api / 添加状态检测接口 [[#172](https://github.com/filecoin-project/venus-miner/pull/172)]
-* feat: add docker push /增加推送到镜像仓库的功能 [[#183](https://github.com/filecoin-project/venus-miner/pull/183)]
+* feat: mysql table migrate for miner_blocks / 更新数据库字段为可空或者添加默认值[[#168](https://github.com/ipfs-force-community/sophon-miner/pull/168)]
+* feat: update AuthClient which with token /客户端token验证 [[#169](https://github.com/ipfs-force-community/sophon-miner/pull/169)]
+* feat: add status api / 添加状态检测接口 [[#172](https://github.com/ipfs-force-community/sophon-miner/pull/172)]
+* feat: add docker push /增加推送到镜像仓库的功能 [[#183](https://github.com/ipfs-force-community/sophon-miner/pull/183)]
 
 ### Improvements
-* opt: chain-forked check /链分叉判断时只对同周期内判断 [[#181](https://github.com/filecoin-project/venus-miner/pull/181)]
-* opt: set the select messages timeout / 选择消息设置5秒超时 [[#184](https://github.com/filecoin-project/venus-miner/pull/184)]
+* opt: chain-forked check /链分叉判断时只对同周期内判断 [[#181](https://github.com/ipfs-force-community/sophon-miner/pull/181)]
+* opt: set the select messages timeout / 选择消息设置5秒超时 [[#184](https://github.com/ipfs-force-community/sophon-miner/pull/184)]
 
 ### Bug Fixes
-* fix:check gateway fail /修复gateway配置检查失败的问题 [[#177](https://github.com/filecoin-project/venus-miner/pull/177)]
-* fix: config check / 修复配置检测失败的问题 [[#178]( https://github.com/filecoin-project/venus-miner/pull/178)]
+* fix:check gateway fail /修复gateway配置检查失败的问题 [[#177](https://github.com/ipfs-force-community/sophon-miner/pull/177)]
+* fix: config check / 修复配置检测失败的问题 [[#178]( https://github.com/ipfs-force-community/sophon-miner/pull/178)]
 # 1.10.0 / 2023-03-02
 
 ## Improvements
@@ -30,7 +30,7 @@
 # 1.10.0-rc1 / 2023-02-17
 
 ## New features
-- feat: user data isolation / 增加用户数据隔离  (#163) ([filecoin-project/venus-miner#163](https://github.com/filecoin-project/venus-miner/pull/163))
+- feat: user data isolation / 增加用户数据隔离  (#163) ([ipfs-force-community/sophon-miner#163](https://github.com/ipfs-force-community/sophon-miner/pull/163))
 
 
 # 1.9.0 / 2022-12-30
@@ -45,14 +45,14 @@
 ## Dependency Updates
 
 - github.com/filecoin-project/venus (-> v1.8.0)
-- github.com/filecoin-project/venus-auth (-> v1.8.0)
+- github.com/ipfs-force-community/sophon-auth (-> v1.8.0)
 
 
 # 1.8.0-rc5 / 2022-11-03
 
 ## Improvements
 
-- 增加 `miners`  是否出块的控制开关，需要 `venus-auth` 版本 >= v1.8.0-rc4.
+- 增加 `miners`  是否出块的控制开关，需要 `sophon-auth` 版本 >= v1.8.0-rc4.
 
 
 # 1.8.0-rc4 / 2022-10-26
@@ -94,7 +94,7 @@
 - 简化配置文件，参考 配置文件解析;
 - 移除 `venus-shared` 中已有的数据类型;
 - 移除没有实际作用的代码;
-- 矿工由 `venus-auth` 管理，移除本地的矿工管理模块；
+- 矿工由 `sophon-auth` 管理，移除本地的矿工管理模块；
 - 移除对 `filecoin-ffi` 的依赖；
 - 新增配置项说明文档；
 - 新增快速启动文档；

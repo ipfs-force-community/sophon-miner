@@ -5,8 +5,8 @@ orbs:
 executors:
   golang:
     docker:
+      # Must match GO_VERSION_MIN in project root
       - image: cimg/go:1.18.1
-    resource_class: 2xlarge
   ubuntu:
     docker:
       - image: ubuntu:20.04
@@ -30,7 +30,6 @@ commands:
     steps:
       - checkout
       - git_fetch_all_tags
-      - checkout
       - when:
           condition: << parameters.linux >>
           steps:
@@ -93,8 +92,8 @@ jobs:
       - run:
           command: make miner
       - store_artifacts:
-          path: venus-miner
-      - run: mkdir linux && mv venus-miner linux/
+          path: sophon-miner
+      - run: mkdir linux && mv sophon-miner linux/
       - persist_to_workspace:
           root: "."
           paths:
@@ -170,7 +169,7 @@ jobs:
 
 
   build-macos:
-    description: build darwin venus-miner binary
+    description: build darwin sophon-miner binary
     parameters:
       publish:
         default: false
@@ -178,7 +177,7 @@ jobs:
         type: boolean
     macos:
       xcode: "13.4.1"
-    working_directory: ~/go/src/github.com/filecoin-project/venus-miner
+    working_directory: ~/go/src/github.com/ipfs-force-community/sophon-miner
     steps:
       - prepare:
           linux: false
@@ -206,8 +205,8 @@ jobs:
           command: make miner
           no_output_timeout: 30m
       - store_artifacts:
-          path: venus-miner
-      - run: mkdir darwin && mv venus-miner darwin/
+          path: sophon-miner
+      - run: mkdir darwin && mv sophon-miner darwin/
       - persist_to_workspace:
           root: "."
           paths:
@@ -226,11 +225,9 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - run: go generate -x ./...
       - run: go install golang.org/x/tools/cmd/goimports
       - run: make gen
-      - run: git --no-pager diff
-      - run: git --no-pager diff --quiet
+      - run: git --no-pager diff && git --no-pager diff --quiet
 
   lint: &lint
     description: |
@@ -239,12 +236,6 @@ jobs:
       executor:
         type: executor
         default: golang
-      concurrency:
-        type: string
-        default: '2'
-        description: |
-          Concurrency used to run linters. Defaults to 2 because NumCPU is not
-          aware of container CPU limits.
       args:
         type: string
         default: ''
@@ -257,8 +248,8 @@ jobs:
       - run:
           name: Lint
           command: |
-            golangci-lint run -v --timeout 2m \
-              --concurrency << parameters.concurrency >> << parameters.args >>
+            golangci-lint run -v --timeout 10m \
+              --concurrency 4 << parameters.args >>
   lint-all:
     <<: *lint
 
@@ -403,8 +394,7 @@ workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-all:
-          concurrency: "16"   # expend all docker 2xlarge CPUs.
+      - lint-all
       - mod-tidy-check
       - gofmt
       - gen-check
@@ -445,7 +435,7 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-and-push-image:
-          dockerfile: Dockerfile.venusminer
+          dockerfile: Dockerfile.sophon-miner
           path: .
-          repo: venusminer-dev
+          repo: sophon-miner-dev
           tag: '${CIRCLE_SHA1:0:8}'

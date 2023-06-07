@@ -5,11 +5,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-auth/jwtclient"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
-	"github.com/filecoin-project/venus-miner/miner"
-	"github.com/filecoin-project/venus-miner/node/impl/common"
-	"github.com/filecoin-project/venus-miner/types"
+	"github.com/ipfs-force-community/sophon-miner/miner"
+	"github.com/ipfs-force-community/sophon-miner/node/impl/common"
+	"github.com/ipfs-force-community/sophon-miner/types"
 )
 
 type MinerAPI struct {

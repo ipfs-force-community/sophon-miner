@@ -10,7 +10,7 @@ on:
 jobs:
 
   check:
-    uses: filecoin-project/venus/.github/workflows/common_go.yml@v1.8.0-rc1
+    uses: filecoin-project/venus/.github/workflows/common_go.yml@master
     with:
       has_ffi: false
       test_timeout: 20

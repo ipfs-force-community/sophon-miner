@@ -5,12 +5,12 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-miner/lib/journal"
-	"github.com/filecoin-project/venus-miner/miner"
-	"github.com/filecoin-project/venus-miner/node/config"
-	"github.com/filecoin-project/venus-miner/node/modules/helpers"
-	minermanager "github.com/filecoin-project/venus-miner/node/modules/miner-manager"
-	"github.com/filecoin-project/venus-miner/node/modules/slashfilter"
+	"github.com/ipfs-force-community/sophon-miner/lib/journal"
+	"github.com/ipfs-force-community/sophon-miner/miner"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/modules/helpers"
+	minermanager "github.com/ipfs-force-community/sophon-miner/node/modules/miner-manager"
+	"github.com/ipfs-force-community/sophon-miner/node/modules/slashfilter"
 
 	chainV1API "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )

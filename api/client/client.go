@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/venus-miner/api"
+	"github.com/ipfs-force-community/sophon-miner/api"
 )
 
 // NewCommonRPC creates a new http jsonrpc client.

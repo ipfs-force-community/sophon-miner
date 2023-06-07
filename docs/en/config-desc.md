@@ -1,6 +1,6 @@
 # Configuration parsing
 
-&ensp;&ensp; The file is located in `~/.venusminer/config.toml` by default, which is generated when the command `venus-miner init` is executed. Behavior comments starting with `#` in the file.
+&ensp;&ensp; The file is located in `~/.sophon-miner/config.toml` by default, which is generated when the command `sophon-miner init` is executed. Behavior comments starting with `#` in the file.
 
 
 ## Old version
@@ -14,11 +14,8 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiYWRtaW4iLCJwZXJtIjoiYW
 # deprecated, replaced by `slash filter`
 BlockRecord = "cache"
 
-# deprecated, replaced by ~/.venusminer/api`
 [API]
   ListenAddress = "/ip4/0.0.0.0/tcp/12308/http"
-  RemoteListenAddress = ""
-  Timeout = "30s"
 
 # venus-gateway API
 [Gateway]
@@ -26,12 +23,12 @@ BlockRecord = "cache"
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiYWRtaW4iLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.RRSdeQ-c1Ei-8roAj-L-wpOr-y6PssDorbGijMPxjoc"
 
 [Db]
-  # deprecated, replaced by ~venus-auth`
+  # deprecated, replaced by ~sophon-auth`
   Type = "auth"
   # `slash filter`
   SFType = "mysql"
   [Db.MySQL]
-    Conn = "root:kuangfengjuexizhan@tcp(192.168.200.2:3308)/venus-miner-butterfly-200-19?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s"
+    Conn = "root:kuangfengjuexizhan@tcp(192.168.200.2:3308)/sophon-miner-butterfly-200-19?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s"
     MaxOpenConn = 100
     MaxIdleConn = 10
     ConnMaxLifeTime = 60
@@ -45,7 +42,7 @@ BlockRecord = "cache"
   JaegerTracingEnabled = false
   JaegerEndpoint = "localhost:6831"
   ProbabilitySampler = 1.0
-  ServerName = "venus-miner"
+  ServerName = "sophon-miner"
 ```
 
 ## New version
@@ -53,6 +50,14 @@ BlockRecord = "cache"
 version number `>= v1.7.0`
 
 ```toml
+PropagationDelaySecs = 12
+MinerOnceTimeout = "15s"
+MpoolSelectDelaySecs = 0
+
+# `sophon-miner` host address and port
+[API]
+  ListenAddress = "/ip4/0.0.0.0/tcp/12308"
+  
 # venus fullnode API
 [FullNode]
   Addr = "/ip4/127.0.0.1/tcp/3453"
@@ -63,7 +68,7 @@ version number `>= v1.7.0`
   ListenAPI = ["/ip4/127.0.0.1/tcp/45132"]
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiY2hhaW4tc2VydmljZSIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.DxlsJO-XrrdQLvJdA6wdWJxeYOhZt_kMYMHc7NdfQNw"
 
-# venus-auth API
+# sophon-auth API
 [Auth]
   Addr = "http://127.0.0.1:8989"
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiY2hhaW4tc2VydmljZSIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.DxlsJO-XrrdQLvJdA6wdWJxeYOhZt_kMYMHc7NdfQNw"
@@ -83,7 +88,7 @@ version number `>= v1.7.0`
   JaegerTracingEnabled = false
   JaegerEndpoint = "localhost:6831"
   ProbabilitySampler = 1.0
-  ServerName = "venus-miner"
+  ServerName = "sophon-miner"
 ```
 
 ### Metrics Configuration parsing

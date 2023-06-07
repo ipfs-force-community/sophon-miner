@@ -9,9 +9,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/venus-miner/api/client"
-	"github.com/filecoin-project/venus-miner/build"
-	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/api/client"
+	"github.com/ipfs-force-community/sophon-miner/build"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"

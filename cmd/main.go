@@ -7,9 +7,9 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/venus-miner/build"
-	lcli "github.com/filecoin-project/venus-miner/cli"
-	"github.com/filecoin-project/venus-miner/lib/logger"
+	"github.com/ipfs-force-community/sophon-miner/build"
+	lcli "github.com/ipfs-force-community/sophon-miner/cli"
+	"github.com/ipfs-force-community/sophon-miner/lib/logger"
 )
 
 var log = logging.Logger("main")
@@ -31,17 +31,17 @@ func main() {
 	defer span.End()
 
 	app := &cli.App{
-		Name:                 "venus-miner",
+		Name:                 "sophon-miner",
 		Usage:                "Filecoin decentralized storage network miner",
 		Version:              build.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagMinerRepo,
-				EnvVars: []string{"VENUS_MINER_PATH"},
+				EnvVars: []string{"SOPHON_MINER_PATH"},
 				Aliases: []string{"miner-repo"},
-				Value:   "~/.venusminer",
-				Usage:   "Specify miner repo path, env VENUS_MINER_PATH",
+				Value:   "~/.sophon-miner",
+				Usage:   "Specify miner repo path, env SOPHON_MINER_PATH",
 			},
 		},
 

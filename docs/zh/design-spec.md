@@ -1,8 +1,8 @@
-# `venus-miner` 
+# `sophon-miner` 
 
 ## 简介
 
-&ensp;&ensp;`venus-miner` 是 `Venus` 矿池中的链服务组件之一，是矿工出块的调度器。与 `PL` 实现的 `lotus-miner` 不同的是：
+&ensp;&ensp;`sophon-miner` 是 `Venus` 矿池中的链服务组件之一，是矿工出块的调度器。与 `PL` 实现的 `lotus-miner` 不同的是：
  
 - 支持多个矿工出块，`lotus-miner` 的一个实例负责单个矿工的出块；
 
@@ -15,19 +15,19 @@
 
 ## 功能模块
 
-&ensp;&ensp;`venus-miner` 的主要模块有：矿工管理，出块管理。
+&ensp;&ensp;`sophon-miner` 的主要模块有：矿工管理，出块管理。
 
 ### 矿工管理
 
-`Venus` 矿池中的用户（或称为矿工）是由 `venus-auth` 组件管理的，其记录了每个矿工的基础信息及身份验证信息。`venus-miner` 从 `venus-auth` 拉取最新的矿工列表，并周期性地进行区块生产流程。
+`Venus` 矿池中的用户（或称为矿工）是由 `sophon-auth` 组件管理的，其记录了每个矿工的基础信息及身份验证信息。`sophon-miner` 从 `sophon-auth` 拉取最新的矿工列表，并周期性地进行区块生产流程。
 
-`venus-miner` 可以暂停矿工列表中任意矿工的出块，比如某个矿工的签名节点失联时，可以手动暂停该矿工的出块流程，等待签名正常后再开启出块。
+`sophon-miner` 可以暂停矿工列表中任意矿工的出块，比如某个矿工的签名节点失联时，可以手动暂停该矿工的出块流程，等待签名正常后再开启出块。
 
-`venus-miner` 执行 `update` 更新矿工列表，通常在某些矿工退出矿池或有新的矿工加入矿池时进行。
+`sophon-miner` 执行 `update` 更新矿工列表，通常在某些矿工退出矿池或有新的矿工加入矿池时进行。
 
 ### 出块管理
 
-`venus-miner` 的一轮出块流程如下：
+`sophon-miner` 的一轮出块流程如下：
 
 - 请求同步节点获取 `Base`，即 `parent Tipset`（通常是最近一次有出块周期的 `Block`集）及空轮数（空轮表示该周期没有任何矿工出块）；
 

@@ -1,4 +1,4 @@
-## `venus-miner` 指标
+## `sophon-miner` 指标
 
 有关开启指标，导出器的配置请参考[metrics config](./config-desc.md)
 

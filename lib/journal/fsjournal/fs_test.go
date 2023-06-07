@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus-miner/lib/journal"
-	"github.com/filecoin-project/venus-miner/node/repo"
+	"github.com/ipfs-force-community/sophon-miner/lib/journal"
+	"github.com/ipfs-force-community/sophon-miner/node/repo"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +36,7 @@ func TestFsJournal(t *testing.T) {
 		require.NoError(t, os.RemoveAll(dir))
 	}
 
-	jlFile := filepath.Join(dir, "venus-miner-journal.ndjson")
+	jlFile := filepath.Join(dir, "sophon-miner-journal.ndjson")
 	{
 		// If there is an error on rollJournalFile return nil and error.
 		// stm: @VENUSMINER_FSJOURNAL_OPEN_FS_JOURNAL_003

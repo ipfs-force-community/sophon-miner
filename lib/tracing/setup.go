@@ -18,8 +18,8 @@ func SetupJaegerTracing(cfg *metrics.TraceConfig) *jaeger.Exporter {
 	}
 
 	agentEndpointURI := cfg.JaegerEndpoint
-	if _, ok := os.LookupEnv("VENUS_MINER_JAEGER"); ok {
-		agentEndpointURI = os.Getenv("VENUS_MINER_JAEGER")
+	if _, ok := os.LookupEnv("SOPHON_MINER_JAEGER"); ok {
+		agentEndpointURI = os.Getenv("SOPHON_MINER_JAEGER")
 	}
 
 	je, err := jaeger.NewExporter(jaeger.Options{

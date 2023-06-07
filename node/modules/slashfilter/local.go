@@ -13,7 +13,7 @@ import (
 
 	vtypes "github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/filecoin-project/venus-miner/types"
+	"github.com/ipfs-force-community/sophon-miner/types"
 )
 
 type localSlashFilter struct {

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/venus-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/node/config"
 	"github.com/stretchr/testify/assert"
 )
 
