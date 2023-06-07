@@ -43,8 +43,8 @@ do
     popd
     rm -rf "${ARCH}"
 
-    sha512sum "venus-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "venus-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.sha512"
+    sha512sum "sophon-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "sophon-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.sha512"
 
-    ipfs add -q "venus-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "venus-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.cid"
+    ipfs add -q "sophon-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "sophon-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.cid"
 done
 popd

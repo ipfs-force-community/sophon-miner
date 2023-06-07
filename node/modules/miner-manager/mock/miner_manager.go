@@ -9,8 +9,8 @@ import (
 	reflect "reflect"
 
 	address "github.com/filecoin-project/go-address"
-	types "github.com/ipfs-force-community/sophon-miner/types"
 	gomock "github.com/golang/mock/gomock"
+	types "github.com/ipfs-force-community/sophon-miner/types"
 )
 
 // MockMinerManageAPI is a mock of MinerManageAPI interface.

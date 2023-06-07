@@ -6,9 +6,6 @@
   * [Start](#Start)
   * [Stop](#Stop)
   * [Version](#Version)
-* [Auth](#Auth)
-  * [AuthNew](#AuthNew)
-  * [AuthVerify](#AuthVerify)
 * [Count](#Count)
   * [CountWinners](#CountWinners)
 * [List](#List)
@@ -55,7 +52,7 @@ Response: `{}`
 ### Start
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -71,7 +68,7 @@ Response: `{}`
 ### Stop
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -97,44 +94,6 @@ Response:
   "Version": "string value",
   "APIVersion": 0
 }
-```
-
-## Auth
-
-
-### AuthNew
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  [
-    "write"
-  ]
-]
-```
-
-Response: `"Ynl0ZSBhcnJheQ=="`
-
-### AuthVerify
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "string value"
-]
-```
-
-Response:
-```json
-[
-  "write"
-]
 ```
 
 ## Count
@@ -184,7 +143,8 @@ Response:
   {
     "Addr": "t01234",
     "Id": "string value",
-    "Name": "string value"
+    "Name": "string value",
+    "OpenMining": false
   }
 ]
 ```
@@ -257,7 +217,7 @@ Response:
 ### UpdateAddress
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -273,7 +233,8 @@ Response:
   {
     "Addr": "t01234",
     "Id": "string value",
-    "Name": "string value"
+    "Name": "string value",
+    "OpenMining": false
   }
 ]
 ```
@@ -284,7 +245,7 @@ Response:
 ### WarmupForMiner
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json

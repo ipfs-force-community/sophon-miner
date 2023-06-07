@@ -7,8 +7,8 @@ package mockjournal
 import (
 	reflect "reflect"
 
-	journal "github.com/ipfs-force-community/sophon-miner/lib/journal"
 	gomock "github.com/golang/mock/gomock"
+	journal "github.com/ipfs-force-community/sophon-miner/lib/journal"
 )
 
 // MockJournal is a mock of Journal interface.
