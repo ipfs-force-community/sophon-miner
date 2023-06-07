@@ -60,10 +60,19 @@ var runCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		minerRepoPath := cctx.String(FlagMinerRepo)
-		r, err := repo.NewFS(minerRepoPath)
+		repoPath := cctx.String(FlagMinerRepo)
+		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
+		}
+
+		// todo: rm compatibility for repo when appropriate
+		exist, _ := r.Exists()
+		if !exist {
+			r, err = repo.NewFS("~/.venusminer")
+			if err != nil {
+				return err
+			}
 		}
 
 		lr, err := r.Lock()

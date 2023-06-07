@@ -1,6 +1,6 @@
 # Configuration parsing
 
-&ensp;&ensp; The file is located in `~/.venusminer/config.toml` by default, which is generated when the command `sophon-miner init` is executed. Behavior comments starting with `#` in the file.
+&ensp;&ensp; The file is located in `~/.sophon-miner/config.toml` by default, which is generated when the command `sophon-miner init` is executed. Behavior comments starting with `#` in the file.
 
 
 ## Old version
@@ -14,11 +14,8 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiYWRtaW4iLCJwZXJtIjoiYW
 # deprecated, replaced by `slash filter`
 BlockRecord = "cache"
 
-# deprecated, replaced by ~/.venusminer/api`
 [API]
   ListenAddress = "/ip4/0.0.0.0/tcp/12308/http"
-  RemoteListenAddress = ""
-  Timeout = "30s"
 
 # venus-gateway API
 [Gateway]
@@ -53,6 +50,14 @@ BlockRecord = "cache"
 version number `>= v1.7.0`
 
 ```toml
+PropagationDelaySecs = 12
+MinerOnceTimeout = "15s"
+MpoolSelectDelaySecs = 0
+
+# `sophon-miner` host address and port
+[API]
+  ListenAddress = "/ip4/0.0.0.0/tcp/12308"
+  
 # venus fullnode API
 [FullNode]
   Addr = "/ip4/127.0.0.1/tcp/3453"

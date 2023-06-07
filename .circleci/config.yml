@@ -445,7 +445,7 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-and-push-image:
-          dockerfile: Dockerfile.venusminer
+          dockerfile: Dockerfile.sophon-miner
           path: .
-          repo: venusminer-dev
+          repo: sophon-miner-dev
           tag: '${CIRCLE_SHA1:0:8}'

@@ -30,7 +30,7 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "listen",
 			Usage: "host address and port",
-			Value: "0.0.0.0:12308",
+			Value: "127.0.0.1:12308",
 		},
 		&cli.StringFlag{
 			Name:     "api",

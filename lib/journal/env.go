@@ -6,7 +6,7 @@ import (
 
 // envJournalDisabledEvents is the environment variable through which disabled
 // journal events can be customized.
-const envDisabledEvents = "VENUS_MINER_JOURNAL_DISABLED_EVENTS"
+const envDisabledEvents = "SOPHON_MINER_JOURNAL_DISABLED_EVENTS"
 
 func EnvDisabledEvents() DisabledEvents {
 	if env, ok := os.LookupEnv(envDisabledEvents); ok {

@@ -1,6 +1,6 @@
 # 配置文件解析
 
-&ensp;&ensp; `sophon-miner` 的配置文件默认位于 `~/.venusminer/config.toml`，执行命令 `sophon-miner init` 时生成。文件中以 `#` 开头的行为注释。
+&ensp;&ensp; `sophon-miner` 的配置文件默认位于 `~/.sophon-miner/config.toml`，执行命令 `sophon-miner init` 时生成。文件中以 `#` 开头的行为注释。
 
 
 ## 旧版本
@@ -14,7 +14,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiYWRtaW4iLCJwZXJtIjoiYW
 # 生产的区块记录方式，已废弃，由 `slash filter` 取代
 BlockRecord = "cache"
 
-# `sophon-miner` 服务监听地址，已废弃，由~/.venusminer/api` 取代
+# `sophon-miner` 服务监听地址
 [API]
   ListenAddress = "/ip4/0.0.0.0/tcp/12308/http"
   RemoteListenAddress = ""
@@ -58,7 +58,13 @@ BlockRecord = "cache"
 PropagationDelaySecs = 12
 # 计算出块证明等待超时
 MinerOnceTimeout = "15s"
+# 选择消息API的超时(单位:秒),0-不启用
+MpoolSelectDelaySecs = 0
 
+# `sophon-miner` 服务监听地址
+[API]
+  ListenAddress = "/ip4/0.0.0.0/tcp/12308“
+  
 # 链服务监听地址
 [FullNode]
   Addr = "/ip4/127.0.0.1/tcp/3453"

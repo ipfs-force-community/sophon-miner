@@ -38,10 +38,10 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagMinerRepo,
-				EnvVars: []string{"VENUS_MINER_PATH"},
+				EnvVars: []string{"SOPHON_MINER_PATH"},
 				Aliases: []string{"miner-repo"},
-				Value:   "~/.venusminer",
-				Usage:   "Specify miner repo path, env VENUS_MINER_PATH",
+				Value:   "~/.sophon-miner",
+				Usage:   "Specify miner repo path, env SOPHON_MINER_PATH",
 			},
 		},
 
