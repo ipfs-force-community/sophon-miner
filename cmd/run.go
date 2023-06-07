@@ -20,7 +20,7 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/venus-auth/jwtclient"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	lapi "github.com/ipfs-force-community/sophon-miner/api"
 	lcli "github.com/ipfs-force-community/sophon-miner/cli"

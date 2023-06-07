@@ -3,7 +3,7 @@
 # 1.11.0 / 2023-04-23
 
 * bump up version to v1.11.0
-* update venus-auth to v1.11.0
+* update sophon-auth to v1.11.0
 * update venus to v1.11.0
 
 # 1.11.0-rc1 / 2023-04-18
@@ -45,14 +45,14 @@
 ## Dependency Updates
 
 - github.com/filecoin-project/venus (-> v1.8.0)
-- github.com/filecoin-project/venus-auth (-> v1.8.0)
+- github.com/ipfs-force-community/sophon-auth (-> v1.8.0)
 
 
 # 1.8.0-rc5 / 2022-11-03
 
 ## Improvements
 
-- 增加 `miners`  是否出块的控制开关，需要 `venus-auth` 版本 >= v1.8.0-rc4.
+- 增加 `miners`  是否出块的控制开关，需要 `sophon-auth` 版本 >= v1.8.0-rc4.
 
 
 # 1.8.0-rc4 / 2022-10-26
@@ -94,7 +94,7 @@
 - 简化配置文件，参考 配置文件解析;
 - 移除 `venus-shared` 中已有的数据类型;
 - 移除没有实际作用的代码;
-- 矿工由 `venus-auth` 管理，移除本地的矿工管理模块；
+- 矿工由 `sophon-auth` 管理，移除本地的矿工管理模块；
 - 移除对 `filecoin-ffi` 的依赖；
 - 新增配置项说明文档；
 - 新增快速启动文档；

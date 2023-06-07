@@ -25,7 +25,7 @@ var addressCmd = &cli.Command{
 
 var updateCmd = &cli.Command{
 	Name:  "update",
-	Usage: "reacquire address from venus-auth",
+	Usage: "reacquire address from sophon-auth",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:     "skip",

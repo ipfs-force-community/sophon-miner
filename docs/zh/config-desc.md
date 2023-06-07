@@ -27,7 +27,7 @@ BlockRecord = "cache"
 
 # 数据库信息
 [Db]
-  # 矿工管理方式，已废弃，从 `venus-auth` 获取
+  # 矿工管理方式，已废弃，从 `sophon-auth` 获取
   Type = "auth"
   # `slash filter` 模块区块存取方式
   SFType = "mysql"

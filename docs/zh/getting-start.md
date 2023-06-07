@@ -34,7 +34,7 @@ $ nohup ./sophon-miner run > miner.log 2>&1 &
 
 ## 矿工管理
 
-`sophon-miner` 启动时会从 `venus-auth` 中拉取矿工列表，然后预执行一遍出块流程，如果失败可用 `state` 命令查看原因：
+`sophon-miner` 启动时会从 `sophon-auth` 中拉取矿工列表，然后预执行一遍出块流程，如果失败可用 `state` 命令查看原因：
 
 ```shell script
 $ ./sophon-miner address state

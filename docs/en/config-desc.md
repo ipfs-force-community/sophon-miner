@@ -23,7 +23,7 @@ BlockRecord = "cache"
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiYWRtaW4iLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.RRSdeQ-c1Ei-8roAj-L-wpOr-y6PssDorbGijMPxjoc"
 
 [Db]
-  # deprecated, replaced by ~venus-auth`
+  # deprecated, replaced by ~sophon-auth`
   Type = "auth"
   # `slash filter`
   SFType = "mysql"
@@ -68,7 +68,7 @@ MpoolSelectDelaySecs = 0
   ListenAPI = ["/ip4/127.0.0.1/tcp/45132"]
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiY2hhaW4tc2VydmljZSIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.DxlsJO-XrrdQLvJdA6wdWJxeYOhZt_kMYMHc7NdfQNw"
 
-# venus-auth API
+# sophon-auth API
 [Auth]
   Addr = "http://127.0.0.1:8989"
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiY2hhaW4tc2VydmljZSIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.DxlsJO-XrrdQLvJdA6wdWJxeYOhZt_kMYMHc7NdfQNw"
