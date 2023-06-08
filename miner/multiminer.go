@@ -456,6 +456,10 @@ func (m *Miner) mine(ctx context.Context) {
 		// Wait until the next epoch, plus the propagation delay, so a new tipset
 		// has enough time to form.
 		m.untilNextEpoch(base)
+		
+		if len(winPoSts) == 0 {
+			base.NullRounds++
+		}
 	}
 }
 
