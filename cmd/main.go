@@ -37,8 +37,11 @@ func main() {
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    FlagMinerRepo,
-				EnvVars: []string{"SOPHON_MINER_PATH"},
+				Name: FlagMinerRepo,
+				EnvVars: []string{
+					"SOPHON_MINER_PATH",
+					"VENUS_MINER_PATH", // TODO Deprecated after V1.13.*
+				},
 				Aliases: []string{"miner-repo"},
 				Value:   "~/.sophon-miner",
 				Usage:   "Specify miner repo path, env SOPHON_MINER_PATH",
