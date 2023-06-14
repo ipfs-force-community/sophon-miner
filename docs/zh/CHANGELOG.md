@@ -1,12 +1,22 @@
 # sophon-miner changelog
 
-# 1.11.0 / 2023-04-23
+## 1.12.0-rc1 / 2023-06-14
+
+### New Features
+* feat: repo migrate [[#197](https://github.com/ipfs-force-community/sophon-miner/pull/197)]
+
+### Bug Fixes
+* fix: Correctly handle null round [[#198](https://github.com/ipfs-force-community/sophon-miner/pull/198)]
+* fix: data race of mockChain [[#199](https://github.com/ipfs-force-community/sophon-miner/pull/199)]
+
+
+## 1.11.0 / 2023-04-23
 
 * bump up version to v1.11.0
 * update sophon-auth to v1.11.0
 * update venus to v1.11.0
 
-# 1.11.0-rc1 / 2023-04-18
+## 1.11.0-rc1 / 2023-04-18
 
 ### New Features
 * feat: mysql table migrate for miner_blocks / 更新数据库字段为可空或者添加默认值[[#168](https://github.com/ipfs-force-community/sophon-miner/pull/168)]
@@ -21,74 +31,75 @@
 ### Bug Fixes
 * fix:check gateway fail /修复gateway配置检查失败的问题 [[#177](https://github.com/ipfs-force-community/sophon-miner/pull/177)]
 * fix: config check / 修复配置检测失败的问题 [[#178]( https://github.com/ipfs-force-community/sophon-miner/pull/178)]
-# 1.10.0 / 2023-03-02
 
-## Improvements
+## 1.10.0 / 2023-03-02
+
+### Improvements
 
 - 数据表 `miner_blocks` 字段设置默认值，`winning_at` 允许为 `null`
 
-# 1.10.0-rc1 / 2023-02-17
+## 1.10.0-rc1 / 2023-02-17
 
-## New features
+### New features
 - feat: user data isolation / 增加用户数据隔离  (#163) ([ipfs-force-community/sophon-miner#163](https://github.com/ipfs-force-community/sophon-miner/pull/163))
 
 
-# 1.9.0 / 2022-12-30
+## 1.9.0 / 2022-12-30
 
-## Dependency Updates
+### Dependency Updates
 
 - 升级venus组件的版本
 
 
-# 1.8.0 / 2022-11-16
+## 1.8.0 / 2022-11-16
 
-## Dependency Updates
+### Dependency Updates
 
 - github.com/filecoin-project/venus (-> v1.8.0)
 - github.com/ipfs-force-community/sophon-auth (-> v1.8.0)
 
 
-# 1.8.0-rc5 / 2022-11-03
+## 1.8.0-rc5 / 2022-11-03
 
-## Improvements
+### Improvements
 
 - 增加 `miners`  是否出块的控制开关，需要 `sophon-auth` 版本 >= v1.8.0-rc4.
 
 
-# 1.8.0-rc4 / 2022-10-26
+## 1.8.0-rc4 / 2022-10-26
 
-## Fixes
+### Fixes
 
 - 修复计算历史出块权时panic
 
-# 1.8.0-rc3 / 2022-10-20
+## 1.8.0-rc3 / 2022-10-20
 
-## Improvements
+### Improvements
 
 - 不记录没有获胜的出块Timeout
 
-## 注意事项
+### 注意事项
 
 从 `1.7.*` 升级会自动迁移配置文件，从 `1.6.*` 升级需重新初始化`Repo`(init)
 
 
-# 1.8.0-rc2 / 2022-10-19
+## 1.8.0-rc2 / 2022-10-19
 
-## Improvements
+### Improvements
 
 - 配置项 `MySQL.ConnMaxLifeTime` 改为字符窜格式: `60 -> "1m0s"`；
 - `PropagationDelaySecs` 和 `MinerOnceTimeout` 由配置文件设置；
 - Repo目录增加 `version`用于自动升级配置文件等。
 
-## 注意事项
+### 注意事项
 
 从 `1.7.*` 升级会自动迁移配置文件，从 `1.6.*` 升级需重新初始化`Repo`(init)
 
 
 
-# 1.6.1 / 2022-07-22
+## 1.6.1 / 2022-07-22
 
-## Improvements
+### Improvements
 
 - 网络参数从同步节点请求，移除本地配置；
 - 简化配置文件，参考 配置文件解析;
@@ -103,7 +114,7 @@
   - `base` 不匹配（发生了链分叉，之前获得的 `base` 计算的出块权是无效的），不进行无意义的区块创建。
 - 修复采用 `mysql` 数据库时 `parenet_key` 字段长度不足问题。
 
-## 注意事项
+### 注意事项
 
 升级到此版本涉及配置文件的改动，有两个选择：
 - 重新初始化 `repo`；
