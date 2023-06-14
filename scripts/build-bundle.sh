@@ -22,6 +22,7 @@ BINARIES=(
     "sophon-miner"
 )
 
+# start ipfs
 export IPFS_PATH=`mktemp -d`
 ipfs init
 ipfs daemon &
@@ -39,7 +40,7 @@ do
         chmod +x "sophon-miner/${BINARY}"
     done
 
-    tar -zcvf "../sophon-miner{CIRCLE_TAG}_${ARCH}-amd64.tar.gz" sophon-miner
+    tar -zcvf "../sophon-miner_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" sophon-miner
     popd
     rm -rf "${ARCH}"
 

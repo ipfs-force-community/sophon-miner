@@ -52,18 +52,11 @@ fi
 
 RELEASE_UPLOAD_URL=`echo "${RELEASE_RESPONSE}" | jq -r '.upload_url' | cut -d'{' -f1`
 
-bundles=(
-  "venus_${CIRCLE_TAG}_linux-amd64.tar.gz"
-  "venus_${CIRCLE_TAG}_linux-amd64.tar.gz.cid"
-  "venus_${CIRCLE_TAG}_linux-amd64.tar.gz.sha512"
-  "venus_${CIRCLE_TAG}_darwin-amd64.tar.gz"
-  "venus_${CIRCLE_TAG}_darwin-amd64.tar.gz.cid"
-  "venus_${CIRCLE_TAG}_darwin-amd64.tar.gz.sha512"
-)
-for RELEASE_FILE in "${bundles[@]}"
+for RELEASE_FILE in *.{cid,sha512}
 do
   echo "Uploading release bundle: ${RELEASE_FILE}"
   curl \
+    --fail \
     --request POST \
     --header "Authorization: token ${GITHUB_TOKEN}" \
     --header "Content-Type: application/octet-stream" \
