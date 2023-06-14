@@ -970,7 +970,10 @@ func (m *mockChain) replaceWithWeightHead() {
 	head := m.getHead()
 	blkCopy := *(head.At(0))
 	blkCopy.Miner = m.createMiner()
+	m.lk.Lock()
 	m.blockStore[blkCopy.Cid()] = &blkCopy
+	m.lk.Unlock()
+
 	var blks []*types.BlockHeader
 	blks = append(blks, head.Blocks()...)
 	blks = append(blks, &blkCopy)
