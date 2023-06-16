@@ -1,4 +1,10 @@
-<h1 align="center">Project sophon-miner</h1>
+<p align="center">
+  <a href="https://sophon.venus-fil.io/" title="Sophon Docs">
+    <img src="https://user-images.githubusercontent.com/1591330/205581370-d467d776-60a4-4b37-b25a-58fa82adb156.png" alt="Sophon Logo" width="128" />
+  </a>
+</p>
+
+<h1 align="center">sophon-miner</h1>
 
 <p align="center">
   <a href="https://circleci.com/gh/ipfs-force-community/sophon-miner"><img src="https://circleci.com/gh/filecoin-project/venus.svg?style=svg"></a>
