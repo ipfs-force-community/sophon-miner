@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://damocles.venus-fil.io/" title="Damocles Docs">
+  <a href="https://sophon.venus-fil.io/" title="Sophon Docs">
     <img src="https://user-images.githubusercontent.com/1591330/205581370-d467d776-60a4-4b37-b25a-58fa82adb156.png" alt="Sophon Logo" width="128" />
   </a>
 </p>
