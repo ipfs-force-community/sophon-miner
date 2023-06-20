@@ -39,6 +39,15 @@ func GetAPIInfo(ctx *cli.Context) (config.APIInfo, error) {
 		return config.APIInfo{}, fmt.Errorf("could not open repo at path: %s; %w", p, err)
 	}
 
+	// todo: rm compatibility for repo when appropriate
+	exist, _ := r.Exists()
+	if !exist {
+		r, err = repo.NewFS("~/.venusminer")
+		if err != nil {
+			return config.APIInfo{}, err
+		}
+	}
+
 	ma, err := r.APIEndpoint()
 	if err != nil {
 		return config.APIInfo{}, fmt.Errorf("could not get api endpoint: %w", err)
