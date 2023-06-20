@@ -1,5 +1,11 @@
 # sophon-miner changelog
 
+## 1.12.0-rc2 / 2023-06-20
+
+### Bug Fixes
+* fix: cmds compatible old repo [[#203](https://github.com/ipfs-force-community/sophon-miner/pull/203)]
+
+
 ## 1.12.0-rc1 / 2023-06-14
 
 ### New Features
