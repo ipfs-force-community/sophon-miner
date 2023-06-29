@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -545,16 +547,20 @@ func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *sharedT
 
 	if err := m.sf.MinedBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-		if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Error); err != nil {
-			log.Errorf("failed to put block: %s", err)
-		}
 
-		mtsMineBlockFailCtx, _ := tag.New(
-			ctx,
-			tag.Upsert(metrics.MinerID, bm.Header.Miner.String()),
-		)
-		stats.Record(mtsMineBlockFailCtx, metrics.NumberOfMiningError.M(1))
-		return
+		if !(errors.Is(err, slashfilter.ParentGrindingFaults) &&
+			os.Getenv("SOPHON_MINER_NO_SLASHFILTER") == "_yes_i_know_and_i_accept_that_may_loss_my_fil") {
+			if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+				log.Errorf("failed to put block: %s", err)
+			}
+
+			mtsMineBlockFailCtx, _ := tag.New(
+				ctx,
+				tag.Upsert(metrics.MinerID, bm.Header.Miner.String()),
+			)
+			stats.Record(mtsMineBlockFailCtx, metrics.NumberOfMiningError.M(1))
+			return
+		}
 	}
 
 	if err := m.api.SyncSubmitBlock(ctx, bm); err != nil {

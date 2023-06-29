@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/pkg/errors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -202,7 +203,7 @@ func (f *mysqlSlashFilter) MinedBlock(ctx context.Context, bh *venusTypes.BlockH
 				}
 
 				if !found {
-					return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+					return errors.Wrapf(ParentGrindingFaults, "produced block would trigger consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
 				}
 			}
 		} else if err != gorm.ErrRecordNotFound {
