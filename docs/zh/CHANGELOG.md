@@ -1,5 +1,7 @@
 # sophon-miner changelog
 
+## 1.12.0
+
 ## 1.12.0-rc2 / 2023-06-20
 
 ### Bug Fixes

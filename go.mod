@@ -14,12 +14,12 @@ require (
 	github.com/filecoin-project/go-state-types v0.11.1
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.12.0-rc1
+	github.com/filecoin-project/venus v1.12.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/ipfs-force-community/metrics v1.0.1-0.20220719063006-2c54bb379466
-	github.com/ipfs-force-community/sophon-auth v1.12.0-rc1
+	github.com/ipfs-force-community/sophon-auth v1.12.0
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-leveldb v0.5.0
