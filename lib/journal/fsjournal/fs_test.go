@@ -3,7 +3,6 @@ package fsjournal
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,7 +21,7 @@ func TestFsJournal(t *testing.T) {
 	require.NoError(t, err)
 
 	dir := filepath.Join(lr.Path(), "journal")
-	require.NoError(t, ioutil.WriteFile(dir, []byte("file exists\n"), 0644))
+	require.NoError(t, os.WriteFile(dir, []byte("file exists\n"), 0644))
 
 	// stm: @VENUSMINER_JOURNAL_ENV_DISABLED_EVENTS_001
 	envDisableEvent := journal.EnvDisabledEvents()
@@ -63,7 +62,7 @@ func TestFsJournal(t *testing.T) {
 		t.Logf("Waiting record event...")
 
 		time.AfterFunc(time.Millisecond*100, func() {
-			recordEventData, err := ioutil.ReadFile(jlFile)
+			recordEventData, err := os.ReadFile(jlFile)
 			require.NoError(t, err)
 
 			event := &journal.Event{}
