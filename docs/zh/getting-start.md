@@ -2,7 +2,10 @@
 
 ## 实例初始化
 
-初始化 `Repo`
+### 初始化 `Repo`
+
+**注意⚠️**
+1. `init` 命令会连接 `--api`flag 指定的链节点,所以必须先启动链节点，才能初始化成功。
 
 `< v1.7.0` 版本:
 ```shell script
@@ -26,7 +29,7 @@ $ ./sophon-miner init
 --slash-filter local
 ```
 
-启动 `sophon-miner`
+### 启动 `sophon-miner`
 
 ```shell script
 $ nohup ./sophon-miner run > miner.log 2>&1 &
