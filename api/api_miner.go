@@ -16,6 +16,7 @@ type MinerAPI interface {
 	ListAddress(context.Context) ([]types.MinerInfo, error)                                                        //perm:read
 	StatesForMining(context.Context, []address.Address) ([]types.MinerState, error)                                //perm:read
 	CountWinners(context.Context, []address.Address, abi.ChainEpoch, abi.ChainEpoch) ([]types.CountWinners, error) //perm:read
+	ListBlocks(ctx context.Context, params *types.BlocksQueryParams) ([]types.MinedBlock, error)                   //perm:read
 	WarmupForMiner(context.Context, address.Address) error                                                         //perm:write
 	Start(context.Context, []address.Address) error                                                                //perm:write
 	Stop(context.Context, []address.Address) error                                                                 //perm:write

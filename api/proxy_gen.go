@@ -47,6 +47,8 @@ type MinerAPIMethods struct {
 
 	ListAddress func(p0 context.Context) ([]types.MinerInfo, error) `perm:"read"`
 
+	ListBlocks func(p0 context.Context, p1 *types.BlocksQueryParams) ([]types.MinedBlock, error) `perm:"read"`
+
 	Start func(p0 context.Context, p1 []address.Address) error `perm:"write"`
 
 	StatesForMining func(p0 context.Context, p1 []address.Address) ([]types.MinerState, error) `perm:"read"`
@@ -148,6 +150,17 @@ func (s *MinerAPIStruct) ListAddress(p0 context.Context) ([]types.MinerInfo, err
 
 func (s *MinerAPIStub) ListAddress(p0 context.Context) ([]types.MinerInfo, error) {
 	return *new([]types.MinerInfo), ErrNotSupported
+}
+
+func (s *MinerAPIStruct) ListBlocks(p0 context.Context, p1 *types.BlocksQueryParams) ([]types.MinedBlock, error) {
+	if s.Internal.ListBlocks == nil {
+		return *new([]types.MinedBlock), ErrNotSupported
+	}
+	return s.Internal.ListBlocks(p0, p1)
+}
+
+func (s *MinerAPIStub) ListBlocks(p0 context.Context, p1 *types.BlocksQueryParams) ([]types.MinedBlock, error) {
+	return *new([]types.MinedBlock), ErrNotSupported
 }
 
 func (s *MinerAPIStruct) Start(p0 context.Context, p1 []address.Address) error {

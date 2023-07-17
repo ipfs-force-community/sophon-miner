@@ -34,9 +34,9 @@ func (f *localSlashFilter) HasBlock(ctx context.Context, bh *vtypes.BlockHeader)
 	return f.byEpoch.Has(ctx, epochKey)
 }
 
-func (f *localSlashFilter) PutBlock(ctx context.Context, bh *vtypes.BlockHeader, parentEpoch abi.ChainEpoch, t time.Time, state StateMining) error {
+func (f *localSlashFilter) PutBlock(ctx context.Context, bh *vtypes.BlockHeader, parentEpoch abi.ChainEpoch, t time.Time, state types.StateMining) error {
 	// Only successful block generation is recorded locally
-	if state != Success {
+	if state != types.Success {
 		return nil
 	}
 
@@ -100,6 +100,10 @@ func (f *localSlashFilter) MinedBlock(ctx context.Context, bh *vtypes.BlockHeade
 	}
 
 	return nil
+}
+
+func (f *localSlashFilter) ListBlock(ctx context.Context, params *types.BlocksQueryParams) ([]MinedBlock, error) {
+	return nil, fmt.Errorf("you are using levelDB, List Block is not supported")
 }
 
 func checkFault(ctx context.Context, t datastore.Datastore, key datastore.Key, bh *vtypes.BlockHeader, faultType string) error {
