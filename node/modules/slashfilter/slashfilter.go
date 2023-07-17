@@ -13,8 +13,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/ipfs-force-community/sophon-miner/node/config"
+	"github.com/ipfs-force-community/sophon-miner/types"
 
-	"github.com/filecoin-project/venus/venus-shared/types"
+	venusTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var log = logging.Logger("mysql_slashFilter")
@@ -23,22 +24,7 @@ type mysqlSlashFilter struct {
 	_db *gorm.DB
 }
 
-type MinedBlock struct {
-	ParentEpoch int64  `gorm:"column:parent_epoch;type:bigint(20);default:0;NOT NULL"`
-	ParentKey   string `gorm:"column:parent_key;type:varchar(2048);default:'';NOT NULL"`
-
-	Epoch int64  `gorm:"column:epoch;type:bigint(20);NOT NULL;primary_key"`
-	Miner string `gorm:"column:miner;type:varchar(256);NOT NULL;primary_key"`
-	Cid   string `gorm:"column:cid;type:varchar(256);default:''"`
-
-	WinningAt time.Time   `gorm:"column:winning_at;type:datetime"`
-	MineState StateMining `gorm:"column:mine_state;type:tinyint(4);default:0;comment:0-mining,1-success,2-timeout,3-chain forked,4-error;NOT NULL"`
-	Consuming int64       `gorm:"column:consuming;type:bigint(10);default:0;NOT NULL"` // reserved
-}
-
-func (m *MinedBlock) TableName() string {
-	return "miner_blocks"
-}
+type MinedBlock = types.MinedBlock
 
 var _ SlashFilterAPI = (*mysqlSlashFilter)(nil)
 
@@ -76,7 +62,7 @@ func NewMysql(cfg *config.MySQLConfig) (SlashFilterAPI, error) {
 }
 
 // double-fork mining (2 blocks at one epoch)
-func (f *mysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error { // nolint: unused
+func (f *mysqlSlashFilter) checkSameHeightFault(bh *venusTypes.BlockHeader) error { // nolint: unused
 	var blk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
 	if err == gorm.ErrRecordNotFound {
@@ -103,9 +89,9 @@ func (f *mysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error { /
 }
 
 // time-offset mining faults (2 blocks with the same parents)
-func (f *mysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
+func (f *mysqlSlashFilter) checkSameParentFault(bh *venusTypes.BlockHeader) error {
 	var blk MinedBlock
-	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and parent_key=?", bh.Miner.String(), types.NewTipSetKey(bh.Parents...).String()).Error
+	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and parent_key=?", bh.Miner.String(), venusTypes.NewTipSetKey(bh.Parents...).String()).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil
 	}
@@ -129,7 +115,7 @@ func (f *mysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 	return fmt.Errorf("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
 }
 
-func (f *mysqlSlashFilter) HasBlock(ctx context.Context, bh *types.BlockHeader) (bool, error) {
+func (f *mysqlSlashFilter) HasBlock(ctx context.Context, bh *venusTypes.BlockHeader) (bool, error) {
 	var blk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
 	if err == gorm.ErrRecordNotFound {
@@ -142,15 +128,15 @@ func (f *mysqlSlashFilter) HasBlock(ctx context.Context, bh *types.BlockHeader) 
 	return len(blk.Cid) > 0, nil
 }
 
-func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch, t time.Time, state StateMining) error {
+func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *venusTypes.BlockHeader, parentEpoch abi.ChainEpoch, t time.Time, state types.StateMining) error {
 	var blk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&blk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
 	if err != nil {
 		// Timeout may not be the winner when it happens, once the winner database must be recorded.
-		if err == gorm.ErrRecordNotFound && state != Timeout {
+		if err == gorm.ErrRecordNotFound && state != types.Timeout {
 			mblk := &MinedBlock{
 				ParentEpoch: int64(parentEpoch),
-				ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
+				ParentKey:   venusTypes.NewTipSetKey(bh.Parents...).String(),
 				Epoch:       int64(bh.Height),
 				Miner:       bh.Miner.String(),
 
@@ -174,7 +160,7 @@ func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, 
 	updateColumns := make(map[string]interface{})
 	updateColumns["parent_epoch"] = parentEpoch
 	if len(bh.Parents) > 0 {
-		updateColumns["parent_key"] = types.NewTipSetKey(bh.Parents...).String()
+		updateColumns["parent_key"] = venusTypes.NewTipSetKey(bh.Parents...).String()
 	}
 	updateColumns["mine_state"] = state
 	if bh.Ticket != nil {
@@ -184,7 +170,7 @@ func (f *mysqlSlashFilter) PutBlock(ctx context.Context, bh *types.BlockHeader, 
 	return f._db.Model(&MinedBlock{}).Where("miner=? and epoch=?", bh.Miner.String(), bh.Height).UpdateColumns(updateColumns).Error
 }
 
-func (f *mysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+func (f *mysqlSlashFilter) MinedBlock(ctx context.Context, bh *venusTypes.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	// double-fork mining (2 blocks at one epoch) --> HasBlock
 	//if err := f.checkSameHeightFault(bh); err != nil {
 	//	return err
@@ -227,4 +213,30 @@ func (f *mysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 	}
 
 	return nil
+}
+
+func (f *mysqlSlashFilter) ListBlock(ctx context.Context, params *types.BlocksQueryParams) ([]MinedBlock, error) {
+	var blks []MinedBlock
+	query := f._db.Order("epoch desc")
+
+	if len(params.Miners) > 0 {
+		temp := make([]string, 0, len(params.Miners))
+		for _, miner := range params.Miners {
+			temp = append(temp, miner.String())
+		}
+		query = query.Where("miner in (?)", temp)
+	}
+	if params.Limit > 0 {
+		query = query.Limit(params.Limit)
+	}
+	if params.Offset > 0 {
+		query = query.Offset(params.Offset)
+	}
+
+	err := query.Find(&blks).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return blks, nil
 }
