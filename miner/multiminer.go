@@ -338,7 +338,7 @@ func (m *Miner) mine(ctx context.Context) {
 						if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
 							Height: base.TipSet.Height() + base.NullRounds + 1,
 							Miner:  res.addr,
-						}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.ChainForked); err != nil {
+						}, base.TipSet.Height()+base.NullRounds, time.Time{}, types.ChainForked); err != nil {
 							log.Errorf("failed to record chain forked: %s", err)
 						}
 
@@ -456,7 +456,7 @@ func (m *Miner) mine(ctx context.Context) {
 		// Wait until the next epoch, plus the propagation delay, so a new tipset
 		// has enough time to form.
 		m.untilNextEpoch(base)
-		
+
 		if len(winPoSts) == 0 {
 			base.NullRounds++
 		}
@@ -485,7 +485,7 @@ func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *sharedT
 
 	if err := m.sf.MinedBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-		if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+		if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Error); err != nil {
 			log.Errorf("failed to put block: %s", err)
 		}
 
@@ -511,7 +511,7 @@ func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *sharedT
 
 		if !bSubmitted {
 			log.Error("try to submit blocks to all nodes failed")
-			if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+			if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Error); err != nil {
 				log.Errorf("failed to put block: %s", err)
 			}
 			return
@@ -525,7 +525,7 @@ func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *sharedT
 	)
 	stats.Record(metricsCtx, metrics.NumberOfBlock.M(1))
 
-	if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Success); err != nil {
+	if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Success); err != nil {
 		log.Errorf("failed to put block: %s", err)
 	}
 }
@@ -614,7 +614,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 				if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
 					Height: base.TipSet.Height() + base.NullRounds + 1,
 					Miner:  tAddr,
-				}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Timeout); err != nil {
+				}, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Timeout); err != nil {
 					log.Errorf("failed to record mining timeout: %s", err)
 				}
 
@@ -637,7 +637,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 							if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
 								Height: base.TipSet.Height() + base.NullRounds + 1,
 								Miner:  tAddr,
-							}, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+							}, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Error); err != nil {
 								log.Errorf("failed to record winner: %s", err)
 							}
 
@@ -840,7 +840,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			Height:  base.TipSet.Height() + base.NullRounds + 1,
 			Miner:   addr,
 			Parents: base.TipSet.Key().Cids(),
-		}, base.TipSet.Height()+base.NullRounds, time.Now(), slashfilter.Mining); err != nil {
+		}, base.TipSet.Height()+base.NullRounds, time.Now(), types.Mining); err != nil {
 			log.Errorf("failed to record winner: %s", err)
 		}
 

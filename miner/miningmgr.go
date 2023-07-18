@@ -92,6 +92,10 @@ func (m *Miner) ListAddress(ctx context.Context) ([]types.MinerInfo, error) {
 	return minerInfos, nil
 }
 
+func (m *Miner) ListBlocks(ctx context.Context, params *types.BlocksQueryParams) ([]types.MinedBlock, error) {
+	return m.sf.ListBlock(ctx, params)
+}
+
 func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([]types.MinerState, error) {
 	m.lkWPP.Lock()
 	defer m.lkWPP.Unlock()

@@ -49,6 +49,14 @@ func (m *MinerAPI) CountWinners(ctx context.Context, addrs []address.Address, st
 	return m.MiningAPI.CountWinners(ctx, addrsAllowed, start, end)
 }
 
+func (m *MinerAPI) ListBlocks(ctx context.Context, params *types.BlocksQueryParams) ([]types.MinedBlock, error) {
+	addrsAllowed := filter(params.Miners, func(addr address.Address) bool {
+		return jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr) == nil
+	})
+	params.Miners = addrsAllowed
+	return m.MiningAPI.ListBlocks(ctx, params)
+}
+
 func (m *MinerAPI) WarmupForMiner(ctx context.Context, maddr address.Address) error {
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, maddr); err != nil {
 		return err
