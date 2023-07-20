@@ -1,5 +1,9 @@
 # sophon-miner changelog
 
+## 1.12.1-rc1 / 2023-07-20
+
+* feat: add api to list blocks by @LinZexiao in https://github.com/ipfs-force-community/sophon-miner/pull/211
+
 ## 1.12.0
 
 ## 1.12.0-rc2 / 2023-06-20
