@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs-force-community/sophon-miner/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
-	"github.com/filecoin-project/venus/venus-shared/types"
+	venusTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func wrapper(f func(*testing.T, SlashFilterAPI, func() error), sf SlashFilterAPI, clear func() error) func(t *testing.T) {
@@ -59,7 +60,7 @@ func makeLocalTestCtx(t *testing.T) (SlashFilterAPI, func() error) {
 	return sf, clear
 }
 
-func checkHasBlock(t *testing.T, api SlashFilterAPI, bh *types.BlockHeader, expect bool) {
+func checkHasBlock(t *testing.T, api SlashFilterAPI, bh *venusTypes.BlockHeader, expect bool) {
 	ctx := context.TODO()
 	exists, err := api.HasBlock(ctx, bh)
 	require.NoError(t, err)
@@ -96,13 +97,13 @@ func testPutBlock(t *testing.T, sf SlashFilterAPI, clear func() error) {
 	ph := abi.ChainEpoch(99)
 
 	cases := []struct {
-		bh          *types.BlockHeader
+		bh          *venusTypes.BlockHeader
 		parentEpoch abi.ChainEpoch
 		t           time.Time
-		state       StateMining
+		state       types.StateMining
 	}{
 		{
-			bh: &types.BlockHeader{
+			bh: &venusTypes.BlockHeader{
 				Parents: parents,
 				Height:  h,
 				Miner:   maddr,
@@ -110,14 +111,14 @@ func testPutBlock(t *testing.T, sf SlashFilterAPI, clear func() error) {
 			},
 			parentEpoch: ph,
 			t:           time.Now(),
-			state:       Mining,
+			state:       types.Mining,
 		},
 		{
-			bh: &types.BlockHeader{
+			bh: &venusTypes.BlockHeader{
 				Parents: parents,
 				Height:  h,
 				Miner:   maddr,
-				Ticket: &types.Ticket{
+				Ticket: &venusTypes.Ticket{
 					VRFProof: []byte("====1====="),
 				},
 				ParentStateRoot:       mockCid,
@@ -126,7 +127,7 @@ func testPutBlock(t *testing.T, sf SlashFilterAPI, clear func() error) {
 			},
 			parentEpoch: ph,
 			t:           time.Time{},
-			state:       Success,
+			state:       types.Success,
 		},
 	}
 
@@ -160,10 +161,10 @@ func testMinedBlock(t *testing.T, sf SlashFilterAPI, clear func() error) {
 	testutil.Provide(t, &parents, testutil.WithSliceLen(2))
 
 	mockCid, _ := cid.Parse("bafkqaaa")
-	bh := &types.BlockHeader{
+	bh := &venusTypes.BlockHeader{
 		Height: abi.ChainEpoch(100),
 		Miner:  maddr,
-		Ticket: &types.Ticket{
+		Ticket: &venusTypes.Ticket{
 			VRFProof: []byte("====1====="),
 		},
 		Parents:               parents,
@@ -183,7 +184,7 @@ func testMinedBlock(t *testing.T, sf SlashFilterAPI, clear func() error) {
 
 	t.Run("time-offset mining", func(t *testing.T) {
 		require.NoError(t, clear())
-		require.NoError(t, sf.PutBlock(ctx, bh, ph, time.Now(), Success))
+		require.NoError(t, sf.PutBlock(ctx, bh, ph, time.Now(), types.Success))
 
 		// change bh.Message to simulate case of time-offset mining fault(2 blocks with the same parents)
 		testutil.Provide(t, &bh.Messages)
@@ -194,7 +195,7 @@ func testMinedBlock(t *testing.T, sf SlashFilterAPI, clear func() error) {
 
 	t.Run("parent-grinding", func(t *testing.T) {
 		require.NoError(t, clear())
-		err = sf.PutBlock(ctx, bh, ph, time.Now(), Success)
+		err = sf.PutBlock(ctx, bh, ph, time.Now(), types.Success)
 		require.NoError(t, err)
 
 		blockId := bh.Cid()
