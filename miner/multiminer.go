@@ -782,7 +782,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		}
 		if mbi == nil {
 			log.Infow("get nil MinerGetBaseInfo", "miner", addr)
-			// todo: no error return ?
 			rcd.Record(ctx, recorder.Records{"info": "get nil MinerGetBaseInfo"})
 			out <- res
 			return
@@ -857,6 +856,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		if winner == nil {
 			log.Infow("not to be winner", "miner", addr)
+			rcd.Record(ctx, recorder.Records{"info": "not to be winner"})
 			out <- res
 			return
 		}
@@ -866,7 +866,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		tIsWinner := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket), "win count", winner.WinCount)
 		partDone() // IsRoundWinnerDuration
-		rcd.Record(ctx, recorder.Records{"compute_election_proof": tIsWinner.Sub(tTicket).String()})
+		rcd.Record(ctx, recorder.Records{"compute_election_proof": tIsWinner.Sub(tTicket).String(), "win_count": fmt.Sprintf("%d", winner.WinCount)})
 
 		// metrics: wins
 		metricsCtx, _ := tag.New(
