@@ -90,7 +90,19 @@ func TestDefaultRecorder(t *testing.T) {
 		ret, err = r.get(ctx, newIDAddress(1), abi.ChainEpoch(ExpireEpoch))
 		require.NoError(t, err)
 		require.Equal(t, RecordExample, ret)
+	})
 
+	t.Run("sub recorder", func(t *testing.T) {
+		db := createDatastore(t)
+		SetDatastore(db)
+
+		rcd := Sub(newIDAddress(1), abi.ChainEpoch(0))
+		rcd.Record(ctx, Records{"key": "val"})
+
+		ret, err := Query(ctx, newIDAddress(1), abi.ChainEpoch(0), 1)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(ret))
+		require.Equal(t, "val", ret[0]["key"])
 	})
 }
 

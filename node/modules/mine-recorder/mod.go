@@ -43,7 +43,7 @@ type Recorder interface {
 }
 
 type SubRecorder interface {
-	Record (ctx context.Context,  r Records)
+	Record(ctx context.Context, r Records)
 }
 
 type Records = map[string]string
@@ -124,6 +124,7 @@ func (d *DefaultRecorder) Query(ctx context.Context, miner address.Address, from
 		r, err := d.get(ctx, miner, from)
 		if errors.Is(err, ErrorRecordNotFound) {
 			// ignore record not found
+			log.Errorf("query record: %s on %d : %s", miner, from, err.Error())
 			continue
 		} else if err != nil {
 			return nil, err
@@ -134,9 +135,9 @@ func (d *DefaultRecorder) Query(ctx context.Context, miner address.Address, from
 	}
 
 	if len(ret) != int(limit) {
-		log.Infof("query record: %s from %d to %d ,found %d ", miner, from, limit, len(ret))
+		log.Infof("query record: %s from %d to %d ,found %d ", miner, from-abi.ChainEpoch(limit), from, len(ret))
 	} else {
-		log.Debugf("query record: %s from %d to %d ,found %d ", miner, from, limit, len(ret))
+		log.Debugf("query record: %s from %d to %d ,found %d ", miner, from-abi.ChainEpoch(limit), limit, len(ret))
 	}
 	return ret, nil
 }
@@ -210,8 +211,12 @@ func fromBytes(b []byte, v any) {
 
 // mergeMap cover src onto dst, the key in dst will overwrite the key in src
 func coverMap[K comparable, V any](dst, src map[K]V) map[K]V {
-	for k, v := range src {
-		dst[k] = v
+	newMap := make(map[K]V)
+	for k, v := range dst {
+		newMap[k] = v
 	}
-	return dst
+	for k, v := range src {
+		newMap[k] = v
+	}
+	return newMap
 }
