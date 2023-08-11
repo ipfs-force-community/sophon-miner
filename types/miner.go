@@ -83,3 +83,36 @@ type BlocksQueryParams struct {
 	Limit  int
 	Offset int
 }
+
+// type Record map[string]string
+
+// type Record struct {
+// 	Miner  address.Address
+// 	Worker address.Address
+// 	Epoch  abi.ChainEpoch
+
+// 	MinerPower   abi.StoragePower
+// 	NetworkPower abi.StoragePower
+
+// 	TimeTable
+// 	ErrorInfo string
+// }
+
+// type TimeTable struct {
+// 	Start time.Time
+// 	End   time.Time
+
+// 	GetMinerBaseINfo time.Duration
+// 	Ticket           time.Duration
+// 	ElectionProof    time.Duration
+// 	Seed             time.Duration
+// 	PoStProof        time.Duration
+// 	SelectMsg        time.Duration
+// 	CreateBlock      time.Duration
+// }
+
+type QueryRecordParams struct {
+	Miner address.Address
+	Epoch abi.ChainEpoch
+	Limit uint
+}

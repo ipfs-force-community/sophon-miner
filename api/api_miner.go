@@ -20,4 +20,6 @@ type MinerAPI interface {
 	WarmupForMiner(context.Context, address.Address) error                                                         //perm:write
 	Start(context.Context, []address.Address) error                                                                //perm:admin
 	Stop(context.Context, []address.Address) error                                                                 //perm:admin
+
+	QueryRecord(ctx context.Context, params *types.QueryRecordParams) ([]map[string]string, error) //perm:read
 }

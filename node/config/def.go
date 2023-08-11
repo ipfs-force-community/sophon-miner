@@ -44,6 +44,11 @@ type SlashFilterConfig struct {
 	MySQL MySQLConfig
 }
 
+type RecorderConfig struct {
+	ExpireEpoch       uint64
+	MaxRecordPerQuery uint
+}
+
 func newSlashFilterConfig() *SlashFilterConfig {
 	return &SlashFilterConfig{
 		Type: "local",
@@ -76,6 +81,7 @@ type MinerConfig struct {
 	MinerOnceTimeout     Duration
 
 	SlashFilter *SlashFilterConfig
+	Recorder    *RecorderConfig
 
 	Tracing *metrics.TraceConfig
 	Metrics *metrics.MetricsConfig

@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
+	"github.com/ipfs-force-community/sophon-miner/api"
 	"github.com/ipfs-force-community/sophon-miner/miner"
 	"github.com/ipfs-force-community/sophon-miner/node/impl/common"
 	"github.com/ipfs-force-community/sophon-miner/types"
@@ -18,6 +19,8 @@ type MinerAPI struct {
 
 	AuthClient jwtclient.IAuthClient
 }
+
+var _ api.MinerAPI = &MinerAPI{}
 
 func (m *MinerAPI) UpdateAddress(ctx context.Context, skip int64, limit int64) ([]types.MinerInfo, error) {
 	return m.MiningAPI.UpdateAddress(ctx, skip, limit)
@@ -76,6 +79,13 @@ func (m *MinerAPI) Stop(ctx context.Context, addrs []address.Address) error {
 		return jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr) == nil
 	})
 	return m.MiningAPI.ManualStop(ctx, addrsAllowed)
+}
+
+func (m *MinerAPI) QueryRecord(ctx context.Context, params *types.QueryRecordParams) ([]map[string]string, error) {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, params.Miner); err != nil {
+		return nil, err
+	}
+	return m.MiningAPI.QueryRecord(ctx, params)
 }
 
 func filter[T any](src []T, pass func(T) bool) []T {
