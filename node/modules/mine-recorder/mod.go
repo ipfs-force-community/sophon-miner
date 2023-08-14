@@ -124,7 +124,7 @@ func (d *DefaultRecorder) Query(ctx context.Context, miner address.Address, from
 		r, err := d.get(ctx, miner, from)
 		if errors.Is(err, ErrorRecordNotFound) {
 			// ignore record not found
-			log.Errorf("query record: %s on %d : %s", miner, from, err.Error())
+			log.Warnf("query record: %s on %d : %s", miner, from, err.Error())
 			continue
 		} else if err != nil {
 			return nil, err
