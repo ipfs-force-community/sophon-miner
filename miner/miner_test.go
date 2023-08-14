@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	leveldb "github.com/ipfs/go-ds-leveldb"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/golang/mock/gomock"
@@ -30,6 +31,7 @@ import (
 	"github.com/ipfs-force-community/sophon-miner/lib/journal"
 	"github.com/ipfs-force-community/sophon-miner/lib/journal/mockjournal"
 	"github.com/ipfs-force-community/sophon-miner/node/config"
+	minerecorder "github.com/ipfs-force-community/sophon-miner/node/modules/mine-recorder"
 	"github.com/ipfs-force-community/sophon-miner/node/modules/miner-manager/mock"
 	"github.com/ipfs-force-community/sophon-miner/node/modules/slashfilter"
 	types2 "github.com/ipfs-force-community/sophon-miner/types"
@@ -419,6 +421,10 @@ func buildMinerBaseInfo(t *testing.T, mAddr address.Address, minerPower, network
 func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockChain, *mockAPI.MockFullNode) {
 	logging.SetDebugLogging()
 	mockAny := gomock.Any()
+
+	db, err := leveldb.NewDatastore(t.TempDir()+"/leveldb", nil)
+	assert.NoError(t, err)
+	minerecorder.SetDatastore(db)
 
 	p := networks.Net2k().Network
 	p.BlockDelay = 10
