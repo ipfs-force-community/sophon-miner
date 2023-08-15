@@ -132,7 +132,14 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 		return nil, err
 	}
 
-	mbi, err := m.api.MinerGetBaseInfo(ctx, mAddr, ts.Height()+1, ts.Key())
+	var nullRounds abi.ChainEpoch
+	if epoch > ts.Height() {
+		log.Infof("winCountInRound had null round, expect epoch %d, actual epoch %d", epoch, ts.Height())
+		nullRounds = epoch - ts.Height()
+	}
+	round := ts.Height() + nullRounds + 1
+
+	mbi, err := m.api.MinerGetBaseInfo(ctx, mAddr, round, ts.Key())
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +157,7 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 		rbase = mbi.BeaconEntries[len(mbi.BeaconEntries)-1]
 	}
 
-	return IsRoundWinner(ctx, ts.Height()+1, account, mAddr, rbase, mbi, api)
+	return IsRoundWinner(ctx, round, account, mAddr, rbase, mbi, api)
 }
 
 func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start abi.ChainEpoch, end abi.ChainEpoch) ([]types.CountWinners, error) {
