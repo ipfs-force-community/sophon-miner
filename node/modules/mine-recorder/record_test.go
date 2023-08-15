@@ -35,14 +35,17 @@ func TestDefaultRecorder(t *testing.T) {
 		r := NewDefaultRecorder(db)
 		defer db.Close()
 
-		_, err := r.get(ctx, newIDAddress(1), abi.ChainEpoch(0))
+		_, err := r.get(ctx, newIDAddress(1), abi.ChainEpoch(9))
 		require.ErrorIs(t, err, ErrorRecordNotFound)
 
-		err = r.Record(ctx, newIDAddress(1), abi.ChainEpoch(0), RecordExample)
+		err = r.Record(ctx, newIDAddress(1), abi.ChainEpoch(9), RecordExample)
 		require.NoError(t, err)
-		rets, err := r.Query(ctx, newIDAddress(1), abi.ChainEpoch(0), 10)
+		err = r.Record(ctx, newIDAddress(1), abi.ChainEpoch(14), RecordExample)
 		require.NoError(t, err)
-		require.Equal(t, 1, len(rets))
+
+		rets, err := r.Query(ctx, newIDAddress(1), abi.ChainEpoch(5), 10)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(rets))
 	})
 
 	t.Run("query exceed MaxRecordPerQuery", func(t *testing.T) {

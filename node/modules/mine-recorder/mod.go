@@ -120,7 +120,8 @@ func (d *DefaultRecorder) Query(ctx context.Context, miner address.Address, from
 		limit = 1
 	}
 	ret := make([]Records, 0, limit)
-	for i := uint(0); i < limit; i++ {
+	to := from + abi.ChainEpoch(limit)
+	for ; from < to; from++ {
 		r, err := d.get(ctx, miner, from)
 		if errors.Is(err, ErrorRecordNotFound) {
 			// ignore record not found
