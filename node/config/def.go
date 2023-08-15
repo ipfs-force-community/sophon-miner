@@ -58,12 +58,9 @@ func newSlashFilterConfig() *SlashFilterConfig {
 }
 
 type API struct {
-	ListenAddress       string
-	RemoteListenAddress string
-	Timeout             Duration
-
-	PrivateKey string
+	ListenAddress string
 }
+
 type MinerConfig struct {
 	API         API
 	FullNode    *APIInfo
