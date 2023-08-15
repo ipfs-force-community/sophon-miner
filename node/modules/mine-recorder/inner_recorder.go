@@ -50,11 +50,11 @@ type subRecorder struct {
 func (s *subRecorder) Record(ctx context.Context, r Records) {
 	err := checkAvailable()
 	if err != nil {
-		log.Errorf("record failed: %s", err.Error())
+		log.Warnf("record failed: %s", err.Error())
 	}
 	err = innerRecorder.Record(ctx, s.miner, s.epoch, r)
 	if err != nil {
-		log.Errorf("record failed: %s", err.Error())
+		log.Warnf("record failed: %s", err.Error())
 	}
 }
 
