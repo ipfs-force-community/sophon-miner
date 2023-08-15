@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/ipfs-force-community/sophon-miner/api/client"
@@ -389,7 +390,7 @@ func (m *Miner) mine(ctx context.Context) {
 			for idx, res := range winPoSts {
 				tRes := res
 				rcd := recorder.Sub(res.addr, height)
-				rcd.Record(ctx, recorder.Records{"select_message": tSelMsg.Sub(res.timetable.tProof).String()})
+				rcd.Record(ctx, recorder.Records{"selectMessage": tSelMsg.Sub(res.timetable.tProof).String()})
 
 				var b *sharedTypes.BlockMsg
 				if msgs != nil && len(msgs) > idx {
@@ -431,7 +432,7 @@ func (m *Miner) mine(ctx context.Context) {
 					}
 				})
 
-				rcd.Record(ctx, recorder.Records{"create_block": tCreateBlock.Sub(tSelMsg).String(), "end": build.Clock.Now().String()})
+				rcd.Record(ctx, recorder.Records{"createBlock": tCreateBlock.Sub(tSelMsg).String(), "end": build.Clock.Now().String()})
 			}
 
 			if len(blks) > 0 {
@@ -763,8 +764,10 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 	round := base.TipSet.Height() + base.NullRounds + 1
 	out := make(chan *winPoStRes)
 
+	isLate := uint64(start.Unix()) > (base.TipSet.MinTimestamp() + uint64(base.NullRounds*builtin.EpochDurationSeconds) + m.PropagationDelaySecs)
+
 	rcd := recorder.Sub(addr, round)
-	rcd.Record(ctx, recorder.Records{"start": start.String()})
+	rcd.Record(ctx, recorder.Records{"start": start.String(), "baseEpoch": base.TipSet.Height().String(), "nullRounds": base.NullRounds.String(), "baseDelta": start.Sub(time.Unix(int64(base.TipSet.MinTimestamp()), 0)).String()})
 
 	go func() {
 		res := &winPoStRes{addr: addr}
@@ -788,10 +791,11 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		}
 
 		rcd.Record(ctx, recorder.Records{
-			"worker":              mbi.WorkerKey.String(),
-			"miner_power":         mbi.MinerPower.String(),
-			"network_power":       mbi.NetworkPower.String(),
-			"eligible_for_mining": fmt.Sprintf("%t", mbi.EligibleForMining),
+			"worker":       mbi.WorkerKey.String(),
+			"minerPower":   mbi.MinerPower.String(),
+			"networkPower": mbi.NetworkPower.String(),
+			"isEligible":   fmt.Sprintf("%t", mbi.EligibleForMining),
+			"lateStart":    fmt.Sprintf("%t", isLate),
 		})
 
 		res.waddr = mbi.WorkerKey
@@ -805,8 +809,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		tMBI := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "get base info", tMBI.Sub(start))
-
-		rcd.Record(ctx, recorder.Records{"get_base_info": tMBI.Sub(start).String()})
 
 		partDone() // GetBaseInfoDuration
 		partDone = metrics.TimerMilliseconds(ctx, metrics.ComputeTicketDuration, addr.String())
@@ -822,6 +824,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		}
 		res.bvals = bvals
 
+		rcd.Record(ctx, recorder.Records{"getBaseInfo": tMBI.Sub(start).String(), "beaconEpoch": fmt.Sprint(rbase.Round)})
+
 		ticket, err := m.computeTicket(ctx, &rbase, base, mbi, addr)
 		if err != nil {
 			log.Errorf("scratching ticket for %s failed: %s", addr, err.Error())
@@ -832,7 +836,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		tTicket := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "compute ticket", tTicket.Sub(tMBI))
-		rcd.Record(ctx, recorder.Records{"compute_ticket": tTicket.Sub(tMBI).String()})
+		rcd.Record(ctx, recorder.Records{"computeTicket": tTicket.Sub(tMBI).String()})
 
 		res.ticket = ticket
 
@@ -866,7 +870,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		tIsWinner := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket), "win count", winner.WinCount)
 		partDone() // IsRoundWinnerDuration
-		rcd.Record(ctx, recorder.Records{"compute_election_proof": tIsWinner.Sub(tTicket).String(), "win_count": fmt.Sprintf("%d", winner.WinCount)})
+		rcd.Record(ctx, recorder.Records{"computeElectionProof": tIsWinner.Sub(tTicket).String(), "winCount": fmt.Sprintf("%d", winner.WinCount)})
 
 		// metrics: wins
 		metricsCtx, _ := tag.New(
@@ -926,7 +930,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		tProof := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "compute proof", tProof.Sub(tSeed))
-		rcd.Record(ctx, recorder.Records{"compute_post_proof": tProof.Sub(tSeed).String()})
+		rcd.Record(ctx, recorder.Records{"computePostProof": tProof.Sub(tSeed).String()})
 
 		dur := build.Clock.Now().Sub(start)
 		tt := miningTimetable{
