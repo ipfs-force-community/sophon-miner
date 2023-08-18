@@ -49,11 +49,13 @@ type MinerAPIMethods struct {
 
 	ListBlocks func(p0 context.Context, p1 *types.BlocksQueryParams) ([]types.MinedBlock, error) `perm:"read"`
 
-	Start func(p0 context.Context, p1 []address.Address) error `perm:"write"`
+	QueryRecord func(p0 context.Context, p1 *types.QueryRecordParams) ([]map[string]string, error) `perm:"read"`
+
+	Start func(p0 context.Context, p1 []address.Address) error `perm:"admin"`
 
 	StatesForMining func(p0 context.Context, p1 []address.Address) ([]types.MinerState, error) `perm:"read"`
 
-	Stop func(p0 context.Context, p1 []address.Address) error `perm:"write"`
+	Stop func(p0 context.Context, p1 []address.Address) error `perm:"admin"`
 
 	UpdateAddress func(p0 context.Context, p1 int64, p2 int64) ([]types.MinerInfo, error) `perm:"admin"`
 
@@ -161,6 +163,17 @@ func (s *MinerAPIStruct) ListBlocks(p0 context.Context, p1 *types.BlocksQueryPar
 
 func (s *MinerAPIStub) ListBlocks(p0 context.Context, p1 *types.BlocksQueryParams) ([]types.MinedBlock, error) {
 	return *new([]types.MinedBlock), ErrNotSupported
+}
+
+func (s *MinerAPIStruct) QueryRecord(p0 context.Context, p1 *types.QueryRecordParams) ([]map[string]string, error) {
+	if s.Internal.QueryRecord == nil {
+		return *new([]map[string]string), ErrNotSupported
+	}
+	return s.Internal.QueryRecord(p0, p1)
+}
+
+func (s *MinerAPIStub) QueryRecord(p0 context.Context, p1 *types.QueryRecordParams) ([]map[string]string, error) {
+	return *new([]map[string]string), ErrNotSupported
 }
 
 func (s *MinerAPIStruct) Start(p0 context.Context, p1 []address.Address) error {

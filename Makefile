@@ -28,6 +28,10 @@ miner:
 	rm -f $(BUILD_TARGET)
 	go build $(GOFLAGS) -o $(BUILD_TARGET) ./cmd/
 
+debug:
+	rm -f $(BUILD_TARGET)
+	go build $(GOFLAGS) -gcflags=all="-N -l" -o $(BUILD_TARGET) ./cmd/
+
 .PHONY: miner
 BINS+=sophon-miner
 

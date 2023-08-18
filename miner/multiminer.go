@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/ipfs-force-community/sophon-miner/api/client"
@@ -26,6 +27,7 @@ import (
 	"github.com/ipfs-force-community/sophon-miner/lib/metrics"
 	"github.com/ipfs-force-community/sophon-miner/node/config"
 	"github.com/ipfs-force-community/sophon-miner/node/modules/helpers"
+	recorder "github.com/ipfs-force-community/sophon-miner/node/modules/mine-recorder"
 	miner_manager "github.com/ipfs-force-community/sophon-miner/node/modules/miner-manager"
 	"github.com/ipfs-force-community/sophon-miner/node/modules/slashfilter"
 	"github.com/ipfs-force-community/sophon-miner/types"
@@ -381,10 +383,15 @@ func (m *Miner) mine(ctx context.Context) {
 
 			tSelMsg := build.Clock.Now()
 
+			height := base.TipSet.Height() + base.NullRounds + 1
+
 			// create blocks
 			var blks []*sharedTypes.BlockMsg
 			for idx, res := range winPoSts {
 				tRes := res
+				rcd := recorder.Sub(res.addr, height)
+				rcd.Record(ctx, recorder.Records{"selectMessage": tSelMsg.Sub(res.timetable.tProof).String()})
+
 				var b *sharedTypes.BlockMsg
 				if msgs != nil && len(msgs) > idx {
 					b, err = m.createBlock(ctx, base, tRes.addr, tRes.waddr, tRes.ticket, tRes.winner, tRes.bvals, tRes.postProof, msgs[idx])
@@ -424,6 +431,8 @@ func (m *Miner) mine(ctx context.Context) {
 						"miner":     b.Header.Miner,
 					}
 				})
+
+				rcd.Record(ctx, recorder.Records{"createBlock": tCreateBlock.Sub(tSelMsg).String(), "end": build.Clock.Now().String()})
 			}
 
 			if len(blks) > 0 {
@@ -591,19 +600,19 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 		wg.Add(1)
 		tMining := mining
 		tAddr := addr
+		height := base.TipSet.Height() + base.NullRounds + 1
+
+		rcd := recorder.Sub(tAddr, height)
 
 		go func() {
 			defer wg.Done()
+			defer rcd.Record(ctx, recorder.Records{"end": build.Clock.Now().String()})
 
 			// set timeout for miner once
 			tCtx, tCtxCancel := context.WithTimeout(ctx, m.MinerOnceTimeout)
 			defer tCtxCancel()
 
-			resChan, err := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
-			if err != nil {
-				log.Errorf("mining block failed for %s: %+v", tAddr.String(), err)
-				return
-			}
+			resChan := m.mineOne(tCtx, base, tMining.account, tAddr, tMining.epp)
 
 			// waiting for mining results
 			select {
@@ -612,7 +621,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 
 				// Timeout may not be the winner when it happens
 				if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
-					Height: base.TipSet.Height() + base.NullRounds + 1,
+					Height: height,
 					Miner:  tAddr,
 				}, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Timeout); err != nil {
 					log.Errorf("failed to record mining timeout: %s", err)
@@ -628,6 +637,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 					tMining.err = tMining.err[:DefaultMaxErrCounts-2]
 				}
 				tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+"mining timeout!")
+				rcd.Record(ctx, recorder.Records{"error": "mining timeout!", "end": time.Now().String()})
 				return
 			case res := <-resChan:
 				if res != nil {
@@ -651,6 +661,7 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 							tMining.err = tMining.err[:DefaultMaxErrCounts-2]
 						}
 						tMining.err = append(tMining.err, time.Now().Format("2006-01-02 15:04:05 ")+res.err.Error())
+						rcd.Record(ctx, recorder.Records{"error": res.err.Error()})
 					} else if res.winner != nil {
 						winPoStLk.Lock()
 						winPoSts = append(winPoSts, res) //nolint:staticcheck
@@ -746,14 +757,20 @@ type winPoStRes struct {
 // This method does the following:
 //
 //	1.
-func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, addr address.Address, epp WinningPoStProver) (<-chan *winPoStRes, error) {
+func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, addr address.Address, epp WinningPoStProver) <-chan *winPoStRes {
 	log.Infow("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
 	start := build.Clock.Now()
 
 	round := base.TipSet.Height() + base.NullRounds + 1
 	out := make(chan *winPoStRes)
 
+	isLate := uint64(start.Unix()) > (base.TipSet.MinTimestamp() + uint64(base.NullRounds*builtin.EpochDurationSeconds) + m.PropagationDelaySecs)
+
+	rcd := recorder.Sub(addr, round)
+	rcd.Record(ctx, recorder.Records{"start": start.String(), "baseEpoch": base.TipSet.Height().String(), "nullRounds": base.NullRounds.String(), "baseDelta": start.Sub(time.Unix(int64(base.TipSet.MinTimestamp()), 0)).String()})
+
 	go func() {
+		res := &winPoStRes{addr: addr}
 		partDone := metrics.TimerMilliseconds(ctx, metrics.GetBaseInfoDuration, addr.String())
 		defer func() {
 			partDone()
@@ -762,18 +779,31 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
 		if err != nil {
 			log.Errorf("failed to get mining base info: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, err: err}
+			res.err = err
+			out <- res
 			return
 		}
 		if mbi == nil {
 			log.Infow("get nil MinerGetBaseInfo", "miner", addr)
-			out <- &winPoStRes{addr: addr, winner: nil}
+			rcd.Record(ctx, recorder.Records{"info": "get nil MinerGetBaseInfo"})
+			out <- res
 			return
 		}
+
+		rcd.Record(ctx, recorder.Records{
+			"worker":       mbi.WorkerKey.String(),
+			"minerPower":   mbi.MinerPower.String(),
+			"networkPower": mbi.NetworkPower.String(),
+			"isEligible":   fmt.Sprintf("%t", mbi.EligibleForMining),
+			"lateStart":    fmt.Sprintf("%t", isLate),
+		})
+
+		res.waddr = mbi.WorkerKey
+
 		if !mbi.EligibleForMining {
 			// slashed or just have no power yet
 			log.Warnw("slashed or just have no power yet", "miner", addr)
-			out <- &winPoStRes{addr: addr, winner: nil}
+			out <- res
 			return
 		}
 
@@ -792,16 +822,23 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		if len(bvals) > 0 {
 			rbase = bvals[len(bvals)-1]
 		}
+		res.bvals = bvals
+
+		rcd.Record(ctx, recorder.Records{"getBaseInfo": tMBI.Sub(start).String(), "beaconEpoch": fmt.Sprint(rbase.Round)})
 
 		ticket, err := m.computeTicket(ctx, &rbase, base, mbi, addr)
 		if err != nil {
 			log.Errorf("scratching ticket for %s failed: %s", addr, err.Error())
-			out <- &winPoStRes{addr: addr, err: err}
+			res.err = err
+			out <- res
 			return
 		}
 
 		tTicket := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "compute ticket", tTicket.Sub(tMBI))
+		rcd.Record(ctx, recorder.Records{"computeTicket": tTicket.Sub(tMBI).String()})
+
+		res.ticket = ticket
 
 		partDone() // ComputeTicketDuration
 		partDone = metrics.TimerMilliseconds(ctx, metrics.IsRoundWinnerDuration, addr.String())
@@ -809,25 +846,31 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		val, ok := m.minerWPPMap[addr]
 		if !ok {
 			log.Errorf("[%v] not exist", addr)
-			out <- &winPoStRes{addr: addr, err: fmt.Errorf("miner : %s not exist", addr)}
+			res.err = fmt.Errorf("miner : %s not exist", addr)
+			out <- res
 			return
 		}
 		winner, err := IsRoundWinner(ctx, round, val.account, addr, rbase, mbi, m.signerFunc(ctx, m.gatewayNode))
 		if err != nil {
 			log.Errorf("failed to check for %s if we win next round: %s", addr, err)
-			out <- &winPoStRes{addr: addr, err: err}
+			res.err = err
+			out <- res
 			return
 		}
 
 		if winner == nil {
 			log.Infow("not to be winner", "miner", addr)
-			out <- &winPoStRes{addr: addr, winner: nil}
+			rcd.Record(ctx, recorder.Records{"info": "not to be winner"})
+			out <- res
 			return
 		}
+
+		res.winner = winner
 
 		tIsWinner := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket), "win count", winner.WinCount)
 		partDone() // IsRoundWinnerDuration
+		rcd.Record(ctx, recorder.Records{"computeElectionProof": tIsWinner.Sub(tTicket).String(), "winCount": fmt.Sprintf("%d", winner.WinCount)})
 
 		// metrics: wins
 		metricsCtx, _ := tag.New(
@@ -846,8 +889,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		buf := new(bytes.Buffer)
 		if err := addr.MarshalCBOR(buf); err != nil {
-			log.Errorf("failed to marshal miner address: %s", err)
-			out <- &winPoStRes{addr: addr, winner: winner, err: err}
+			res.err = fmt.Errorf("failed to marshal miner address: %s", err)
+			log.Error(res.err)
+			out <- res
 			return
 		}
 
@@ -855,41 +899,51 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		r, err := DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
-			log.Errorf("failed to get randomness for winning post: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, winner: winner, err: err}
+			res.err = fmt.Errorf("failed to get randomness for winning post: %s, miner: %s", err, addr)
+			log.Error(res.err)
+			out <- res
 			return
 		}
 		prand := abi.PoStRandomness(r)
 
 		tSeed := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "seed", tSeed.Sub(tIsWinner))
+		rcd.Record(ctx, recorder.Records{"seed": tSeed.Sub(tIsWinner).String()})
 
 		nv, err := m.api.StateNetworkVersion(ctx, base.TipSet.Key())
 		if err != nil {
-			log.Errorf("failed to get network version: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, winner: winner, err: err}
+			res.err = fmt.Errorf("failed to get network version: %s, miner: %s", err, addr)
+			log.Error(res.err)
+			out <- res
 			return
 		}
 
 		postProof, err := epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
 		if err != nil {
-			log.Errorf("failed to compute winning post proof: %s, miner: %s", err, addr)
-			out <- &winPoStRes{addr: addr, winner: winner, err: err}
+			res.err = fmt.Errorf("failed to compute winning post proof: %s, miner: %s", err, addr)
+			log.Error(res.err)
+			out <- res
 			return
 		}
 
+		res.postProof = postProof
+
 		tProof := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "compute proof", tProof.Sub(tSeed))
+		rcd.Record(ctx, recorder.Records{"computePostProof": tProof.Sub(tSeed).String()})
 
 		dur := build.Clock.Now().Sub(start)
 		tt := miningTimetable{
 			tStart: start, tMBI: tMBI, tTicket: tTicket, tIsWinner: tIsWinner, tSeed: tSeed, tProof: tProof,
 		}
-		out <- &winPoStRes{addr: addr, waddr: mbi.WorkerKey, ticket: ticket, winner: winner, bvals: bvals, postProof: postProof, dur: dur, timetable: tt}
+		res.dur = dur
+		res.timetable = tt
+
+		out <- res
 		log.Infow("mined new block ( -> Proof)", "took", dur, "miner", addr)
 	}()
 
-	return out, nil
+	return out
 }
 
 func (m *Miner) computeTicket(ctx context.Context, brand *sharedTypes.BeaconEntry, base *MiningBase, mbi *sharedTypes.MiningBaseInfo, addr address.Address) (*sharedTypes.Ticket, error) {
@@ -1055,4 +1109,8 @@ func (m *Miner) SyncStatus(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (m *Miner) QueryRecord(ctx context.Context, params *types.QueryRecordParams) ([]map[string]string, error) {
+	return recorder.Query(ctx, params.Miner, params.Epoch, params.Limit)
 }

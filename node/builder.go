@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	"github.com/multiformats/go-multiaddr"
@@ -22,6 +23,7 @@ import (
 	"github.com/ipfs-force-community/sophon-miner/node/impl/common"
 	"github.com/ipfs-force-community/sophon-miner/node/modules"
 	"github.com/ipfs-force-community/sophon-miner/node/modules/helpers"
+	minerecorder "github.com/ipfs-force-community/sophon-miner/node/modules/mine-recorder"
 	minermanager "github.com/ipfs-force-community/sophon-miner/node/modules/miner-manager"
 	"github.com/ipfs-force-community/sophon-miner/node/modules/slashfilter"
 	"github.com/ipfs-force-community/sophon-miner/node/repo"
@@ -50,6 +52,8 @@ const (
 	ExtractApiKey
 
 	SetApiEndpointKey
+
+	SetRecorderDatastoreKey // set recorder datastore
 
 	_nInvokes // keep this last
 )
@@ -123,6 +127,18 @@ func ConfigMinerOptions(c interface{}) Option {
 
 		Override(new(jwtclient.IAuthClient), minermanager.NewVenusAuth(cfg.Auth.Addr, cfg.Auth.Token)),
 		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager),
+		Override(SetRecorderDatastoreKey, func(ds types.MetadataDS) minerecorder.Recorder {
+			if cfg.Recorder != nil {
+				if cfg.Recorder.MaxRecordPerQuery > 0 {
+					minerecorder.MaxRecordPerQuery = cfg.Recorder.MaxRecordPerQuery
+				}
+				if cfg.Recorder.ExpireEpoch > 0 {
+					minerecorder.ExpireEpoch = abi.ChainEpoch(cfg.Recorder.ExpireEpoch)
+				}
+			}
+			minerecorder.SetDatastore(ds)
+			return nil
+		}),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
 	)
 

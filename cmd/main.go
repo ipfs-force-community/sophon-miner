@@ -25,6 +25,7 @@ func main() {
 		stopCmd,
 		addressCmd,
 		winnerCmd,
+		recordCmd,
 	}
 
 	ctx, span := trace.StartSpan(context.Background(), "/cli")
