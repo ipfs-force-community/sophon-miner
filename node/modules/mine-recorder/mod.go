@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -54,6 +55,7 @@ func key(miner address.Address, epoch abi.ChainEpoch) datastore.Key {
 
 type DefaultRecorder struct {
 	ds                datastore.Datastore
+	mut               sync.RWMutex
 	latestRecordEpoch abi.ChainEpoch
 }
 
@@ -144,12 +146,26 @@ func (d *DefaultRecorder) Query(ctx context.Context, miner address.Address, from
 }
 
 func (d *DefaultRecorder) cleanExpire(ctx context.Context, epoch abi.ChainEpoch) error {
-	if epoch > d.latestRecordEpoch {
-		d.latestRecordEpoch = epoch
-		deadline := epoch - ExpireEpoch
-		err := d.cleanBefore(ctx, deadline)
-		if err != nil {
-			return err
+	d.mut.RLock()
+	latestRecordEpoch := d.latestRecordEpoch
+	d.mut.RUnlock()
+
+	if epoch > latestRecordEpoch {
+		needClean := false
+		d.mut.Lock()
+		// double check, prevent latestRecordEpoch was updated by other goroutine before get write lock
+		if epoch > d.latestRecordEpoch {
+			d.latestRecordEpoch = epoch
+			needClean = true
+		}
+		d.mut.Unlock()
+
+		if needClean {
+			deadline := epoch - ExpireEpoch
+			err := d.cleanBefore(ctx, deadline)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
