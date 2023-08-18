@@ -1,6 +1,6 @@
 module github.com/ipfs-force-community/sophon-miner
 
-go 1.18
+go 1.19
 
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
