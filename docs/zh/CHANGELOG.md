@@ -1,5 +1,20 @@
 # sophon-miner changelog
 
+## 1.13.0-rc1 / 2023-08-18
+
+### New Feature
+* feat: add api to list blocks in [[#211](https://github.com/ipfs-force-community/sophon-miner/pull/211)]
+* feat: add  venus name space header in [[#213](https://github.com/ipfs-force-community/sophon-miner/pull/213)]
+* feat: add interface to query record of mining in [[#215](https://github.com/ipfs-force-community/sophon-miner/pull/215)]
+
+### Bug Fix
+* fix: add null round count in [[#216](https://github.com/ipfs-force-community/sophon-miner/pull/216)]
+
+### Documentation And Chores
+* doc: update config description / 更新config的解释 in [[#209](https://github.com/ipfs-force-community/sophon-miner/pull/209)]
+* chore: remove useless config code / 删除没用的配置代码 in [[#210](https://github.com/ipfs-force-community/sophon-miner/pull/210)]
+* chore: merge release v1.12 in [[#208](https://github.com/ipfs-force-community/sophon-miner/pull/208)]
+
 ## 1.12.0
 
 ## 1.12.0-rc2 / 2023-06-20
