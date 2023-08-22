@@ -127,17 +127,16 @@ func ConfigMinerOptions(c interface{}) Option {
 
 		Override(new(jwtclient.IAuthClient), minermanager.NewVenusAuth(cfg.Auth.Addr, cfg.Auth.Token)),
 		Override(new(minermanager.MinerManageAPI), minermanager.NewMinerManager),
-		Override(SetRecorderDatastoreKey, func(ds types.MetadataDS) minerecorder.Recorder {
-			if cfg.Recorder != nil {
+		Override(SetRecorderDatastoreKey, func(ds types.MetadataDS) {
+			if cfg.Recorder != nil && cfg.Recorder.Enable {
 				if cfg.Recorder.MaxRecordPerQuery > 0 {
 					minerecorder.MaxRecordPerQuery = cfg.Recorder.MaxRecordPerQuery
 				}
 				if cfg.Recorder.ExpireEpoch > 0 {
 					minerecorder.ExpireEpoch = abi.ChainEpoch(cfg.Recorder.ExpireEpoch)
 				}
+				minerecorder.SetDatastore(ds)
 			}
-			minerecorder.SetDatastore(ds)
-			return nil
 		}),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
 	)

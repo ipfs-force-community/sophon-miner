@@ -45,6 +45,7 @@ type SlashFilterConfig struct {
 }
 
 type RecorderConfig struct {
+	Enable            bool
 	ExpireEpoch       uint64
 	MaxRecordPerQuery uint
 }

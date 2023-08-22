@@ -1,5 +1,10 @@
 # sophon-miner changelog
 
+## 1.13.0-rc2 / 2023-08-18
+
+### New Feature
+* feat: disable mine record by default [[#218](https://github.com/ipfs-force-community/sophon-miner/pull/218)]
+
 ## 1.13.0-rc1 / 2023-08-18
 
 ### New Feature
