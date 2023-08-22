@@ -2,26 +2,29 @@ package minerecorder
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 )
 
 var (
-	ErrDatastoreNotSet = fmt.Errorf("database not set")
+	ErrDatastoreNotSet  = fmt.Errorf("database not set")
+	ErrRecorderDisabled = fmt.Errorf("recorder disabled")
 )
-var innerRecorder = DefaultRecorder{}
+var innerRecorder Recorder
+var enable = false
 
 func SetDatastore(ds datastore.Datastore) {
-	innerRecorder.ds = namespace.Wrap(ds, DatastoreNamespaceKey)
+	innerRecorder = NewDefaultRecorder(ds)
+	enable = true
 }
 
 func checkAvailable() error {
-	if innerRecorder.ds == nil {
-		return ErrDatastoreNotSet
+	if !enable {
+		return ErrRecorderDisabled
 	}
 	return nil
 }
@@ -49,7 +52,10 @@ type subRecorder struct {
 
 func (s *subRecorder) Record(ctx context.Context, r Records) {
 	err := checkAvailable()
-	if err != nil {
+	if errors.Is(err, ErrRecorderDisabled) {
+		log.Debugf("recorder disabled, skip record")
+		return
+	} else if err != nil {
 		log.Warnf("record failed: %s", err.Error())
 	}
 	err = innerRecorder.Record(ctx, s.miner, s.epoch, r)
