@@ -134,7 +134,6 @@ func (d *DefaultRecorder) Query(ctx context.Context, miner address.Address, from
 		}
 		covered := coverMap(r, Records{"miner": miner.String(), "epoch": from.String()})
 		ret = append(ret, covered)
-		from++
 	}
 
 	if len(ret) != int(limit) {
