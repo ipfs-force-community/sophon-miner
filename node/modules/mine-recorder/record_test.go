@@ -2,9 +2,7 @@ package minerecorder
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -165,17 +163,4 @@ func BenchmarkQuery(b *testing.B) {
 		_, err := r.Query(ctx, newIDAddress(1), abi.ChainEpoch(0), 2000)
 		require.NoError(b, err)
 	}
-}
-
-func TestDefer(t *testing.T) {
-	outputTime()
-}
-
-func outputTime() {
-	fmt.Println(time.Now())
-	defer func() {
-
-		fmt.Println(time.Now())
-	}()
-	time.Sleep(3 * time.Second)
 }
