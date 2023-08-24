@@ -400,6 +400,7 @@ func (m *Miner) mine(ctx context.Context) {
 				}
 				if err != nil {
 					log.Errorf("failed to create block: %s", err)
+					rcd.Record(ctx, recorder.Records{"error": fmt.Sprintf("failed to create block: %s", err), "end": build.Clock.Now().String()})
 					continue
 				}
 				blks = append(blks, b)
@@ -606,7 +607,9 @@ func (m *Miner) mineOneForAll(ctx context.Context, base *MiningBase) []*winPoStR
 
 		go func() {
 			defer wg.Done()
-			defer rcd.Record(ctx, recorder.Records{"end": build.Clock.Now().String()})
+			defer func() {
+				rcd.Record(ctx, recorder.Records{"end": build.Clock.Now().String()})
+			}()
 
 			// set timeout for miner once
 			tCtx, tCtxCancel := context.WithTimeout(ctx, m.MinerOnceTimeout)

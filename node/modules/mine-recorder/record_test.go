@@ -2,7 +2,9 @@ package minerecorder
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -113,6 +115,25 @@ func TestDefaultRecorder(t *testing.T) {
 	})
 }
 
+func TestCoverMap(t *testing.T) {
+	t.Run("cover map", func(t *testing.T) {
+		before := Records{
+			"key1": "val1",
+			"key2": "val2",
+		}
+		after := Records{
+			"key1": "val4",
+			"key3": "val3",
+		}
+		ret := coverMap(before, after)
+		require.Equal(t, Records{
+			"key1": "val4",
+			"key2": "val2",
+			"key3": "val3",
+		}, ret)
+	})
+}
+
 func createDatastore(t testing.TB) datastore.Batching {
 	path := t.TempDir() + "/leveldb"
 	db, err := leveldb.NewDatastore(path, nil)
@@ -144,4 +165,17 @@ func BenchmarkQuery(b *testing.B) {
 		_, err := r.Query(ctx, newIDAddress(1), abi.ChainEpoch(0), 2000)
 		require.NoError(b, err)
 	}
+}
+
+func TestDefer(t *testing.T) {
+	outputTime()
+}
+
+func outputTime() {
+	fmt.Println(time.Now())
+	defer func() {
+
+		fmt.Println(time.Now())
+	}()
+	time.Sleep(3 * time.Second)
 }
