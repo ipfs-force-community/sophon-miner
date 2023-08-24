@@ -2,10 +2,7 @@ package minerecorder
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -43,12 +40,16 @@ func TestDefaultRecorder(t *testing.T) {
 
 		err = r.Record(ctx, newIDAddress(1), abi.ChainEpoch(9), RecordExample)
 		require.NoError(t, err)
+		err = r.Record(ctx, newIDAddress(1), abi.ChainEpoch(10), RecordExample)
+		require.NoError(t, err)
+		err = r.Record(ctx, newIDAddress(1), abi.ChainEpoch(11), RecordExample)
+		require.NoError(t, err)
 		err = r.Record(ctx, newIDAddress(1), abi.ChainEpoch(14), RecordExample)
 		require.NoError(t, err)
 
 		rets, err := r.Query(ctx, newIDAddress(1), abi.ChainEpoch(5), 10)
 		require.NoError(t, err)
-		require.Equal(t, 2, len(rets))
+		require.Equal(t, 4, len(rets))
 	})
 
 	t.Run("query exceed MaxRecordPerQuery", func(t *testing.T) {
@@ -143,39 +144,4 @@ func BenchmarkQuery(b *testing.B) {
 		_, err := r.Query(ctx, newIDAddress(1), abi.ChainEpoch(0), 2000)
 		require.NoError(b, err)
 	}
-}
-
-func TestRWMutex(t *testing.T) {
-	lk := sync.RWMutex{}
-
-	for i := 0; i < 10; i++ {
-		go read(&lk, i)
-	}
-	for i := 0; i < 2; i++ {
-		go write(&lk, i)
-	}
-	time.Sleep(time.Second * 1)
-	for i := 0; i < 10; i++ {
-		go read(&lk, i+10)
-	}
-
-	time.Sleep(time.Second * 10)
-}
-
-func read(lk *sync.RWMutex, i int) {
-	time.Sleep(time.Millisecond * 100 * time.Duration(i))
-	fmt.Println("request read lock", i, time.Now())
-	lk.RLock()
-	defer lk.RUnlock()
-	println("read", i, time.Now().String())
-	time.Sleep(time.Second * 2)
-}
-
-func write(lk *sync.RWMutex, i int) {
-	time.Sleep(time.Millisecond * 100 * time.Duration(i))
-	fmt.Println("request write lock", i, time.Now())
-	lk.Lock()
-	defer lk.Unlock()
-	println("write", i, time.Now().String())
-	time.Sleep(time.Second * 2)
 }
