@@ -826,7 +826,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		rcd.Record(ctx, recorder.Records{"getBaseInfo": tMBI.Sub(start).String(), "beaconEpoch": fmt.Sprint(rbase.Round)})
 
-		ticket, err := m.computeTicket(ctx, &rbase, base, mbi, addr)
+		ticket, err := m.computeTicket(ctx, &rbase, round, base.TipSet.MinTicket(), mbi, addr)
 		if err != nil {
 			log.Errorf("scratching ticket for %s failed: %s", addr, err.Error())
 			res.err = err
@@ -946,15 +946,20 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 	return out
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *sharedTypes.BeaconEntry, base *MiningBase, mbi *sharedTypes.MiningBaseInfo, addr address.Address) (*sharedTypes.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context,
+	brand *sharedTypes.BeaconEntry,
+	round abi.ChainEpoch,
+	chainRand *sharedTypes.Ticket,
+	mbi *sharedTypes.MiningBaseInfo,
+	addr address.Address,
+) (*sharedTypes.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := addr.MarshalCBOR(buf); err != nil {
 		return nil, fmt.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
-	round := base.TipSet.Height() + base.NullRounds + 1
 	if round > m.networkParams.ForkUpgradeParams.UpgradeSmokeHeight {
-		buf.Write(base.TipSet.MinTicket().VRFProof)
+		buf.Write(chainRand.VRFProof)
 	}
 
 	input := new(bytes.Buffer)
