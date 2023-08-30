@@ -45,7 +45,8 @@ func IsRoundWinner(
 	miner address.Address,
 	brand types.BeaconEntry,
 	mbi *types.MiningBaseInfo,
-	sign SignFunc) (*types.ElectionProof, error) {
+	sign SignFunc,
+) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
