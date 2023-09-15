@@ -456,7 +456,7 @@ func (m *Miner) mine(ctx context.Context) {
 		// Wait until the next epoch, plus the propagation delay, so a new tipset
 		// has enough time to form.
 		m.untilNextEpoch(base)
-		
+
 		if len(winPoSts) == 0 {
 			base.NullRounds++
 		}
@@ -540,6 +540,7 @@ func (m *Miner) getLatestBase(ctx context.Context) (*MiningBase, time.Duration, 
 		if err != nil {
 			return nil, time.Second * 5, fmt.Errorf("get best mining candidate: %w", err)
 		}
+		log.Infof("got prebase: %d", prebase.TipSet.Height())
 
 		if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
 			base = prebase
@@ -563,11 +564,13 @@ func (m *Miner) getLatestBase(ctx context.Context) (*MiningBase, time.Duration, 
 			continue
 		}
 
+		start := time.Now()
 		// just wait for the beacon entry to become available before we select our final mining base
 		_, err = m.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 		if err != nil {
 			return nil, time.Second, fmt.Errorf("getting beacon entry: %w", err)
 		}
+		log.Infof("call StateGetBeaconEntry cost: %v", time.Since(start))
 
 		base = prebase
 	}
