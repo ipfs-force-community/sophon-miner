@@ -28,6 +28,10 @@ miner:
 	rm -f $(BUILD_TARGET)
 	go build $(GOFLAGS) -o $(BUILD_TARGET) ./cmd/
 
+get-beacon:
+	go build -o get-beacon ./cmd/get-beacon/
+.PHONY: get-beacon
+
 debug:
 	rm -f $(BUILD_TARGET)
 	go build $(GOFLAGS) -gcflags=all="-N -l" -o $(BUILD_TARGET) ./cmd/
