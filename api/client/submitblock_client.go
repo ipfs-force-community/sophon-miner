@@ -11,7 +11,7 @@ import (
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
-func NewSubmitBlockRPC(ctx context.Context, apiInfo *config.APIInfo) (v1.FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNodeRPC(ctx context.Context, apiInfo *config.APIInfo) (v1.FullNode, jsonrpc.ClientCloser, error) {
 	addr, err := apiInfo.DialArgs("v1")
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not get DialArgs: %w", err)

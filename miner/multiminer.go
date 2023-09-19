@@ -33,6 +33,7 @@ import (
 	"github.com/ipfs-force-community/sophon-miner/types"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/wallet"
@@ -467,14 +468,67 @@ func (m *Miner) mine(ctx context.Context) {
 		// has enough time to form.
 		m.untilNextEpoch(base)
 
+		go m.tryGetBeacon(ctx, base)
+
 		if len(winPoSts) == 0 {
 			base.NullRounds++
 		}
 	}
 }
 
+func (m *Miner) tryGetBeacon(ctx context.Context, base *MiningBase) {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(m.networkParams.BlockDelaySecs*uint64(time.Second)))
+	defer cancel()
+
+	delay := 3
+	next := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds+1))+int64(delay), 0)
+
+	log := log.With("try-get-beacon")
+	select {
+	case <-build.Clock.After(build.Clock.Until(next)):
+		head, err := m.api.ChainHead(ctx)
+		if err != nil {
+			log.Infof("got head failed: %v", err)
+			return
+		}
+
+		round := head.Height() + 1
+		nodes := m.submitNodes
+
+		log.Infof("round: %d", round)
+
+		call := func(api v1.FullNode) {
+			start := time.Now()
+			// Nodes will cache beacons to avoid slow beacon acquisition
+			if _, err = api.StateGetBeaconEntry(ctx, round); err != nil {
+				log.Infof("got beacon failed: %v", err)
+				return
+			}
+			took := time.Since(start)
+			if took > time.Second*6 {
+				log.Infof("got beacon slow: %v", took)
+			}
+		}
+
+		go call(m.api)
+
+		for _, node := range nodes {
+			api, closer, err := client.NewFullNodeRPC(ctx, node)
+			if err == nil {
+				go func() {
+					defer closer()
+
+					call(api)
+				}()
+			}
+		}
+	case <-m.stop:
+	case <-ctx.Done():
+	}
+}
+
 func (m *Miner) submitBlock(ctx context.Context, bm *sharedTypes.BlockMsg, apiInfo *config.APIInfo) error {
-	submitAPI, closer, err := client.NewSubmitBlockRPC(ctx, apiInfo)
+	submitAPI, closer, err := client.NewFullNodeRPC(ctx, apiInfo)
 	if err != nil {
 		return fmt.Errorf("conn to submit-node %v failed: %w", apiInfo.Addr, err)
 	}
@@ -573,10 +627,15 @@ func (m *Miner) getLatestBase(ctx context.Context) (*MiningBase, time.Duration, 
 			continue
 		}
 
+		start := time.Now()
 		// just wait for the beacon entry to become available before we select our final mining base
 		_, err = m.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 		if err != nil {
 			return nil, time.Second, fmt.Errorf("getting beacon entry: %w", err)
+		}
+		took := time.Since(start)
+		if took > time.Second*3 {
+			log.Infof("got beacon slow: %v", took)
 		}
 
 		base = prebase
