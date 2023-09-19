@@ -134,7 +134,6 @@ func (d *DefaultRecorder) Query(ctx context.Context, miner address.Address, from
 		}
 		covered := coverMap(r, Records{"miner": miner.String(), "epoch": from.String()})
 		ret = append(ret, covered)
-		from++
 	}
 
 	if len(ret) != int(limit) {
@@ -227,12 +226,12 @@ func fromBytes(b []byte, v any) {
 }
 
 // mergeMap cover src onto dst, the key in dst will overwrite the key in src
-func coverMap[K comparable, V any](dst, src map[K]V) map[K]V {
+func coverMap[K comparable, V any](before, after map[K]V) map[K]V {
 	newMap := make(map[K]V)
-	for k, v := range dst {
+	for k, v := range before {
 		newMap[k] = v
 	}
-	for k, v := range src {
+	for k, v := range after {
 		newMap[k] = v
 	}
 	return newMap

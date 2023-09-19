@@ -1,5 +1,16 @@
 # sophon-miner changelog
 
+
+## 1.13.0 / 2023-08-31
+
+* Fix/query record incomplete in [[#220](https://github.com/ipfs-force-community/sophon-miner/pull/220)]
+* feat: control concurrency when call CountWinner in [[#223](https://github.com/ipfs-force-community/sophon-miner/pull/223)]
+
+## 1.13.0-rc2 / 2023-08-18
+
+### New Feature
+* feat: disable mine record by default [[#218](https://github.com/ipfs-force-community/sophon-miner/pull/218)]
+
 ## 1.13.0-rc1 / 2023-08-18
 
 ### New Feature

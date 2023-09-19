@@ -134,7 +134,6 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 
 	var nullRounds abi.ChainEpoch
 	if epoch > ts.Height() {
-		log.Infof("winCountInRound had null round, expect epoch %d, actual epoch %d", epoch, ts.Height())
 		nullRounds = epoch - ts.Height()
 	}
 	round := ts.Height() + nullRounds + 1
@@ -194,8 +193,10 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 	}
 	m.lkWPP.Unlock()
 
+	controlChan := make(chan struct{}, 100)
 	if len(minerWpps) > 0 {
 		sign := m.signerFunc(ctx, m.gatewayNode)
+
 		wg.Add(len(minerWpps))
 		for addr, wpp := range minerWpps {
 			tAddr := addr
@@ -209,7 +210,12 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 				for epoch := start; epoch <= end; epoch++ {
 					wgWin.Add(1)
 					go func(epoch abi.ChainEpoch) {
-						defer wgWin.Done()
+						defer func() {
+							wgWin.Done()
+							<-controlChan
+						}()
+
+						controlChan <- struct{}{}
 
 						winner, err := m.winCountInRound(ctx, tWpp.account, tAddr, sign, epoch)
 						if err != nil {
@@ -233,6 +239,7 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 		}
 		wg.Wait()
 	}
+	close(controlChan)
 
 	return res, nil
 }
