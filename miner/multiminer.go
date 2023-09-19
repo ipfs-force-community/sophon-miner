@@ -33,7 +33,6 @@ import (
 	"github.com/ipfs-force-community/sophon-miner/types"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/wallet"
@@ -493,7 +492,7 @@ func (m *Miner) tryGetBeacon(ctx context.Context, base MiningBase) {
 
 		log.Infof("try get beacon at: %d", round)
 
-		call := func(api v1.FullNode) {
+		call := func(api v1api.FullNode) {
 			start := time.Now()
 			// Nodes will cache beacons to avoid slow beacon acquisition
 			if _, err = api.StateGetBeaconEntry(ctx, round); err != nil {
