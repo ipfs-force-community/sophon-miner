@@ -482,9 +482,6 @@ func (m *Miner) tryGetBeacon(ctx context.Context, base MiningBase) {
 
 	select {
 	case <-build.Clock.After(build.Clock.Until(next)):
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(m.networkParams.BlockDelaySecs*uint64(time.Second)))
-		defer cancel()
-
 		head, err := m.api.ChainHead(ctx)
 		if err != nil {
 			log.Infof("got head failed: %v", err)
@@ -513,13 +510,15 @@ func (m *Miner) tryGetBeacon(ctx context.Context, base MiningBase) {
 
 		for _, node := range nodes {
 			api, closer, err := client.NewFullNodeRPC(ctx, node)
-			if err == nil {
-				go func() {
-					defer closer()
-
-					call(api)
-				}()
+			if err != nil {
+				log.Warnf("new node rpc failed: %v", err)
+				continue
 			}
+			go func() {
+				defer closer()
+
+				call(api)
+			}()
 		}
 	case <-ctx.Done():
 	}
