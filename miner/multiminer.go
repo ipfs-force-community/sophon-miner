@@ -464,11 +464,11 @@ func (m *Miner) mine(ctx context.Context) {
 			log.Info("no block and increase nullround")
 		}
 
+		go m.tryGetBeacon(ctx, *base)
+
 		// Wait until the next epoch, plus the propagation delay, so a new tipset
 		// has enough time to form.
 		m.untilNextEpoch(base)
-
-		go m.tryGetBeacon(ctx, base)
 
 		if len(winPoSts) == 0 {
 			base.NullRounds++
@@ -476,16 +476,15 @@ func (m *Miner) mine(ctx context.Context) {
 	}
 }
 
-func (m *Miner) tryGetBeacon(ctx context.Context, base *MiningBase) {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(m.networkParams.BlockDelaySecs*uint64(time.Second)))
-	defer cancel()
-
+func (m *Miner) tryGetBeacon(ctx context.Context, base MiningBase) {
 	delay := 3
 	next := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds+1))+int64(delay), 0)
 
-	log := log.With("try-get-beacon")
 	select {
 	case <-build.Clock.After(build.Clock.Until(next)):
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(m.networkParams.BlockDelaySecs*uint64(time.Second)))
+		defer cancel()
+
 		head, err := m.api.ChainHead(ctx)
 		if err != nil {
 			log.Infof("got head failed: %v", err)
@@ -495,7 +494,7 @@ func (m *Miner) tryGetBeacon(ctx context.Context, base *MiningBase) {
 		round := head.Height() + 1
 		nodes := m.submitNodes
 
-		log.Infof("round: %d", round)
+		log.Infof("try get beacon at: %d", round)
 
 		call := func(api v1.FullNode) {
 			start := time.Now()
@@ -522,7 +521,6 @@ func (m *Miner) tryGetBeacon(ctx context.Context, base *MiningBase) {
 				}()
 			}
 		}
-	case <-m.stop:
 	case <-ctx.Done():
 	}
 }
