@@ -4,7 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-jsonrpc/metrics"
+	rpcMetrics "github.com/filecoin-project/go-jsonrpc/metrics"
+	"github.com/ipfs-force-community/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -81,6 +82,11 @@ var (
 	}
 )
 
+var (
+	ApiState        = metrics.NewInt64("api/state", "api service state. 0: down, 1: up", "")
+	MinerNumInState = metrics.NewInt64WithCategory("miner/num", "miner num in vary state", "")
+)
+
 var MinerNodeViews = append([]*view.View{
 	GetBaseInfoDurationView,
 	ComputeTicketDurationView,
@@ -91,7 +97,7 @@ var MinerNodeViews = append([]*view.View{
 	NumberOfMiningTimeoutView,
 	NumberOfMiningChainForkView,
 	NumberOfMiningErrorView,
-}, metrics.DefaultViews...)
+}, rpcMetrics.DefaultViews...)
 
 func SinceInMilliseconds(startTime time.Time) float64 {
 	return float64(time.Since(startTime).Nanoseconds()) / 1e6
