@@ -833,6 +833,7 @@ type winPoStRes struct {
 //
 //	1.
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, addr address.Address, epp WinningPoStProver) <-chan *winPoStRes {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.MinerID, addr.String()))
 	log.Infow("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", addr)
 	start := build.Clock.Now()
 
@@ -846,11 +847,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 	go func() {
 		res := &winPoStRes{addr: addr}
-		partDone := metrics.TimerMilliseconds(ctx, metrics.GetBaseInfoDuration, addr.String())
-		defer func() {
-			partDone()
-		}()
 
+		// GetBaseInfo
+		stopCountGetBaseInfo := metrics.GetBaseInfoDuration.Start()
 		mbi, err := m.api.MinerGetBaseInfo(ctx, addr, round, base.TipSet.Key())
 		if err != nil {
 			log.Errorf("failed to get mining base info: %s, miner: %s", err, addr)
@@ -883,10 +882,10 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		}
 
 		tMBI := build.Clock.Now()
+		stopCountGetBaseInfo(ctx)
 		log.Infow("mine one", "miner", addr, "get base info", tMBI.Sub(start))
 
-		partDone() // GetBaseInfoDuration
-		partDone = metrics.TimerMilliseconds(ctx, metrics.ComputeTicketDuration, addr.String())
+		stopCountForComputeTicket := metrics.ComputeTicketDuration.Start()
 
 		beaconPrev := mbi.PrevBeaconEntry
 		bvals := mbi.BeaconEntries
@@ -914,10 +913,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 		rcd.Record(ctx, recorder.Records{"computeTicket": tTicket.Sub(tMBI).String()})
 
 		res.ticket = ticket
+		stopCountForComputeTicket(ctx)
 
-		partDone() // ComputeTicketDuration
-		partDone = metrics.TimerMilliseconds(ctx, metrics.IsRoundWinnerDuration, addr.String())
-
+		stopCountForCheckRoundWinner := metrics.CheckRoundWinnerDuration.Start()
 		val, ok := m.minerWPPMap[addr]
 		if !ok {
 			log.Errorf("[%v] not exist", addr)
@@ -944,7 +942,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 
 		tIsWinner := build.Clock.Now()
 		log.Infow("mine one", "miner", addr, "is winner", tIsWinner.Sub(tTicket), "win count", winner.WinCount)
-		partDone() // IsRoundWinnerDuration
+		stopCountForCheckRoundWinner(ctx)
 		rcd.Record(ctx, recorder.Records{"computeElectionProof": tIsWinner.Sub(tTicket).String(), "winCount": fmt.Sprintf("%d", winner.WinCount)})
 
 		// metrics: wins
@@ -970,7 +968,10 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase, account string, a
 			return
 		}
 
-		partDone = metrics.TimerSeconds(ctx, metrics.ComputeProofDuration, addr.String())
+		stopCountForComputeProof := metrics.ComputeProofDuration.Start()
+		defer func() {
+			stopCountForComputeProof(ctx)
+		}()
 
 		r, err := DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
