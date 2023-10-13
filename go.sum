@@ -268,8 +268,8 @@ github.com/filecoin-project/specs-actors/v6 v6.0.2 h1:K1xPRJoW5PBvb08QF9+4w1Ajcn
 github.com/filecoin-project/specs-actors/v6 v6.0.2/go.mod h1:wnfVvPnYmzPZilNvSqCSSA/ZQX3rdV/U/Vf9EIoQhrI=
 github.com/filecoin-project/specs-actors/v7 v7.0.1 h1:w72xCxijK7xs1qzmJiw+WYJaVt2EPHN8oiwpA1Ay3/4=
 github.com/filecoin-project/specs-actors/v7 v7.0.1/go.mod h1:tPLEYXoXhcpyLh69Ccq91SOuLXsPWjHiY27CzawjUEk=
-github.com/filecoin-project/venus v1.14.0-rc1 h1:OOs6a1HAB9PtecUO3PLsur0+AapY/25UUihgVbKqIjk=
-github.com/filecoin-project/venus v1.14.0-rc1/go.mod h1:eVsWgzrpnKG17wSLpDkjfSpguQalhKTM0XXUuxQYvUM=
+github.com/filecoin-project/venus v1.14.0-rc2 h1:+kb1L2OB/ZmpkyxhpdiwNxTkKnsdYhgyk2VVgNz2oI0=
+github.com/filecoin-project/venus v1.14.0-rc2/go.mod h1:vw+aZ7Qk31GlFI8Y6unvdtzwG8QklDVOiyY3y47b3+g=
 github.com/flynn/noise v1.0.0 h1:DlTHqmzmvcEiKj+4RYo/imoswx/4r6iBlCMfVtrMXpQ=
 github.com/francoispqt/gojay v1.2.13 h1:d2m3sFjloqoIUQU3TsHBgj6qg/BVGlTBeHDUmyJnXKk=
 github.com/frankban/quicktest v1.14.3/go.mod h1:mgiwOwqx65TmIk1wJ6Q7wvnVMocbUorkibMOrVTHZps=
