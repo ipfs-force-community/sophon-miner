@@ -550,7 +550,7 @@ func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *sharedT
 
 		if !(errors.Is(err, slashfilter.ParentGrindingFaults) &&
 			os.Getenv("SOPHON_MINER_NO_SLASHFILTER") != "_yes_i_know_and_i_accept_that_may_loss_my_fil") {
-			if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, slashfilter.Error); err != nil {
+			if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Error); err != nil {
 				log.Errorf("failed to put block: %s", err)
 			}
 

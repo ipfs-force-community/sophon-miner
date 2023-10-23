@@ -108,7 +108,7 @@ func (f *localSlashFilter) ListBlock(ctx context.Context, params *types.BlocksQu
 	return nil, fmt.Errorf("you are using levelDB, List Block is not supported")
 }
 
-func checkFault(ctx context.Context, t datastore.Datastore, key datastore.Key, bh *vtypes.BlockHeader, faultType string) error {
+func checkFault(ctx context.Context, t datastore.Datastore, key datastore.Key, bh *vtypes.BlockHeader, faultType error) error {
 	fault, err := t.Has(ctx, key)
 	if err != nil {
 		return err
