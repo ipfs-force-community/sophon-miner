@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -59,7 +60,7 @@ func (f *localSlashFilter) MinedBlock(ctx context.Context, bh *vtypes.BlockHeade
 	parentsKey := datastore.NewKey(fmt.Sprintf("/%s/%x", bh.Miner, vtypes.NewTipSetKey(bh.Parents...).Bytes()))
 	{
 		// time-offset mining faults (2 blocks with the same parents)
-		if err := checkFault(ctx, f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
+		if err := checkFault(ctx, f.byParents, parentsKey, bh, TimeOffsetMiningFaults); err != nil {
 			return err
 		}
 	}
@@ -94,7 +95,8 @@ func (f *localSlashFilter) MinedBlock(ctx context.Context, bh *vtypes.BlockHeade
 			}
 
 			if !found {
-				return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				return errors.Wrapf(ParentGrindingFaults, "produced block would trigger consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				// return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
 			}
 		}
 	}
@@ -106,7 +108,7 @@ func (f *localSlashFilter) ListBlock(ctx context.Context, params *types.BlocksQu
 	return nil, fmt.Errorf("you are using levelDB, List Block is not supported")
 }
 
-func checkFault(ctx context.Context, t datastore.Datastore, key datastore.Key, bh *vtypes.BlockHeader, faultType string) error {
+func checkFault(ctx context.Context, t datastore.Datastore, key datastore.Key, bh *vtypes.BlockHeader, faultType error) error {
 	fault, err := t.Has(ctx, key)
 	if err != nil {
 		return err
@@ -127,7 +129,7 @@ func checkFault(ctx context.Context, t datastore.Datastore, key datastore.Key, b
 			return nil
 		}
 
-		return fmt.Errorf("produced block would trigger '%s' consensus fault; miner: %s; bh: %s, other: %s", faultType, bh.Miner, bh.Cid(), other)
+		return errors.Wrapf(faultType, "produced block would trigger consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
 	}
 
 	return nil

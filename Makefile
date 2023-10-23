@@ -61,6 +61,9 @@ gen:
 print-%:
 	@echo $*=$($*)
 
+lint:
+	golangci-lint run
+
 
 # docker
 .PHONY: docker

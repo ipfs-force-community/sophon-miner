@@ -221,7 +221,8 @@ func TestParentGridFail(t *testing.T) {
 	}
 
 	assert.True(t, len(chain.dropBlks) > 0)
-	chain.logMatcher.match("SLASH FILTER ERROR: produced block would trigger 'parent-grinding fault'")
+	chain.logMatcher.match("SLASH FILTER ERROR: produced block would trigger")
+	chain.logMatcher.match("parent-grinding fault")
 }
 
 func TestSameHeight(t *testing.T) {

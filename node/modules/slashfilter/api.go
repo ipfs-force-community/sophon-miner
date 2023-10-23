@@ -2,6 +2,7 @@ package slashfilter
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -9,6 +10,9 @@ import (
 
 	vtypes "github.com/filecoin-project/venus/venus-shared/types"
 )
+
+var TimeOffsetMiningFaults = errors.New("time-offset mining faults")
+var ParentGrindingFaults = errors.New("parent-grinding fault")
 
 type BlockStoreType string
 
