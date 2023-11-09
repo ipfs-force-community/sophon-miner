@@ -114,7 +114,12 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if err := storageMinerInit(cctx, r, &fullnode); err != nil {
+		networkParams, err := fullNodeAPI.StateGetNetworkParams(ctx)
+		if err != nil {
+			return err
+		}
+
+		if err := storageMinerInit(cctx, r, &fullnode, networkParams.BlockDelaySecs); err != nil {
 			log.Errorf("Failed to initialize sophon-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
@@ -133,7 +138,7 @@ var initCmd = &cli.Command{
 	},
 }
 
-func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo) error {
+func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo, blockDelay uint64) error {
 	lr, err := r.Lock()
 	if err != nil {
 		return err
@@ -180,6 +185,17 @@ func storageMinerInit(cctx *cli.Context, r repo.Repo, fn *config.APIInfo) error 
 		cfg.API.ListenAddress = ma.String()
 		cfg.SlashFilter.Type = sfType
 		cfg.SlashFilter.MySQL.Conn = cctx.String("mysql-conn")
+
+		// set the default value of PropagationDelaySecs based on experience.
+		switch blockDelay {
+		case 30:
+			cfg.PropagationDelaySecs = 12
+		case 4:
+			cfg.PropagationDelaySecs = 1
+		default:
+			cfg.PropagationDelaySecs = blockDelay / 2
+		}
+
 	}); err != nil {
 		return fmt.Errorf("modify config failed: %w", err)
 	}

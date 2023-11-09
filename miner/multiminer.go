@@ -595,16 +595,29 @@ func (m *Miner) getLatestBase(ctx context.Context) (*MiningBase, time.Duration, 
 	var onDone func(bool, abi.ChainEpoch, error)
 	var injectNulls abi.ChainEpoch
 
+	// overlapCount is used to avoid getting stuck in an endless loop
+	overlapCount := 0
+
 	for {
 		prebase, err := m.GetBestMiningCandidate(ctx)
 		if err != nil {
 			return nil, time.Second * 5, fmt.Errorf("get best mining candidate: %w", err)
 		}
 
-		if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
-			base = prebase
-			break
+		if base != nil {
+			if base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
+				base = prebase
+				break
+			} else {
+				if overlapCount >= 5 {
+					log.Warnf("wait to long (about %d epochs) to get mining base, please check your config of PropagationDelaySecs and network", base.TipSet.Height()+base.NullRounds-prebase.TipSet.Height()+prebase.NullRounds)
+					overlapCount = 0
+				} else {
+					overlapCount++
+				}
+			}
 		}
+
 		if base != nil {
 			onDone(false, 0, nil)
 		}
