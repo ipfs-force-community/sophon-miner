@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -25,6 +26,7 @@ type MinerState struct {
 type SimpleWinInfo struct {
 	Epoch    abi.ChainEpoch `json:"epoch"`
 	WinCount int64          `json:"winCount"`
+	Msg      string         `json:"msg"`
 }
 
 type CountWinners struct {
@@ -84,35 +86,33 @@ type BlocksQueryParams struct {
 	Offset int
 }
 
-// type Record map[string]string
-
-// type Record struct {
-// 	Miner  address.Address
-// 	Worker address.Address
-// 	Epoch  abi.ChainEpoch
-
-// 	MinerPower   abi.StoragePower
-// 	NetworkPower abi.StoragePower
-
-// 	TimeTable
-// 	ErrorInfo string
-// }
-
-// type TimeTable struct {
-// 	Start time.Time
-// 	End   time.Time
-
-// 	GetMinerBaseINfo time.Duration
-// 	Ticket           time.Duration
-// 	ElectionProof    time.Duration
-// 	Seed             time.Duration
-// 	PoStProof        time.Duration
-// 	SelectMsg        time.Duration
-// 	CreateBlock      time.Duration
-// }
-
 type QueryRecordParams struct {
 	Miner address.Address
 	Epoch abi.ChainEpoch
 	Limit uint
+}
+
+type ErrorCode int
+
+const (
+	ConnectGatewayError ErrorCode = iota
+	CallNodeRPCError
+	WalletSignError
+)
+
+func (e ErrorCode) String() string {
+	switch e {
+	case ConnectGatewayError:
+		return "ConnectGatewayError"
+	case CallNodeRPCError:
+		return "CallNodeRPCError"
+	case WalletSignError:
+		return "WalletSignError"
+	default:
+		return "unknown"
+	}
+}
+
+func (e ErrorCode) Error() string {
+	return fmt.Sprintf("%d", e)
 }

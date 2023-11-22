@@ -2,6 +2,7 @@ package miner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -219,6 +220,11 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 
 						winner, err := m.winCountInRound(ctx, tWpp.account, tAddr, sign, epoch)
 						if err != nil {
+							if errors.Is(err, types.ConnectGatewayError) || errors.Is(err, types.WalletSignError) {
+								winInfoLk.Lock()
+								winInfo = append(winInfo, types.SimpleWinInfo{Epoch: epoch + 1, Msg: err.Error()})
+								winInfoLk.Unlock()
+							}
 							log.Errorf("generate winner met error %s", err)
 							return
 						}

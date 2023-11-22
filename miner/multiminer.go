@@ -112,11 +112,15 @@ func NewMiner(
 			return func(ctx context.Context, signer address.Address, accounts []string, toSign []byte, meta sharedTypes.MsgMeta) (*crypto.Signature, error) {
 				walletAPI, closer, err := client.NewGatewayRPC(ctx, cfg)
 				if err != nil {
-					return nil, fmt.Errorf("new gateway rpc failed:%w", err)
+					return nil, fmt.Errorf("new gateway rpc failed:%v (%w)", err, types.ConnectGatewayError)
 				}
-
 				defer closer()
-				return walletAPI.WalletSign(ctx, signer, accounts, toSign, meta)
+
+				sig, err := walletAPI.WalletSign(ctx, signer, accounts, toSign, meta)
+				if err != nil {
+					return nil, fmt.Errorf("wallet sign failed:%v (%w)", err, types.CallNodeRPCError)
+				}
+				return sig, nil
 			}
 		},
 

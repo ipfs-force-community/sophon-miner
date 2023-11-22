@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	_ "embed"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -112,6 +113,48 @@ func TestCountWinner(t *testing.T) {
 					count  int64
 					blkCid cid.Cid
 				}{count: blk.ElectionProof.WinCount, blkCid: blk.Cid()}
+			}
+		case <-time.After(time.Duration(chain.params.BlockDelaySecs) * time.Second * 10):
+			t.Errorf("wait too long for miner new block")
+			return
+		}
+	}
+}
+
+func TestCountWinnerSignFailed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	miner, chain, _ := setMiner(ctx, t, 4)
+	chain.keepChainGoing(ctx)
+
+	assert.Nil(t, miner.Start(ctx))
+	defer func() {
+		assert.Nil(t, miner.Stop(ctx))
+	}()
+
+	var once sync.Once
+	for {
+		select {
+		case blk := <-chain.newBlkCh:
+			if blk.Height > 5 {
+				once.Do(func() {
+					// mock sign failed
+					miner.signerFunc = func(ctx context.Context, node *config.GatewayNode) SignFunc {
+						return func(ctx context.Context, signer address.Address, accounts []string, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
+							return nil, fmt.Errorf("%v %w", "sign failed:", types2.WalletSignError)
+						}
+					}
+
+					addrs := chain.pcController.listAddress()
+					winners, err := miner.CountWinners(ctx, addrs, 0, 4)
+					assert.Nil(t, err)
+					for _, minerSt := range winners {
+						for _, sWinfo := range minerSt.WinEpochList {
+							assert.Equal(t, "failed to compute VRF: sign failed: 2", sWinfo.Msg)
+						}
+					}
+				})
+				return
 			}
 		case <-time.After(time.Duration(chain.params.BlockDelaySecs) * time.Second * 10):
 			t.Errorf("wait too long for miner new block")
@@ -503,8 +546,8 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 
 	api.EXPECT().StateNetworkVersion(mockAny, mockAny).AnyTimes().AnyTimes().Return(network.Version16, nil)
 	api.EXPECT().StateMinerInfo(mockAny, mockAny, mockAny).AnyTimes().Return(types.MinerInfo{}, nil)
-	api.EXPECT().StateMinerDeadlines(mockAny, mockAny, mockAny).AnyTimes().Return([]types.Deadline{types.Deadline{}}, nil)
-	api.EXPECT().StateMinerPartitions(mockAny, mockAny, mockAny, mockAny).AnyTimes().Return([]types.Partition{types.Partition{
+	api.EXPECT().StateMinerDeadlines(mockAny, mockAny, mockAny).AnyTimes().Return([]types.Deadline{{}}, nil)
+	api.EXPECT().StateMinerPartitions(mockAny, mockAny, mockAny, mockAny).AnyTimes().Return([]types.Partition{{
 		ActiveSectors: bitfield.NewFromSet([]uint64{uint64(1), uint64(2)}),
 	}}, nil)
 	api.EXPECT().StateGetBeaconEntry(mockAny, mockAny).AnyTimes().Return(nil, nil)
