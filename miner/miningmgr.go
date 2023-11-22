@@ -130,7 +130,7 @@ func (m *Miner) StatesForMining(ctx context.Context, addrs []address.Address) ([
 func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr address.Address, api SignFunc, epoch abi.ChainEpoch) (*sharedTypes.ElectionProof, error) {
 	ts, err := m.api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), sharedTypes.EmptyTSK)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%v (%w)", err, types.CallNodeRPCError)
 	}
 
 	var nullRounds abi.ChainEpoch
@@ -141,7 +141,7 @@ func (m *Miner) winCountInRound(ctx context.Context, account string, mAddr addre
 
 	mbi, err := m.api.MinerGetBaseInfo(ctx, mAddr, round, ts.Key())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%v (%w)", err, types.CallNodeRPCError)
 	}
 
 	if mbi == nil {
@@ -220,12 +220,13 @@ func (m *Miner) CountWinners(ctx context.Context, addrs []address.Address, start
 
 						winner, err := m.winCountInRound(ctx, tWpp.account, tAddr, sign, epoch)
 						if err != nil {
-							if errors.Is(err, types.ConnectGatewayError) || errors.Is(err, types.WalletSignError) {
+							if errors.Is(err, types.ConnectGatewayError) || errors.Is(err, types.WalletSignError) ||
+								errors.Is(err, types.CallNodeRPCError) {
 								winInfoLk.Lock()
 								winInfo = append(winInfo, types.SimpleWinInfo{Epoch: epoch + 1, Msg: err.Error()})
 								winInfoLk.Unlock()
 							}
-							log.Errorf("generate winner met error %s", err)
+							log.Errorf("generate winner met failed address: %s, epoch: %d, err: %v", tAddr, epoch, err)
 							return
 						}
 
