@@ -4,6 +4,7 @@ package miner
 import (
 	"bufio"
 	"context"
+	rand2 "crypto/rand"
 	_ "embed"
 	"fmt"
 	"math/rand"
@@ -923,7 +924,7 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 	m.lk.Lock()
 	m.additionWeight += 10
 	toHeight := m.head.Height() - lbHeight
-	rand.Seed(build.Clock.Now().Unix())
+	r := rand.New(rand.NewSource(build.Clock.Now().Unix()))
 	var revertTs []*types.TipSet
 	ts := m.head
 	for {
@@ -944,7 +945,7 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 			blkCopy.ParentWeight = types.NewInt(100 + uint64(len(ts.Parents().Cids())) + uint64(blk.Height)*5 + m.additionWeight)
 			if changeTicket {
 				ticket := make([]byte, 32)
-				rand.Read(ticket)
+				r.Read(ticket)
 				blkCopy.Ticket = &types.Ticket{VRFProof: ticket}
 			}
 			m.blockStore[blkCopy.Cid()] = &blkCopy
@@ -963,14 +964,14 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 func (m *mockChain) fallBack(lbHeight abi.ChainEpoch) {
 	head := m.getHead()
 	ts := m.getTipsetByHeight(head.Height() - lbHeight)
-	rand.Seed(build.Clock.Now().Unix())
+	r := rand.New(rand.NewSource(build.Clock.Now().Unix()))
 	var blks []*types.BlockHeader
 	for _, blk := range ts.Blocks() {
 		blkCopy := *blk
 		blkCopy.Miner = m.createMiner()
 		blkCopy.ParentWeight = big.Add(head.ParentWeight(), big.NewInt(1000))
 		ticket := make([]byte, 32)
-		rand.Read(ticket)
+		r.Read(ticket)
 		blkCopy.Ticket = &types.Ticket{VRFProof: ticket}
 		m.blockStore[blkCopy.Cid()] = &blkCopy
 		blks = append(blks, &blkCopy)
@@ -992,7 +993,8 @@ func (m *mockChain) nextBlock() {
 
 	epoch := head.Height() + abi.ChainEpoch(nullRounds)
 	ticket := make([]byte, 32)
-	rand.Read(ticket)
+	_, err := rand2.Read(ticket)
+	assert.Nil(m.t, err)
 	next := &types.BlockHeader{
 		Miner:                 m.createMiner(),
 		ParentWeight:          types.NewInt(100 + uint64(len(head.Cids())) + uint64(epoch)*5 + m.additionWeight),
@@ -1141,9 +1143,8 @@ func (r *randGen) Cid() cid.Cid {
 	r.lk.Lock()
 	defer r.lk.Unlock()
 	r.count++
-	rand.Seed(r.count)
 	data := make([]byte, 32)
-	rand.Read(data[:])
+	rand.New(rand.NewSource(r.count)).Read(data[:])
 	c, _ := abi.CidBuilder.Sum(data)
 	return c
 }
