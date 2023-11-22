@@ -10,9 +10,12 @@
   * [CountWinners](#CountWinners)
 * [List](#List)
   * [ListAddress](#ListAddress)
+  * [ListBlocks](#ListBlocks)
 * [Log](#Log)
   * [LogList](#LogList)
   * [LogSetLevel](#LogSetLevel)
+* [Query](#Query)
+  * [QueryRecord](#QueryRecord)
 * [States](#States)
   * [StatesForMining](#StatesForMining)
 * [Update](#Update)
@@ -52,7 +55,7 @@ Response: `{}`
 ### Start
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -68,7 +71,7 @@ Response: `{}`
 ### Stop
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -149,6 +152,40 @@ Response:
 ]
 ```
 
+### ListBlocks
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "Miners": [
+      "t01234"
+    ],
+    "Limit": 42,
+    "Offset": 42
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "ParentEpoch": 0,
+    "ParentKey": "",
+    "Epoch": 9,
+    "Miner": "string value",
+    "Cid": "string value",
+    "WinningAt": "0001-01-01T00:00:00Z",
+    "MineState": 0,
+    "Consuming": 9
+  }
+]
+```
+
 ## Log
 
 
@@ -180,6 +217,32 @@ Inputs:
 ```
 
 Response: `{}`
+
+## Query
+
+
+### QueryRecord
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "Miner": "t01234",
+    "Epoch": 10101,
+    "Limit": 42
+  }
+]
+```
+
+Response:
+```json
+[
+  {}
+]
+```
 
 ## States
 
