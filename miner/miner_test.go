@@ -4,7 +4,9 @@ package miner
 import (
 	"bufio"
 	"context"
+	rand2 "crypto/rand"
 	_ "embed"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -112,6 +114,48 @@ func TestCountWinner(t *testing.T) {
 					count  int64
 					blkCid cid.Cid
 				}{count: blk.ElectionProof.WinCount, blkCid: blk.Cid()}
+			}
+		case <-time.After(time.Duration(chain.params.BlockDelaySecs) * time.Second * 10):
+			t.Errorf("wait too long for miner new block")
+			return
+		}
+	}
+}
+
+func TestCountWinnerSignFailed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	miner, chain, _ := setMiner(ctx, t, 4)
+	chain.keepChainGoing(ctx)
+
+	assert.Nil(t, miner.Start(ctx))
+	defer func() {
+		assert.Nil(t, miner.Stop(ctx))
+	}()
+
+	var once sync.Once
+	for {
+		select {
+		case blk := <-chain.newBlkCh:
+			if blk.Height > 5 {
+				once.Do(func() {
+					// mock sign failed
+					miner.signerFunc = func(ctx context.Context, node *config.GatewayNode) SignFunc {
+						return func(ctx context.Context, signer address.Address, accounts []string, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
+							return nil, fmt.Errorf("%v %w", "sign failed:", types2.WalletSignError)
+						}
+					}
+
+					addrs := chain.pcController.listAddress()
+					winners, err := miner.CountWinners(ctx, addrs, 0, 4)
+					assert.Nil(t, err)
+					for _, minerSt := range winners {
+						for _, sWinfo := range minerSt.WinEpochList {
+							assert.Equal(t, "failed to compute VRF: sign failed: 2", sWinfo.Msg)
+						}
+					}
+				})
+				return
 			}
 		case <-time.After(time.Duration(chain.params.BlockDelaySecs) * time.Second * 10):
 			t.Errorf("wait too long for miner new block")
@@ -503,8 +547,8 @@ func setMiner(ctx context.Context, t *testing.T, minerCount int) (*Miner, *mockC
 
 	api.EXPECT().StateNetworkVersion(mockAny, mockAny).AnyTimes().AnyTimes().Return(network.Version16, nil)
 	api.EXPECT().StateMinerInfo(mockAny, mockAny, mockAny).AnyTimes().Return(types.MinerInfo{}, nil)
-	api.EXPECT().StateMinerDeadlines(mockAny, mockAny, mockAny).AnyTimes().Return([]types.Deadline{types.Deadline{}}, nil)
-	api.EXPECT().StateMinerPartitions(mockAny, mockAny, mockAny, mockAny).AnyTimes().Return([]types.Partition{types.Partition{
+	api.EXPECT().StateMinerDeadlines(mockAny, mockAny, mockAny).AnyTimes().Return([]types.Deadline{{}}, nil)
+	api.EXPECT().StateMinerPartitions(mockAny, mockAny, mockAny, mockAny).AnyTimes().Return([]types.Partition{{
 		ActiveSectors: bitfield.NewFromSet([]uint64{uint64(1), uint64(2)}),
 	}}, nil)
 	api.EXPECT().StateGetBeaconEntry(mockAny, mockAny).AnyTimes().Return(nil, nil)
@@ -880,7 +924,7 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 	m.lk.Lock()
 	m.additionWeight += 10
 	toHeight := m.head.Height() - lbHeight
-	rand.Seed(build.Clock.Now().Unix())
+	r := rand.New(rand.NewSource(build.Clock.Now().Unix()))
 	var revertTs []*types.TipSet
 	ts := m.head
 	for {
@@ -901,7 +945,7 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 			blkCopy.ParentWeight = types.NewInt(100 + uint64(len(ts.Parents().Cids())) + uint64(blk.Height)*5 + m.additionWeight)
 			if changeTicket {
 				ticket := make([]byte, 32)
-				rand.Read(ticket)
+				r.Read(ticket)
 				blkCopy.Ticket = &types.Ticket{VRFProof: ticket}
 			}
 			m.blockStore[blkCopy.Cid()] = &blkCopy
@@ -920,14 +964,14 @@ func (m *mockChain) mockFork(lbHeight abi.ChainEpoch, changeTicket bool) {
 func (m *mockChain) fallBack(lbHeight abi.ChainEpoch) {
 	head := m.getHead()
 	ts := m.getTipsetByHeight(head.Height() - lbHeight)
-	rand.Seed(build.Clock.Now().Unix())
+	r := rand.New(rand.NewSource(build.Clock.Now().Unix()))
 	var blks []*types.BlockHeader
 	for _, blk := range ts.Blocks() {
 		blkCopy := *blk
 		blkCopy.Miner = m.createMiner()
 		blkCopy.ParentWeight = big.Add(head.ParentWeight(), big.NewInt(1000))
 		ticket := make([]byte, 32)
-		rand.Read(ticket)
+		r.Read(ticket)
 		blkCopy.Ticket = &types.Ticket{VRFProof: ticket}
 		m.blockStore[blkCopy.Cid()] = &blkCopy
 		blks = append(blks, &blkCopy)
@@ -949,7 +993,8 @@ func (m *mockChain) nextBlock() {
 
 	epoch := head.Height() + abi.ChainEpoch(nullRounds)
 	ticket := make([]byte, 32)
-	rand.Read(ticket)
+	_, err := rand2.Read(ticket)
+	assert.Nil(m.t, err)
 	next := &types.BlockHeader{
 		Miner:                 m.createMiner(),
 		ParentWeight:          types.NewInt(100 + uint64(len(head.Cids())) + uint64(epoch)*5 + m.additionWeight),
@@ -1098,9 +1143,8 @@ func (r *randGen) Cid() cid.Cid {
 	r.lk.Lock()
 	defer r.lk.Unlock()
 	r.count++
-	rand.Seed(r.count)
 	data := make([]byte, 32)
-	rand.Read(data[:])
+	rand.New(rand.NewSource(r.count)).Read(data[:])
 	c, _ := abi.CidBuilder.Sum(data)
 	return c
 }

@@ -26,8 +26,11 @@ var ExampleValues = map[reflect.Type]interface{}{
 	reflect.TypeOf(auth.Permission("")): auth.Permission("write"),
 	reflect.TypeOf(""):                  "string value",
 	reflect.TypeOf(uint64(42)):          uint64(42),
+	reflect.TypeOf(int(42)):             int(42),
+	reflect.TypeOf(uint(42)):            uint(42),
 	reflect.TypeOf(byte(7)):             byte(7),
 	reflect.TypeOf([]byte{}):            []byte("byte array"),
+	reflect.TypeOf(map[string]string{}): make(map[string]string),
 }
 
 func addExample(v interface{}) {
