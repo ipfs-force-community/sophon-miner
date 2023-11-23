@@ -1,5 +1,17 @@
 # sophon-miner changelog
 
+## 1.14.0
+
+* refactor: Only pass the information needed to computeTicket [[#222](https://github.com/ipfs-force-community/sophon-miner/pull/222)]
+* add some explanation of parameters / 添加参数注释  [[#221](https://github.com/ipfs-force-community/sophon-miner/pull/221)]
+* doc: enable record [[#225](https://github.com/ipfs-force-community/sophon-miner/pull/225)]
+* fix: get beacon earlier [[#227](https://github.com/ipfs-force-community/sophon-miner/pull/227)]
+* Merge pull request #227 from ipfs-force-community/fix/get-beacon-earlier [[#228](https://github.com/ipfs-force-community/sophon-miner/pull/228)]
+* opt: add DialMinerRPC [[#230](https://github.com/ipfs-force-community/sophon-miner/pull/230)]
+* chore: bump version to v1.14.0-rc1 [[#232](https://github.com/ipfs-force-community/sophon-miner/pull/232)]
+* chore: update venus [[#233](https://github.com/ipfs-force-community/sophon-miner/pull/233)]
+* feat: add warning for PropagationDelaySecs [[#234](https://github.com/ipfs-force-community/sophon-miner/pull/234)]
+* fix: return error message [[#235](https://github.com/ipfs-force-community/sophon-miner/pull/235)]
 
 ## 1.13.0 / 2023-08-31
 
