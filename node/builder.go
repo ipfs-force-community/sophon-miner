@@ -144,34 +144,36 @@ func ConfigMinerOptions(c interface{}) Option {
 		}),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
 
-		Override(LaunchMetricsSampleThread, func(ctx context.Context, api minermanager.MinerManageAPI) {
-			// Record metrics
-			tm := time.NewTicker(time.Second * 60)
-			defer tm.Stop()
+		Override(LaunchMetricsSampleThread, func(ctx helpers.MetricsCtx, api minermanager.MinerManageAPI) {
+			go func() {
+				// Record metrics
+				tm := time.NewTicker(time.Second * 60)
+				defer tm.Stop()
 
-			for {
-				select {
-				case <-ctx.Done():
-					log.Warnf("stop record metrics: %v", ctx.Err())
-					return
-				case <-tm.C:
-					miners, err := api.List(ctx)
-					if err != nil {
-						log.Warnf("record metrics: list miner: %s", err)
-					}
-					minerInState := map[bool]int64{true: 0, false: 0}
-					for _, miner := range miners {
-						minerInState[miner.OpenMining] += 1
-					}
-					for state, num := range minerInState {
-						stateStr := "open_for_mining"
-						if !state {
-							stateStr = "close_for_mining"
+				for {
+					select {
+					case <-ctx.Done():
+						log.Warnf("stop record metrics: %v", ctx.Err())
+						return
+					case <-tm.C:
+						miners, err := api.List(ctx)
+						if err != nil {
+							log.Warnf("record metrics: list miner: %s", err)
 						}
-						metrics.MinerNumInState.Set(ctx, stateStr, num)
+						minerInState := map[bool]int64{true: 0, false: 0}
+						for _, miner := range miners {
+							minerInState[miner.OpenMining] += 1
+						}
+						for state, num := range minerInState {
+							stateStr := "open_for_mining"
+							if !state {
+								stateStr = "close_for_mining"
+							}
+							metrics.MinerNumInState.Set(ctx, stateStr, num)
+						}
 					}
 				}
-			}
+			}()
 		}),
 	)
 
