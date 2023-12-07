@@ -4,7 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-jsonrpc/metrics"
+	rpcMetrics "github.com/filecoin-project/go-jsonrpc/metrics"
+	"github.com/ipfs-force-community/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -15,16 +16,7 @@ var (
 	MinerID, _ = tag.NewKey("miner_id")
 )
 
-// Distribution
-var defaultMillisecondsDistribution = view.Distribution(100, 200, 400, 600, 800, 1000, 2000, 20000)
-var defaultSecondsDistribution = view.Distribution(3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 180)
-
 var (
-	GetBaseInfoDuration   = stats.Float64("getbaseinfo_ms", "Duration of GetBaseInfo in miner", stats.UnitMilliseconds)
-	ComputeTicketDuration = stats.Float64("computeticket_ms", "Duration of ComputeTicket in miner", stats.UnitMilliseconds)
-	IsRoundWinnerDuration = stats.Float64("isroundwinner_ms", "Duration of IsRoundWinner in miner", stats.UnitMilliseconds)
-	ComputeProofDuration  = stats.Float64("computeproof_s", "Duration of ComputeProof in miner", stats.UnitSeconds)
-
 	NumberOfBlock         = stats.Int64("number_of_block", "Number of production blocks", stats.UnitDimensionless)
 	NumberOfIsRoundWinner = stats.Int64("number_of_isroundwinner", "Number of is round winner", stats.UnitDimensionless)
 
@@ -34,26 +26,6 @@ var (
 )
 
 var (
-	GetBaseInfoDurationView = &view.View{
-		Measure:     GetBaseInfoDuration,
-		Aggregation: defaultMillisecondsDistribution,
-		TagKeys:     []tag.Key{MinerID},
-	}
-	ComputeTicketDurationView = &view.View{
-		Measure:     ComputeTicketDuration,
-		Aggregation: defaultMillisecondsDistribution,
-		TagKeys:     []tag.Key{MinerID},
-	}
-	IsRoundWinnerDurationView = &view.View{
-		Measure:     IsRoundWinnerDuration,
-		Aggregation: defaultMillisecondsDistribution,
-		TagKeys:     []tag.Key{MinerID},
-	}
-	ComputeProofDurationView = &view.View{
-		Measure:     ComputeProofDuration,
-		Aggregation: defaultSecondsDistribution,
-		TagKeys:     []tag.Key{MinerID},
-	}
 	NumberOfBlockView = &view.View{
 		Measure:     NumberOfBlock,
 		Aggregation: view.Count(),
@@ -81,17 +53,23 @@ var (
 	}
 )
 
+var (
+	ApiState        = metrics.NewInt64("api/state", "api service state. 0: down, 1: up", "")
+	MinerNumInState = metrics.NewInt64WithCategory("miner/num", "miner num in vary state", "")
+
+	GetBaseInfoDuration      = metrics.NewTimerMs("mine/getbaseinfo", "Duration of GetBaseInfo in miner", MinerID)
+	ComputeTicketDuration    = metrics.NewTimerMs("mine/computeticket", "Duration of ComputeTicket in miner", MinerID)
+	CheckRoundWinnerDuration = metrics.NewTimerMs("mine/checkroundwinner", "Duration of Check Round Winner in miner", MinerID)
+	ComputeProofDuration     = metrics.NewTimerMs("mine/computeproof", "Duration of ComputeProof in miner", MinerID)
+)
+
 var MinerNodeViews = append([]*view.View{
-	GetBaseInfoDurationView,
-	ComputeTicketDurationView,
-	IsRoundWinnerDurationView,
-	ComputeProofDurationView,
 	NumberOfBlockView,
 	IsRoundWinnerView,
 	NumberOfMiningTimeoutView,
 	NumberOfMiningChainForkView,
 	NumberOfMiningErrorView,
-}, metrics.DefaultViews...)
+}, rpcMetrics.DefaultViews...)
 
 func SinceInMilliseconds(startTime time.Time) float64 {
 	return float64(time.Since(startTime).Nanoseconds()) / 1e6

@@ -266,5 +266,8 @@ func serveRPC(minerAPI lapi.MinerAPI,
 	}()
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
+	ctx := context.Background()
+	metrics.ApiState.Set(ctx, 1)
+	defer metrics.ApiState.Set(ctx, 0)
 	return srv.Serve(manet.NetListener(lst))
 }
