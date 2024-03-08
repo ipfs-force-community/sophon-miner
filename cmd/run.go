@@ -20,6 +20,7 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 
+	"github.com/ipfs-force-community/sophon-auth/core"
 	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	lapi "github.com/ipfs-force-community/sophon-miner/api"
@@ -267,7 +268,7 @@ func serveRPC(minerAPI lapi.MinerAPI,
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
 	ctx := context.Background()
-	metrics.ApiState.Set(ctx, 1)
-	defer metrics.ApiState.Set(ctx, 0)
+	core.ApiState.Set(ctx, 1)
+	defer core.ApiState.Set(ctx, 0)
 	return srv.Serve(manet.NetListener(lst))
 }
