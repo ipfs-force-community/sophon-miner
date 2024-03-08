@@ -1,5 +1,9 @@
 # sophon-miner changelog
 
+## v1.15.0-rc1
+
+* Feat/add more metrics [[#238](https://github.com/ipfs-force-community/sophon-miner/pull/238)]
+
 ## 1.14.0
 
 * refactor: Only pass the information needed to computeTicket [[#222](https://github.com/ipfs-force-community/sophon-miner/pull/222)]
