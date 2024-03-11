@@ -54,7 +54,6 @@ var (
 )
 
 var (
-	ApiState        = metrics.NewInt64("api/state", "api service state. 0: down, 1: up", "")
 	MinerNumInState = metrics.NewInt64WithCategory("miner/num", "miner num in vary state", "")
 
 	GetBaseInfoDuration      = metrics.NewTimerMs("mine/getbaseinfo", "Duration of GetBaseInfo in miner", MinerID)
