@@ -1,6 +1,6 @@
 # sophon-miner changelog
 
-## v1.15.0-rc1
+## v1.15.0
 
 * Feat/add more metrics [[#238](https://github.com/ipfs-force-community/sophon-miner/pull/238)]
 
