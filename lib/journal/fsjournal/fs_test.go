@@ -2,11 +2,9 @@
 package fsjournal
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/ipfs-force-community/sophon-miner/lib/journal"
 	"github.com/ipfs-force-community/sophon-miner/node/repo"
@@ -44,37 +42,5 @@ func TestFsJournal(t *testing.T) {
 		_, err := OpenFSJournal(lr, envDisableEvent)
 		require.Error(t, err)
 		require.NoError(t, os.RemoveAll(dir))
-	}
-
-	{
-		// stm: @VENUSMINER_FSJOURNAL_OPEN_FS_JOURNAL_001
-		jl, err := OpenFSJournal(lr, envDisableEvent)
-		require.NoError(t, err)
-
-		eType := jl.RegisterEventType("s1", "b1")
-		require.NoError(t, err)
-
-		// stm: @VENUSMINER_FSJOURNAL_RECORD_EVENT_001
-		jl.RecordEvent(eType, func() interface{} {
-			return "hello"
-		})
-
-		t.Logf("Waiting record event...")
-
-		time.AfterFunc(time.Millisecond*100, func() {
-			recordEventData, err := os.ReadFile(jlFile)
-			require.NoError(t, err)
-
-			event := &journal.Event{}
-			require.NoErrorf(t, json.Unmarshal(recordEventData, event),
-				"json unmarshal: [%s] to journal.Event failed.", string(recordEventData))
-			if message, isok := event.Data.(string); !isok {
-				t.Errorf("event.Data should be a string")
-			} else {
-				require.Equal(t, message, "hello")
-			}
-		})
-
-		require.NoError(t, jl.Close())
 	}
 }

@@ -6,7 +6,7 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19
+      - image: cimg/go:1.21.7
   ubuntu:
     docker:
       - image: ubuntu:20.04
