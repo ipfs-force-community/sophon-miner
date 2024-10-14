@@ -17,6 +17,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/ipfs-force-community/sophon-miner/api"
+	"github.com/ipfs-force-community/sophon-miner/f3participant"
 	"github.com/ipfs-force-community/sophon-miner/lib/journal"
 	"github.com/ipfs-force-community/sophon-miner/lib/metrics"
 	"github.com/ipfs-force-community/sophon-miner/miner"
@@ -58,6 +59,8 @@ const (
 	SetRecorderDatastoreKey // set recorder datastore
 
 	LaunchMetricsSampleThread
+
+	F3ParticipantKey
 
 	_nInvokes // keep this last
 )
@@ -143,6 +146,7 @@ func ConfigMinerOptions(c interface{}) Option {
 			}
 		}),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
+		Override(F3ParticipantKey, f3participant.NewMultiParticipant),
 
 		Override(LaunchMetricsSampleThread, func(ctx helpers.MetricsCtx, api minermanager.MinerManageAPI) {
 			go func() {
