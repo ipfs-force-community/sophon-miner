@@ -6,7 +6,7 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.21.7
+      - image: cimg/go:1.22.8
   ubuntu:
     docker:
       - image: ubuntu:20.04
@@ -342,7 +342,7 @@ jobs:
       - checkout
 
       - setup_remote_docker:
-          version: 19.03.13
+          version: default
           docker_layer_caching: false
 
       - run:

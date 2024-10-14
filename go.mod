@@ -2,8 +2,6 @@ module github.com/ipfs-force-community/sophon-miner
 
 go 1.22
 
-toolchain go1.23.2
-
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
 require (
@@ -12,6 +10,7 @@ require (
 	github.com/etherlabsio/healthcheck/v2 v2.0.0
 	github.com/filecoin-project/go-address v1.2.0
 	github.com/filecoin-project/go-bitfield v0.2.4
+	github.com/filecoin-project/go-f3 v0.7.0
 	github.com/filecoin-project/go-jsonrpc v0.6.0
 	github.com/filecoin-project/go-state-types v0.15.0-rc1
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
@@ -40,8 +39,10 @@ require (
 	go.opencensus.io v0.24.0
 	go.uber.org/fx v1.22.1
 	go.uber.org/zap v1.27.0
+	golang.org/x/sync v0.8.0
 	golang.org/x/text v0.18.0
 	golang.org/x/tools v0.24.0
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	gorm.io/driver/mysql v1.3.5
 	gorm.io/driver/sqlite v1.3.6
 	gorm.io/gorm v1.23.8
@@ -77,7 +78,6 @@ require (
 	github.com/filecoin-project/go-crypto v0.1.0 // indirect
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7 // indirect
 	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
-	github.com/filecoin-project/go-f3 v0.7.0 // indirect
 	github.com/filecoin-project/go-fil-markets v1.28.2 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
@@ -218,10 +218,8 @@ require (
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.29.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
-	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.81.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
