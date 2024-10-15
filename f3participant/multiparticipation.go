@@ -2,7 +2,7 @@ package f3participant
 
 import (
 	"context"
-	"sync"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -10,7 +10,6 @@ import (
 	"github.com/ipfs-force-community/sophon-miner/node/modules/helpers"
 	miner_manager "github.com/ipfs-force-community/sophon-miner/node/modules/miner-manager"
 	"github.com/jpillora/backoff"
-	"go.uber.org/fx"
 )
 
 const (
@@ -34,11 +33,9 @@ type MultiParticipant struct {
 	minerManager miner_manager.MinerManageAPI
 
 	newParticipant func(context.Context, address.Address) *Participant
-	lk             sync.Mutex
 }
 
-func NewMultiParticipant(lc fx.Lifecycle,
-	mctx helpers.MetricsCtx,
+func NewMultiParticipant(ctx helpers.MetricsCtx,
 	node v1api.FullNode,
 	minerManager miner_manager.MinerManageAPI,
 ) (*MultiParticipant, error) {
@@ -57,7 +54,7 @@ func NewMultiParticipant(lc fx.Lifecycle,
 		)
 	}
 
-	miners, err := minerManager.List(mctx)
+	miners, err := minerManager.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -68,55 +65,49 @@ func NewMultiParticipant(lc fx.Lifecycle,
 		newParticipant: newParticipant,
 	}
 
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			for _, minerInfo := range miners {
-				if !minerManager.IsOpenMining(ctx, minerInfo.Addr) {
-					continue
-				}
-				p := newParticipant(ctx, minerInfo.Addr)
-				mp.participants[minerInfo.Addr] = p
-				if err := p.Start(ctx); err != nil {
-					return err
-				}
-			}
-			go mp.MonitorMiner(ctx)
-
-			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			for _, p := range mp.participants {
-				if err := p.Stop(ctx); err != nil {
-					log.Errorf("failed to stop participant %v, err: %v", p, err)
-				}
-			}
-			return nil
-		},
-	})
+	for _, minerInfo := range miners {
+		if !minerManager.IsOpenMining(ctx, minerInfo.Addr) {
+			continue
+		}
+		p := newParticipant(ctx, minerInfo.Addr)
+		mp.participants[minerInfo.Addr] = p
+	}
 
 	return mp, nil
 }
 
-func (mp *MultiParticipant) addParticipant(ctx helpers.MetricsCtx, participant address.Address) error {
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
-
-	p, ok := mp.participants[participant]
-	if ok {
-		return nil
+func (mp *MultiParticipant) Start(ctx context.Context) error {
+	for _, p := range mp.participants {
+		if err := p.Start(ctx); err != nil {
+			return err
+		}
 	}
-
-	mp.participants[participant] = mp.newParticipant(ctx, participant)
-	p.Start(ctx)
-	log.Infof("add participate %s", participant)
+	go mp.MonitorMiner(ctx)
 
 	return nil
 }
 
-func (mp *MultiParticipant) removeParticipant(ctx context.Context, participant address.Address) error {
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+func (mp *MultiParticipant) Stop(ctx context.Context) error {
+	for _, p := range mp.participants {
+		if err := p.Stop(ctx); err != nil {
+			return fmt.Errorf("failed to stop participant %v, err: %v", p, err)
+		}
+	}
+	return nil
+}
 
+func (mp *MultiParticipant) addParticipant(ctx helpers.MetricsCtx, participant address.Address) error {
+	p, ok := mp.participants[participant]
+	if ok {
+		return nil
+	}
+	mp.participants[participant] = mp.newParticipant(ctx, participant)
+	log.Infof("add participate %s", participant)
+
+	return p.Start(ctx)
+}
+
+func (mp *MultiParticipant) removeParticipant(ctx context.Context, participant address.Address) error {
 	p, ok := mp.participants[participant]
 	if !ok {
 		return nil

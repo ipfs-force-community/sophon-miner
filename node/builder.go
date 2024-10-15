@@ -17,7 +17,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/ipfs-force-community/sophon-miner/api"
-	"github.com/ipfs-force-community/sophon-miner/f3participant"
 	"github.com/ipfs-force-community/sophon-miner/lib/journal"
 	"github.com/ipfs-force-community/sophon-miner/lib/metrics"
 	"github.com/ipfs-force-community/sophon-miner/miner"
@@ -146,7 +145,7 @@ func ConfigMinerOptions(c interface{}) Option {
 			}
 		}),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
-		Override(F3ParticipantKey, f3participant.NewMultiParticipant),
+		Override(F3ParticipantKey, modules.NewMultiParticipant),
 
 		Override(LaunchMetricsSampleThread, func(ctx helpers.MetricsCtx, api minermanager.MinerManageAPI) {
 			go func() {

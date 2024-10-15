@@ -73,6 +73,7 @@ type MinerConfig struct {
 	Gateway     *GatewayNode
 	Auth        *APIInfo
 	SubmitNodes []*APIInfo
+	F3Node      *APIInfo
 
 	PropagationDelaySecs uint64
 	MpoolSelectDelaySecs uint64
