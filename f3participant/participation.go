@@ -65,7 +65,7 @@ func NewParticipant(ctx context.Context,
 	errgrp, runningCtx := errgroup.WithContext(runningCtx)
 	return &Participant{
 		node:                     node,
-		participant:              address.Address(participant),
+		participant:              participant,
 		backoff:                  backoff,
 		maxCheckProgressAttempts: maxCheckProgress,
 		leaseTerm:                leaseTerm,
@@ -132,7 +132,7 @@ func (p *Participant) tryGetF3ParticipationTicket(ctx context.Context) (types.F3
 		switch ticket, err := p.node.F3GetOrRenewParticipationTicket(ctx, p.participant, p.previousTicket, p.leaseTerm); {
 		case ctx.Err() != nil:
 			return types.F3ParticipationTicket{}, ctx.Err()
-		case strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
 			log.Errorw("Cannot participate in F3 as it is disabled.", "err", err)
 			return types.F3ParticipationTicket{}, xerrors.Errorf("acquiring F3 participation ticket: %w", err)
 		case err != nil:
@@ -154,25 +154,25 @@ func (p *Participant) tryF3Participate(ctx context.Context, ticket types.F3Parti
 		switch lease, err := p.node.F3Participate(ctx, ticket); {
 		case ctx.Err() != nil:
 			return types.F3ParticipationLease{}, false, ctx.Err()
-		case strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
 			log.Errorw("Cannot participate in F3 as it is disabled.", "err", err)
 			return types.F3ParticipationLease{}, false, xerrors.Errorf("attempting F3 participation with ticket: %w", err)
-		case strings.Contains(err.Error(), types.ErrF3ParticipationTicketExpired.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3ParticipationTicketExpired.Error()):
 			log.Warnw("F3 participation ticket expired while attempting to participate. Acquiring a new ticket.", "attempts", p.backoff.Attempt(), "err", err)
 			return types.F3ParticipationLease{}, false, nil
-		case strings.Contains(err.Error(), types.ErrF3ParticipationTicketStartBeforeExisting.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3ParticipationTicketStartBeforeExisting.Error()):
 			log.Warnw("F3 participation ticket starts before the existing lease. Acquiring a new ticket.", "attempts", p.backoff.Attempt(), "err", err)
 			return types.F3ParticipationLease{}, false, nil
-		case strings.Contains(err.Error(), types.ErrF3ParticipationTicketInvalid.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3ParticipationTicketInvalid.Error()):
 			log.Errorw("F3 participation ticket is not valid. Acquiring a new ticket after backoff.", "backoff", p.backoff.Duration(), "attempts", p.backoff.Attempt(), "err", err)
 			p.backOff(ctx)
 			return types.F3ParticipationLease{}, false, nil
-		case strings.Contains(err.Error(), types.ErrF3ParticipationIssuerMismatch.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3ParticipationIssuerMismatch.Error()):
 			log.Warnw("Node is not the issuer of F3 participation ticket. Miner maybe load-balancing or node has changed. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
 			log.Debugw("Reattempting F3 participation with the same ticket.", "attempts", p.backoff.Attempt())
 			continue
-		case strings.Contains(err.Error(), types.ErrF3NotReady.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3NotReady.Error()):
 			log.Warnw("F3 is not ready. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
 			continue
@@ -199,7 +199,7 @@ func (p *Participant) awaitLeaseExpiry(ctx context.Context, lease types.F3Partic
 	for ctx.Err() == nil {
 		manifest, err := p.node.F3GetManifest(ctx)
 		switch {
-		case strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
 			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
 			return xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
 		case err != nil:
@@ -217,7 +217,7 @@ func (p *Participant) awaitLeaseExpiry(ctx context.Context, lease types.F3Partic
 			return nil
 		}
 		switch progress, err := p.node.F3GetProgress(ctx); {
-		case strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
+		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
 			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
 			return xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
 		case err != nil:

@@ -25,3 +25,4 @@ scratchpad
 .vscode
 *.out
 dockerfile
+sophon-miner.log

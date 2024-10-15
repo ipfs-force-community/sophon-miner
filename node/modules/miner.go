@@ -66,12 +66,6 @@ func NewMultiParticipant(lc fx.Lifecycle,
 		return nil, err
 	}
 
-	running, err := node.F3IsRunning(mCtx)
-	if err != nil || !running {
-		log.Warnf("f3 is not running: %v", err)
-		return nil, nil
-	}
-
 	mp, err := f3participant.NewMultiParticipant(mCtx, node, minerManager)
 	if err != nil {
 		return nil, err
