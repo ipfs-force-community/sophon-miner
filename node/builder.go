@@ -59,6 +59,8 @@ const (
 
 	LaunchMetricsSampleThread
 
+	F3ParticipantKey
+
 	_nInvokes // keep this last
 )
 
@@ -143,6 +145,7 @@ func ConfigMinerOptions(c interface{}) Option {
 			}
 		}),
 		Override(new(miner.MiningAPI), modules.NewMinerProcessor),
+		Override(F3ParticipantKey, modules.NewMultiParticipant),
 
 		Override(LaunchMetricsSampleThread, func(ctx helpers.MetricsCtx, api minermanager.MinerManageAPI) {
 			go func() {
