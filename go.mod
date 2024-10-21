@@ -15,7 +15,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.15.0-rc1
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.17.0-rc1
+	github.com/filecoin-project/venus v1.17.0-rc2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
