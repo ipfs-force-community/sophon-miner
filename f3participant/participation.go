@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
@@ -37,7 +36,6 @@ const (
 type F3ParticipationAPI interface {
 	F3GetOrRenewParticipationTicket(ctx context.Context, minerID address.Address, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) //perm:sign
 	F3Participate(ctx context.Context, ticket types.F3ParticipationTicket) (types.F3ParticipationLease, error)
-	F3GetProgress(ctx context.Context) (gpbft.Instant, error)
 	F3GetManifest(ctx context.Context) (*manifest.Manifest, error)
 }
 
@@ -46,7 +44,6 @@ type Participant struct {
 	participant              address.Address
 	backoff                  *backoff.Backoff
 	maxCheckProgressAttempts int
-	previousTicket           types.F3ParticipationTicket
 	leaseTerm                uint64
 
 	runningCtx context.Context
@@ -98,20 +95,17 @@ func (p *Participant) run(ctx context.Context) (_err error) {
 		}
 	}()
 
+	var ticket types.F3ParticipationTicket
 	for ctx.Err() == nil {
+		var err error
 		start := time.Now()
-		ticket, err := p.tryGetF3ParticipationTicket(ctx)
+		ticket, err = p.tryGetF3ParticipationTicket(ctx, ticket)
 		if err != nil {
 			return err
 		}
-		lease, participating, err := p.tryF3Participate(ctx, ticket)
+		err = p.tryParticipate(ctx, ticket)
 		if err != nil {
 			return err
-		}
-		if participating {
-			if err := p.awaitLeaseExpiry(ctx, lease); err != nil {
-				return err
-			}
 		}
 		const minPeriod = 500 * time.Millisecond
 		if sinceLastLoop := time.Since(start); sinceLastLoop < minPeriod {
@@ -126,10 +120,10 @@ func (p *Participant) run(ctx context.Context) (_err error) {
 	return ctx.Err()
 }
 
-func (p *Participant) tryGetF3ParticipationTicket(ctx context.Context) (types.F3ParticipationTicket, error) {
+func (p *Participant) tryGetF3ParticipationTicket(ctx context.Context, previousTicket types.F3ParticipationTicket) (types.F3ParticipationTicket, error) {
 	p.backoff.Reset()
 	for ctx.Err() == nil {
-		switch ticket, err := p.node.F3GetOrRenewParticipationTicket(ctx, p.participant, p.previousTicket, p.leaseTerm); {
+		switch ticket, err := p.node.F3GetOrRenewParticipationTicket(ctx, p.participant, previousTicket, p.leaseTerm); {
 		case ctx.Err() != nil:
 			return types.F3ParticipationTicket{}, ctx.Err()
 		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
@@ -148,25 +142,51 @@ func (p *Participant) tryGetF3ParticipationTicket(ctx context.Context) (types.F3
 	return types.F3ParticipationTicket{}, ctx.Err()
 }
 
-func (p *Participant) tryF3Participate(ctx context.Context, ticket types.F3ParticipationTicket) (types.F3ParticipationLease, bool, error) {
+func (p *Participant) getManifest(ctx context.Context) (*manifest.Manifest, error) {
 	p.backoff.Reset()
 	for ctx.Err() == nil {
-		switch lease, err := p.node.F3Participate(ctx, ticket); {
+		switch manifest, err := p.node.F3GetManifest(ctx); {
+		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
+			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
+			return nil, xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
+		case err != nil:
+			log.Errorw("Error when fetching F3 manifest. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
+		case manifest == nil:
+			// Can happen if we reboot and have no manifest.
+			log.Warnw("Received no F3 manifest from lotus. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration())
+		default:
+			return manifest, nil
+		}
+		p.backOff(ctx)
+	}
+	return nil, ctx.Err()
+}
+
+func (p *Participant) tryParticipate(ctx context.Context, ticket types.F3ParticipationTicket) error {
+	p.backoff.Reset()
+	renewLeaseWithin := p.leaseTerm / 2
+	var (
+		manifest  *manifest.Manifest
+		haveLease bool
+	)
+	for ctx.Err() == nil {
+		lease, err := p.node.F3Participate(ctx, ticket)
+		switch {
 		case ctx.Err() != nil:
-			return types.F3ParticipationLease{}, false, ctx.Err()
+			return ctx.Err()
 		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
 			log.Errorw("Cannot participate in F3 as it is disabled.", "err", err)
-			return types.F3ParticipationLease{}, false, xerrors.Errorf("attempting F3 participation with ticket: %w", err)
+			return xerrors.Errorf("attempting F3 participation with ticket: %w", err)
 		case err != nil && strings.Contains(err.Error(), types.ErrF3ParticipationTicketExpired.Error()):
 			log.Warnw("F3 participation ticket expired while attempting to participate. Acquiring a new ticket.", "attempts", p.backoff.Attempt(), "err", err)
-			return types.F3ParticipationLease{}, false, nil
+			return nil
 		case err != nil && strings.Contains(err.Error(), types.ErrF3ParticipationTicketStartBeforeExisting.Error()):
 			log.Warnw("F3 participation ticket starts before the existing lease. Acquiring a new ticket.", "attempts", p.backoff.Attempt(), "err", err)
-			return types.F3ParticipationLease{}, false, nil
+			return nil
 		case err != nil && strings.Contains(err.Error(), types.ErrF3ParticipationTicketInvalid.Error()):
 			log.Errorw("F3 participation ticket is not valid. Acquiring a new ticket after backoff.", "backoff", p.backoff.Duration(), "attempts", p.backoff.Attempt(), "err", err)
 			p.backOff(ctx)
-			return types.F3ParticipationLease{}, false, nil
+			return nil
 		case err != nil && strings.Contains(err.Error(), types.ErrF3ParticipationIssuerMismatch.Error()):
 			log.Warnw("Node is not the issuer of F3 participation ticket. Miner maybe load-balancing or node has changed. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
@@ -177,68 +197,49 @@ func (p *Participant) tryF3Participate(ctx context.Context, ticket types.F3Parti
 			p.backOff(ctx)
 			continue
 		case err != nil:
+			if p.backoff.Attempt() > float64(p.maxCheckProgressAttempts) {
+				log.Errorw("Too many failures while attempting to check F3  progress. Restarting participation.", "attempts", p.backoff.Attempt(), "err", err)
+				return nil
+			}
 			log.Errorw("Unexpected error while attempting F3 participation. Retrying after backoff", "backoff", p.backoff.Duration(), "attempts", p.backoff.Attempt(), "err", err)
 			p.backOff(ctx)
 			continue
+		case lease.ValidityTerm <= renewLeaseWithin:
+			return nil
 		default:
+			// we succeeded so reset the backoff.
+			p.backoff.Reset()
+		}
+
+		// Log the first time we give out the lease.
+		if !haveLease {
 			log.Infow("Successfully acquired F3 participation lease.",
 				"issuer", lease.Issuer,
 				"not-before", lease.FromInstance,
 				"not-after", lease.ToInstance(),
 			)
-			p.previousTicket = ticket
-			return lease, true, nil
+			haveLease = true
 		}
-	}
-	return types.F3ParticipationLease{}, false, ctx.Err()
-}
 
-func (p *Participant) awaitLeaseExpiry(ctx context.Context, lease types.F3ParticipationLease) error {
-	p.backoff.Reset()
-	renewLeaseWithin := p.leaseTerm / 2
-	for ctx.Err() == nil {
-		manifest, err := p.node.F3GetManifest(ctx)
-		switch {
-		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
-			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
-			return xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
-		case err != nil:
-			if p.backoff.Attempt() > float64(p.maxCheckProgressAttempts) {
-				log.Errorw("Too many failures while attempting to check F3  progress. Restarting participation.", "attempts", p.backoff.Attempt(), "err", err)
+		// Fetch the manifest if necessary.
+		if manifest == nil || lease.Network != manifest.NetworkName {
+			manifest, err = p.getManifest(ctx)
+			if err != nil {
+				return err
+			}
+			if manifest.NetworkName != lease.Network {
+				log.Warnf("Got a manifest for network %q while waiting for a lease on network %q. Getting another ticket.", manifest.NetworkName, lease.Network)
 				return nil
 			}
-			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
-			p.backOff(ctx)
-		case manifest == nil || manifest.NetworkName != lease.Network:
-			// If we got an unexpected manifest, or no manifest, go back to the
-			// beginning and try to get another ticket. Switching from having a manifest
-			// to having no manifest can theoretically happen if the lotus node reboots
-			// and has no static manifest.
-			return nil
 		}
-		switch progress, err := p.node.F3GetProgress(ctx); {
-		case err != nil && strings.Contains(err.Error(), types.ErrF3Disabled.Error()):
-			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
-			return xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
-		case err != nil:
-			if p.backoff.Attempt() > float64(p.maxCheckProgressAttempts) {
-				log.Errorw("Too many failures while attempting to check F3  progress. Restarting participation.", "attempts", p.backoff.Attempt(), "err", err)
-				return nil
-			}
-			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
-			p.backOff(ctx)
-		case progress.ID+renewLeaseWithin >= lease.ToInstance():
-			log.Infof("F3 progressed (%d) to within %d instances of lease expiry (%d). Renewing participation.", progress.ID, renewLeaseWithin, lease.ToInstance())
-			return nil
-		default:
-			remainingInstanceLease := lease.ToInstance() - progress.ID
-			waitTime := time.Duration(remainingInstanceLease-renewLeaseWithin) * manifest.CatchUpAlignment
-			if waitTime == 0 {
-				waitTime = 100 * time.Millisecond
-			}
-			log.Debugf("F3 participation lease is valid for further %d instances. Re-checking after %s.", remainingInstanceLease, waitTime)
-			p.backOffFor(ctx, waitTime)
+
+		// Wait until we think we may need to renew the lease.
+		waitTime := time.Duration(lease.ValidityTerm-renewLeaseWithin) * manifest.CatchUpAlignment
+		if waitTime == 0 {
+			waitTime = 100 * time.Millisecond
 		}
+		log.Debugf("F3 participation lease is valid for further %d instances. Re-checking after %s.", lease.ValidityTerm, waitTime)
+		p.backOffFor(ctx, waitTime)
 	}
 	return ctx.Err()
 }
