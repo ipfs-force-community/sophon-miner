@@ -344,7 +344,7 @@ func (m *Miner) mine(ctx context.Context) {
 						if err := m.sf.PutBlock(ctx, &sharedTypes.BlockHeader{
 							Height: base.TipSet.Height() + base.NullRounds + 1,
 							Miner:  res.addr,
-						}, base.TipSet.Height()+base.NullRounds, time.Time{}, types.ChainForked); err != nil {
+						}, base.TipSet.Height(), time.Time{}, types.ChainForked); err != nil {
 							log.Errorf("failed to record chain forked: %s", err)
 						}
 
@@ -467,8 +467,6 @@ func (m *Miner) mine(ctx context.Context) {
 			log.Info("no block and increase nullround")
 		}
 
-		go m.tryGetBeacon(ctx, *base)
-
 		// Wait until the next epoch, plus the propagation delay, so a new tipset
 		// has enough time to form.
 		m.untilNextEpoch(base)
@@ -476,6 +474,8 @@ func (m *Miner) mine(ctx context.Context) {
 		if len(winPoSts) == 0 {
 			base.NullRounds++
 		}
+
+		go m.tryGetBeacon(ctx, *base)
 	}
 }
 
@@ -491,7 +491,7 @@ func (m *Miner) tryGetBeacon(ctx context.Context, base MiningBase) {
 			return
 		}
 
-		round := head.Height() + 1
+		round := head.Height() + base.NullRounds + 1
 		nodes := m.submitNodes
 
 		log.Infof("try get beacon at: %d", round)
@@ -547,9 +547,9 @@ func (m *Miner) broadCastBlock(ctx context.Context, base MiningBase, bm *sharedT
 		return
 	}
 
-	if err := m.sf.MinedBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+	if err := m.sf.MinedBlock(ctx, bm.Header, base.TipSet.Height()); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-		if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height()+base.NullRounds, time.Time{}, types.Error); err != nil {
+		if err = m.sf.PutBlock(ctx, bm.Header, base.TipSet.Height(), time.Time{}, types.Error); err != nil {
 			log.Errorf("failed to put block: %s", err)
 		}
 
@@ -782,27 +782,10 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 		return nil, err
 	}
 
-	if m.lastWork != nil {
-		if m.lastWork.TipSet.Equals(bts) {
-			return m.lastWork, nil
-		}
-
-		btsw, err := m.api.ChainTipSetWeight(ctx, bts.Key())
-		if err != nil {
-			return nil, err
-		}
-		ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.TipSet.Key())
-		if err != nil {
-			m.lastWork = nil
-			return nil, err
-		}
-
-		if sharedTypes.BigCmp(btsw, ltsw) <= 0 {
-			return m.lastWork, nil
-		}
+	if m.lastWork == nil || !m.lastWork.TipSet.Equals(bts) {
+		m.lastWork = &MiningBase{TipSet: bts}
 	}
 
-	m.lastWork = &MiningBase{TipSet: bts}
 	return m.lastWork, nil
 }
 
