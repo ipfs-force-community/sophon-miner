@@ -231,8 +231,8 @@ github.com/filecoin-project/go-state-types v0.0.0-20200928172055-2df22083d8ab/go
 github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.0/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.6/go.mod h1:UwGVoMsULoCK+bWjEdd/xLCvLAQFBC7EDT477SKml+Q=
-github.com/filecoin-project/go-state-types v0.16.0-rc7 h1:ODs527FEqmq/kKj4jXqRVGUx8t8+XLPjR9aP1f+YVus=
-github.com/filecoin-project/go-state-types v0.16.0-rc7/go.mod h1:YCESyrqnyu17y0MazbV6Uwma5+BrMvEKEQp5QWeIf9g=
+github.com/filecoin-project/go-state-types v0.16.0 h1:ajIREDzTGfq71ofIQ29iZR1WXxmkvd2nQNc6ApcP1wI=
+github.com/filecoin-project/go-state-types v0.16.0/go.mod h1:YCESyrqnyu17y0MazbV6Uwma5+BrMvEKEQp5QWeIf9g=
 github.com/filecoin-project/go-statemachine v0.0.0-20200925024713-05bd7c71fbfe/go.mod h1:FGwQgZAt2Gh5mjlwJUlVB62JeYdo+if0xWxSEfBD9ig=
 github.com/filecoin-project/go-statemachine v1.0.3 h1:N07o6alys+V1tNoSTi4WuuoeNC4erS/6jE74+NsgQuk=
 github.com/filecoin-project/go-statemachine v1.0.3/go.mod h1:jZdXXiHa61n4NmgWFG4w8tnqgvZVHYbJ3yW7+y8bF54=
@@ -255,8 +255,8 @@ github.com/filecoin-project/specs-actors/v6 v6.0.2 h1:K1xPRJoW5PBvb08QF9+4w1Ajcn
 github.com/filecoin-project/specs-actors/v6 v6.0.2/go.mod h1:wnfVvPnYmzPZilNvSqCSSA/ZQX3rdV/U/Vf9EIoQhrI=
 github.com/filecoin-project/specs-actors/v7 v7.0.1 h1:w72xCxijK7xs1qzmJiw+WYJaVt2EPHN8oiwpA1Ay3/4=
 github.com/filecoin-project/specs-actors/v7 v7.0.1/go.mod h1:tPLEYXoXhcpyLh69Ccq91SOuLXsPWjHiY27CzawjUEk=
-github.com/filecoin-project/venus v1.18.0-rc2 h1:bn8rK8onoDR+qXJG6+fXfVLtBx3pyJS8bjnvpPzaFus=
-github.com/filecoin-project/venus v1.18.0-rc2/go.mod h1:eSDPgCiO5qlE1hJxhiHiECU2pylBe+4F7ZSiqr2yDBY=
+github.com/filecoin-project/venus v1.18.0 h1:6RxU29jfDJbv+3GbhFXEI1pqp3NMh38LOxGqLK+NEOU=
+github.com/filecoin-project/venus v1.18.0/go.mod h1:CSSCYMdnMu0jGVO/v/eCUTywQy/FMWp/2K6EgVgY9cY=
 github.com/flynn/noise v1.1.0 h1:KjPQoQCEFdZDiP03phOvGi11+SVVhBG2wOWAorLsstg=
 github.com/flynn/noise v1.1.0/go.mod h1:xbMo+0i6+IGbYdJhF31t2eR1BIU0CYc12+BNAKwUTag=
 github.com/francoispqt/gojay v1.2.13 h1:d2m3sFjloqoIUQU3TsHBgj6qg/BVGlTBeHDUmyJnXKk=
