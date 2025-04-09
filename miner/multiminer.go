@@ -475,7 +475,7 @@ func (m *Miner) mine(ctx context.Context) {
 			base.NullRounds++
 		}
 
-		go m.tryGetBeacon(ctx, *base)
+		// go m.tryGetBeacon(ctx, *base)
 	}
 }
 
