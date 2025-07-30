@@ -475,11 +475,11 @@ func (m *Miner) mine(ctx context.Context) {
 			base.NullRounds++
 		}
 
-		go m.tryGetBeacon(ctx, *base)
+		// go m.tryGetBeacon(ctx, *base)
 	}
 }
 
-func (m *Miner) tryGetBeacon(ctx context.Context, base MiningBase) {
+func (m *Miner) tryGetBeacon(ctx context.Context, base MiningBase) { // nolint
 	delay := 3
 	next := time.Unix(int64(base.TipSet.MinTimestamp()+m.networkParams.BlockDelaySecs*uint64(base.NullRounds+1))+int64(delay), 0)
 
@@ -500,7 +500,7 @@ func (m *Miner) tryGetBeacon(ctx context.Context, base MiningBase) {
 			start := time.Now()
 			// Nodes will cache beacons to avoid slow beacon acquisition
 			if _, err = api.StateGetBeaconEntry(ctx, round); err != nil {
-				log.Infof("got beacon failed: %v", err)
+				log.Debugf("got beacon failed: %v", err)
 				return
 			}
 			took := time.Since(start)
