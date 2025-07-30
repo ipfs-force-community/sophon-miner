@@ -1099,6 +1099,10 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, fmt.Errorf("miner %s not exist", addr)
 		}
 
+		if !disableForkSignaling && blockMsg.Header.ForkSignaling == 0 {
+			blockMsg.Header.ForkSignaling = 1
+		}
+
 		nosigbytes, err := blockMsg.Header.SignatureData()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get SigningBytes: %v", err)
@@ -1111,10 +1115,6 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, fmt.Errorf("failed to sign new block: %v", err)
 		}
 		blockMsg.Header.BlockSig = sig
-	}
-
-	if !disableForkSignaling && blockMsg.Header.ForkSignaling == 0 {
-		blockMsg.Header.ForkSignaling = 1
 	}
 
 	tBlockSign := build.Clock.Now()
