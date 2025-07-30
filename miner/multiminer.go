@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -1053,6 +1054,14 @@ func (m *Miner) computeTicket(ctx context.Context,
 	}, nil
 }
 
+var disableForkSignaling = func() bool {
+	b := os.Getenv("DISABLE_FORK_SIGNALING") == "1"
+	if b {
+		fmt.Println("disable fork signaling")
+	}
+	return b
+}()
+
 func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr address.Address, ticket *sharedTypes.Ticket,
 	eproof *sharedTypes.ElectionProof, bvals []sharedTypes.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*sharedTypes.SignedMessage) (*sharedTypes.BlockMsg, error) {
 	tStart := build.Clock.Now()
@@ -1102,6 +1111,10 @@ func (m *Miner) createBlock(ctx context.Context, base *MiningBase, addr, waddr a
 			return nil, fmt.Errorf("failed to sign new block: %v", err)
 		}
 		blockMsg.Header.BlockSig = sig
+	}
+
+	if !disableForkSignaling && blockMsg.Header.ForkSignaling == 0 {
+		blockMsg.Header.ForkSignaling = 1
 	}
 
 	tBlockSign := build.Clock.Now()
