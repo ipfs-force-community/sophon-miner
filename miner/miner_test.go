@@ -25,9 +25,9 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	miner "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	miner "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 
 	"github.com/ipfs-force-community/sophon-miner/build"
 	"github.com/ipfs-force-community/sophon-miner/lib/journal"
