@@ -122,7 +122,8 @@ func ConfigMinerOptions(c interface{}) Option {
 		Override(new(*config.MinerConfig), cfg),
 		Override(new(*config.MySQLConfig), &cfg.SlashFilter.MySQL),
 		Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
-			return multiaddr.NewMultiaddr(cfg.API.ListenAddress)
+			addr, err := multiaddr.NewMultiaddr(cfg.API.ListenAddress)
+			return types.APIEndpoint(addr), err
 		}),
 		Override(new(api.Common), From(new(common.CommonAPI))),
 	)
@@ -184,7 +185,7 @@ func ConfigMinerOptions(c interface{}) Option {
 		shareOps,
 		minerOps,
 		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e types.APIEndpoint) error {
-			return lr.SetAPIEndpoint(e)
+			return lr.SetAPIEndpoint(multiaddr.Multiaddr(e))
 		}),
 	)
 }

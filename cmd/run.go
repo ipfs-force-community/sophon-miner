@@ -173,7 +173,8 @@ var runCmd = &cli.Command{
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("listen") },
 				node.Override(new(types.APIEndpoint), func() (types.APIEndpoint, error) {
-					return multiaddr.NewMultiaddr(cctx.String("listen"))
+					addr, err := multiaddr.NewMultiaddr(cctx.String("listen"))
+					return types.APIEndpoint(addr), err
 				})),
 			node.Override(new(v1.FullNode), nodeApi),
 		)
