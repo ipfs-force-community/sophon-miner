@@ -232,6 +232,4 @@ require (
 
 replace github.com/ipfs-force-community/sophon-miner => ./
 
-replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
-
 replace github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9

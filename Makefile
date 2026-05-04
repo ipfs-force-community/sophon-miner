@@ -35,6 +35,55 @@ debug:
 .PHONY: miner
 BINS+=sophon-miner
 
+# LINT
+
+lint:
+	golangci-lint run -v --timeout 10m --concurrency 4
+.PHONY: lint
+
+# MOD TIDY
+
+mod-tidy-check:
+	go mod tidy -v
+	git --no-pager diff go.mod go.sum
+	git --no-pager diff --quiet go.mod go.sum
+.PHONY: mod-tidy-check
+
+# FORMAT
+
+gofmt-check:
+	@test -z "$$(go fmt ./...)" || (echo "ERROR: files not formatted, run: go fmt ./..." && exit 1)
+.PHONY: gofmt-check
+
+# GEN
+
+gen-check: gen
+	git --no-pager diff
+	git --no-pager diff --quiet
+.PHONY: gen-check
+
+# TEST
+
+test: test-unit-node test-unit-journal test-unit-miner
+.PHONY: test
+
+test-unit-node:
+	SKIP_CONFORMANCE=1 gotestsum --format standard-verbose -- -coverprofile=coverage.txt -coverpkg=./... -race -timeout 30m ./node/...
+.PHONY: test-unit-node
+
+test-unit-journal:
+	SKIP_CONFORMANCE=1 gotestsum --format standard-verbose -- -race -timeout 30m ./lib/journal/...
+.PHONY: test-unit-journal
+
+test-unit-miner:
+	SKIP_CONFORMANCE=1 gotestsum --format standard-verbose -- -race -timeout 30m ./miner/...
+.PHONY: test-unit-miner
+
+# CI: all checks in one
+
+ci-check: lint mod-tidy-check gofmt-check gen-check
+.PHONY: ci-check
+
 docsgen:
 	go build $(GOFLAGS) -o docgen-md ./api/docgen
 	./docgen-md > ./docs/en/api-v0-methods-miner.md
