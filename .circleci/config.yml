@@ -246,8 +246,13 @@ jobs:
       - install-deps
       - prepare
       - run:
+          name: Install golangci-lint
+          command: |
+            go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - run:
           name: Lint
           command: |
+            export PATH="$(go env GOPATH)/bin:$PATH"
             golangci-lint run -v --timeout 10m \
               --concurrency 4 << parameters.args >>
   lint-all:
