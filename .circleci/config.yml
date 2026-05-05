@@ -6,7 +6,7 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.22.8
+      - image: cimg/go:1.25.0
   ubuntu:
     docker:
       - image: ubuntu:20.04
@@ -246,8 +246,13 @@ jobs:
       - install-deps
       - prepare
       - run:
+          name: Install golangci-lint
+          command: |
+            go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - run:
           name: Lint
           command: |
+            export PATH="$(go env GOPATH)/bin:$PATH"
             golangci-lint run -v --timeout 10m \
               --concurrency 4 << parameters.args >>
   lint-all:
