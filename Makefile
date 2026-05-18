@@ -84,6 +84,8 @@ test-unit-miner:
 ci-check: lint mod-tidy-check gofmt-check gen-check
 .PHONY: ci-check
 
+check: ci-check test
+
 docsgen:
 	go build $(GOFLAGS) -o docgen-md ./api/docgen
 	./docgen-md > ./docs/en/api-v0-methods-miner.md

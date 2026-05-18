@@ -4,7 +4,7 @@ var CurrentCommit string
 
 // BuildVersion is the local build version, set by build system
 const (
-	BuildVersion = "1.20.0-rc1"
+	BuildVersion = "1.20.0"
 	Version      = "1200"
 )
 
