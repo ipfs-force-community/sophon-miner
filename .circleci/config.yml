@@ -52,16 +52,6 @@ commands:
           tar -xf go-ipfs_v0.12.2_linux-amd64.tar.gz
           mv go-ipfs/ipfs /usr/local/bin/ipfs
           chmod +x /usr/local/bin/ipfs
-  install_ipfs_macos:
-    steps:
-      - run: |
-          curl -O https://dist.ipfs.io/kubo/v0.14.0/kubo_v0.14.0_darwin-amd64.tar.gz
-          tar -xvzf kubo_v0.14.0_darwin-amd64.tar.gz
-          pushd kubo
-          sudo bash install.sh
-          popd
-          rm -rf kubo/
-          rm kubo_v0.14.0_darwin-amd64.tar.gz
   git_fetch_all_tags:
     steps:
       - run:
@@ -167,50 +157,6 @@ jobs:
                 command: |
                   bash <(curl -s https://codecov.io/bash)
 
-
-  build-macos:
-    description: build darwin sophon-miner binary
-    parameters:
-      publish:
-        default: false
-        description: publish github release and homebrew?
-        type: boolean
-    macos:
-      xcode: "13.4.1"
-    working_directory: ~/go/src/github.com/ipfs-force-community/sophon-miner
-    steps:
-      - prepare:
-          linux: false
-          darwin: true
-      - install_ipfs_macos
-      - run:
-          name: Install go
-          command: |
-            curl -O https://dl.google.com/go/go1.18.1.darwin-amd64.pkg && \
-            sudo installer -pkg go1.18.1.darwin-amd64.pkg -target /
-      - run:
-          name: Install pkg-config
-          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
-      - run: go version
-      - run:
-          name: Install hwloc
-          command: |
-            mkdir ~/hwloc
-            curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
-            cd ~/hwloc
-            tar -xvzpf hwloc-2.4.1.tar.gz
-            cd hwloc-2.4.1
-            ./configure && make && sudo make install
-      - run:
-          command: make miner
-          no_output_timeout: 30m
-      - store_artifacts:
-          path: sophon-miner
-      - run: mkdir darwin && mv sophon-miner darwin/
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - darwin
 
   gofmt:
     executor: golang
@@ -397,14 +343,6 @@ workflows:
           target: "./miner/..."
       - build-all:
           filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-macos:
-          filters:
-            branches:
-              ignore:
-                - /.*/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
